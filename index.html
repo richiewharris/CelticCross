@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monsiv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single stone tabletop — the board is the hero on the left, a slim ledger of controls, rules and moves on the right; stacks on phones. */
+:root {
+  --bg: #e2dccd;
+  --surface: #ece7da;
+  --fg: #26231e;
+  --muted: #6b6455;
+  --line: #b9ae94;
+  --sq-light: #ddd3bc;
+  --sq-dark: #c2b496;
+  --frame: #5b5141;
+  --gilt: #a87a22;
+  --oxblood: #8e2f28;
+  --piece-white: #faf7ef;
+  --piece-black: #1e1c19;
+  --piece-white-line: #2a2620;
+  --font-display: "Cinzel", "Trajan Pro", "Times New Roman", serif;
+  --font-body: "Alegreya Sans", "Gill Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1a17; --surface: #25221e; --fg: #ece5d5; --muted: #a59c89; --line: #4a4337;
+    --sq-light: #b4a88d; --sq-dark: #958870; --frame: #0f0e0c;
+    --gilt: #e0b04f; --oxblood: #e0786d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1a17; --surface: #25221e; --fg: #ece5d5; --muted: #a59c89; --line: #4a4337;
+  --sq-light: #b4a88d; --sq-dark: #958870; --frame: #0f0e0c;
+  --gilt: #e0b04f; --oxblood: #e0786d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 6vw, 2.9rem); letter-spacing: .18em; margin: 0; line-height: 1; }
+.tag { color: var(--muted); font-style: italic; margin: 0; }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
+@media (max-width: 780px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+/* Board */
+.stage { display: grid; gap: 14px; justify-items: center; min-width: 0; }
+.status {
+  font-family: var(--font-display); font-weight: 500; letter-spacing: .08em; font-size: 1.05rem;
+  min-height: 1.6em; text-align: center; text-wrap: balance;
+}
+.status.win { color: var(--gilt); font-weight: 700; }
+.boardbox { width: min(100%, 540px); display: grid; grid-template-columns: 18px minmax(0,1fr); grid-template-rows: minmax(0,1fr) 18px; gap: 6px; }
+.ranks, .files { display: grid; font-family: var(--font-mono); font-size: .72rem; color: var(--muted); }
+.ranks { grid-template-rows: repeat(5, 1fr); align-items: center; justify-items: center; }
+.files { grid-template-columns: repeat(5, 1fr); justify-items: center; grid-column: 2; }
+.board {
+  aspect-ratio: 1; max-width: 100%; width: 100%;
+  display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);
+  border: 3px solid var(--frame); box-shadow: 0 10px 28px rgb(0 0 0 / .18);
+}
+.sq {
+  position: relative; border: 0; padding: 0; margin: 0; cursor: pointer;
+  background: var(--sq-light); outline-offset: -4px;
+  display: grid; place-items: center;
+  box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .18);
+}
+.sq.dk { background: var(--sq-dark); }
+.sq:focus-visible { outline: 3px solid var(--gilt); }
+.sq.last::before { content: ""; position: absolute; inset: 0; background: var(--gilt); opacity: .22; }
+.sq.sel::before { content: ""; position: absolute; inset: 0; background: var(--gilt); opacity: .42; }
+.sq svg { width: 72%; height: 72%; position: relative; z-index: 1; pointer-events: none; }
+.sq .pop { animation: pop .22s ease-out; }
+@keyframes pop { from { transform: scale(.82); } to { transform: scale(1); } }
+.mark { position: absolute; z-index: 2; pointer-events: none; }
+.mark.go { width: 24%; height: 24%; border-radius: 50%; background: var(--frame); opacity: .45; }
+.mark.cap { inset: 7%; border: 4px solid var(--oxblood); border-radius: 50%; opacity: .85; }
+.mark.swap {
+  top: 5%; right: 5%; width: 32%; height: 32%; border-radius: 50%;
+  background: var(--gilt); color: #1e1c19; display: grid; place-items: center;
+  font-size: clamp(.8rem, 3.2vw, 1.15rem); font-weight: 700; line-height: 1;
+}
+.board.locked .sq { cursor: default; }
+.hint { color: var(--muted); font-size: .92rem; margin: 0; text-align: center; max-width: 46ch; }
+
+/* Ledger */
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 10px; }
+.label { font-family: var(--font-display); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 7px 6px; cursor: pointer; font-size: .93rem; border-left: 1px solid var(--line); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--fg); color: var(--bg); font-weight: 500; }
+.seg input:focus-visible + label { outline: 2px solid var(--gilt); outline-offset: -3px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button.btn {
+  font: inherit; font-weight: 500; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--fg); background: transparent; color: var(--fg);
+}
+button.btn.primary { background: var(--fg); color: var(--bg); }
+button.btn:disabled { opacity: .4; cursor: not-allowed; }
+button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+#cpuOpts[hidden] { display: none !important; }
+
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; font-size: .95rem; }
+.rules li { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 10px; align-items: start; }
+.rules svg { width: 30px; height: 30px; }
+.rules b { font-weight: 700; }
+.note { font-size: .86rem; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
+
+.log {
+  font-family: var(--font-mono); font-size: .82rem; font-variant-numeric: tabular-nums;
+  margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto;
+  display: grid; grid-template-columns: 2.4em 1fr 1fr; gap: 3px 8px; align-content: start;
+}
+.log .n { color: var(--muted); }
+.log .empty { grid-column: 1 / -1; color: var(--muted); font-family: var(--font-body); font-style: italic; font-size: .9rem; }
+
+@media (prefers-reduced-motion: reduce) { .sq .pop { animation: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="p-T" viewBox="0 0 100 100">
+      <path d="M28 62 V38 A22 22 0 0 1 72 38 V62 H62 V40 A12 12 0 0 0 38 40 V62 Z"/>
+      <rect x="20" y="63" width="60" height="9" rx="2"/>
+      <rect x="25" y="75" width="50" height="7" rx="1"/>
+      <rect x="19" y="85" width="62" height="7" rx="1.5"/>
+    </symbol>
+    <symbol id="p-C" viewBox="0 0 100 100">
+      <rect x="45" y="22" width="10" height="56"/>
+      <rect x="22" y="45" width="56" height="10"/>
+      <polygon points="50,10 39,27 61,27"/>
+      <polygon points="50,90 39,73 61,73"/>
+      <polygon points="10,50 27,39 27,61"/>
+      <polygon points="90,50 73,39 73,61"/>
+      <polygon points="50,36 64,50 50,64 36,50"/>
+    </symbol>
+    <symbol id="p-A" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="20" rx="15" ry="4.5" fill="none" stroke-width="3.5" class="halo"/>
+      <path d="M47 70 C36 62 20 62 9 74 C22 73 32 79 47 79 Z"/>
+      <path d="M53 70 C64 62 80 62 91 74 C78 73 68 79 53 79 Z"/>
+      <path d="M36 82 Q50 64 64 82 Z"/>
+      <circle cx="50" cy="47" r="18"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>MONSIV</h1>
+    <p class="tag">Five pieces, one throne, and the swap.</p>
+  </header>
+
+  <div class="game">
+    <section class="stage" aria-label="Game board">
+      <div class="status" id="status" role="status" aria-live="polite">White to move</div>
+      <div class="boardbox">
+        <div class="ranks" aria-hidden="true"><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+        <div class="board" id="board"></div>
+        <div class="files" aria-hidden="true"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span></div>
+      </div>
+      <p class="hint" id="hint">Tap one of your pieces. Dots show where it can step; a gold ⇄ marks a neighbour it can swap with.</p>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="label">Opponent</p>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-cpu" value="cpu" checked><label for="mode-cpu">Computer</label>
+          <input type="radio" name="mode" id="mode-pvp" value="pvp"><label for="mode-pvp">Friend, same screen</label>
+        </div>
+        <div id="cpuOpts" class="panel">
+          <div class="seg">
+            <input type="radio" name="side" id="side-w" value="w" checked><label for="side-w">Play white</label>
+            <input type="radio" name="side" id="side-b" value="b"><label for="side-b">Play black</label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="lvl" id="lvl-1" value="1"><label for="lvl-1">Casual</label>
+            <input type="radio" name="lvl" id="lvl-2" value="2" checked><label for="lvl-2">Steady</label>
+            <input type="radio" name="lvl" id="lvl-3" value="3"><label for="lvl-3">Strong</label>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="newBtn" type="button">New game</button>
+          <button class="btn" id="undoBtn" type="button">Undo</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="label">Moves</p>
+        <ol class="log" id="log"></ol>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to play</p>
+        <ul class="rules">
+          <li><svg><use href="#p-T" fill="currentColor"/></svg><span><b>Throne</b> steps one square in any direction. Lose it and you lose the game.</span></li>
+          <li><svg><use href="#p-A" fill="currentColor" stroke="currentColor"/></svg><span><b>Angel</b> steps one square diagonally.</span></li>
+          <li><svg><use href="#p-C" fill="currentColor"/></svg><span><b>Cross</b> steps one square straight: forward, back or sideways.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">⇄</span><span><b>Swap</b> two of your own different pieces that touch, including diagonally. A swap is your whole turn, and you can't swap the same pair twice in a row.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">✕</span><span><b>Capture</b> by stepping onto an enemy piece.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">♛</span><span><b>Win</b> by capturing the enemy Throne or by landing any piece on the far row. A player with no legal move loses, so there are no draws.</span></li>
+        </ul>
+        <p class="note">Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NAMES = { T: "Throne", A: "Angel", C: "Cross" };
+  const DIRS = {
+    T: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+    A: [[-1,-1],[-1,1],[1,-1],[1,1]],
+    C: [[-1,0],[1,0],[0,-1],[0,1]],
+  };
+  const ADJ = DIRS.T;
+  const sq = i => "abcde"[i % 5] + (5 - ((i / 5) | 0));
+  const other = c => (c === "w" ? "b" : "w");
+
+  function initial() {
+    const b = Array(25).fill(null);
+    const top = "ACTAC", bot = "CATCA";
+    for (let c = 0; c < 5; c++) { b[c] = { c: "b", t: top[c] }; b[20 + c] = { c: "w", t: bot[c] }; }
+    return { b, turn: "w", lastSwap: { w: null, b: null }, winner: null, reason: null, last: null };
+  }
+
+  function genMoves(s) {
+    const ms = [];
+    for (let i = 0; i < 25; i++) {
+      const p = s.b[i];
+      if (!p || p.c !== s.turn) continue;
+      const r = (i / 5) | 0, c = i % 5;
+      for (const [dr, dc] of DIRS[p.t]) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const j = rr * 5 + cc, q = s.b[j];
+        if (!q || q.c !== p.c) ms.push({ k: "m", from: i, to: j, cap: q ? q.t : null });
+      }
+      for (const [dr, dc] of ADJ) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const j = rr * 5 + cc, q = s.b[j];
+        if (j > i && q && q.c === p.c && q.t !== p.t) {
+          const key = i + "-" + j;
+          if (s.lastSwap[s.turn] !== key) ms.push({ k: "s", a: i, b: j, key });
+        }
+      }
+    }
+    return ms;
+  }
+
+  function apply(s, m) {
+    const me = s.turn;
+    const n = { b: s.b.slice(), turn: other(me), lastSwap: { ...s.lastSwap }, winner: null, reason: null, last: m };
+    if (m.k === "m") {
+      const captured = n.b[m.to];
+      n.b[m.to] = n.b[m.from]; n.b[m.from] = null;
+      n.lastSwap[me] = null;
+      if (captured && captured.t === "T") { n.winner = me; n.reason = "throne"; }
+      else if (((m.to / 5) | 0) === (me === "w" ? 0 : 4)) { n.winner = me; n.reason = "row"; }
+    } else {
+      const t = n.b[m.a]; n.b[m.a] = n.b[m.b]; n.b[m.b] = t;
+      n.lastSwap[me] = m.key;
+    }
+    if (!n.winner && genMoves(n).length === 0) { n.winner = me; n.reason = "blocked"; }
+    return n;
+  }
+
+  function notation(s, m) {
+    if (m.k === "m") {
+      const p = s.b[m.from];
+      return p.t + " " + sq(m.from) + (m.cap ? "×" : "–") + sq(m.to);
+    }
+    return s.b[m.a].t + sq(m.a) + "⇄" + s.b[m.b].t + sq(m.b);
+  }
+
+  /* ---------- Computer opponent ---------- */
+  function evalWhite(s) {
+    let v = 0;
+    for (let i = 0; i < 25; i++) {
+      const p = s.b[i]; if (!p) continue;
+      const r = (i / 5) | 0, sign = p.c === "w" ? 1 : -1;
+      const adv = p.c === "w" ? 4 - r : r;
+      let pv = 0;
+      if (p.t !== "T") pv = 10 + adv * adv * 1.2;
+      else pv = -adv * 0.8;
+      let friends = 0;
+      for (const [dr, dc] of ADJ) {
+        const rr = r + dr, cc = (i % 5) + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const q = s.b[rr * 5 + cc];
+        if (q && q.c === p.c) friends++;
+      }
+      if (p.t === "T") pv += friends * 1.2; else pv += friends * 0.4;
+      v += sign * pv;
+    }
+    return v;
+  }
+  function order(ms) {
+    const score = m => m.k === "m" ? (m.cap === "T" ? 1000 : m.cap ? 100 : 0) : -1;
+    return ms.sort((x, y) => score(y) - score(x));
+  }
+  class TimeUp extends Error {}
+  function search(root, maxDepth, budgetMs, noise) {
+    const deadline = performance.now() + budgetMs;
+    let nodes = 0;
+    function negamax(s, d, a, b, ply) {
+      if (s.winner) return -(10000 - ply);
+      if (d === 0) return (s.turn === "w" ? 1 : -1) * evalWhite(s);
+      if ((++nodes & 1023) === 0 && performance.now() > deadline) throw new TimeUp();
+      let best = -Infinity;
+      for (const m of order(genMoves(s))) {
+        const v = -negamax(apply(s, m), d - 1, -b, -a, ply + 1);
+        if (v > best) best = v;
+        if (v > a) a = v;
+        if (a >= b) break;
+      }
+      return best;
+    }
+    let moves = genMoves(root);
+    for (let i = moves.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [moves[i], moves[j]] = [moves[j], moves[i]]; }
+    moves = order(moves);
+    let bestMove = moves[0];
+    for (let d = 1; d <= maxDepth; d++) {
+      try {
+        let a = -Infinity, best = null, bestV = -Infinity;
+        const scored = [];
+        for (const m of moves) {
+          const v = -negamax(apply(root, m), d - 1, -Infinity, -a, 1) + (noise ? (Math.random() - .5) * noise : 0);
+          scored.push([v, m]);
+          if (v > bestV) { bestV = v; best = m; }
+          if (v > a) a = v;
+        }
+        bestMove = best;
+        moves = scored.sort((x, y) => y[0] - x[0]).map(x => x[1]);
+        if (bestV > 9000) break;
+      } catch (e) { if (e instanceof TimeUp) break; throw e; }
+    }
+    return bestMove;
+  }
+  const LEVELS = { 1: { depth: 2, ms: 300, noise: 14 }, 2: { depth: 4, ms: 700, noise: 2 }, 3: { depth: 9, ms: 1600, noise: 0 } };
+
+  /* ---------- UI ---------- */
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+  const logEl = document.getElementById("log");
+  const undoBtn = document.getElementById("undoBtn");
+  const cpuOpts = document.getElementById("cpuOpts");
+  const hintEl = document.getElementById("hint");
+
+  let G; // { history: [{state, note}], state, mode, side, lvl, sel }
+  let thinking = false, cpuTimer = null;
+
+  const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
+  const setVal = (name, v) => { const el = document.querySelector(`input[name="${name}"][value="${v}"]`); if (el) el.checked = true; };
+
+  function newGame() {
+    clearTimeout(cpuTimer); thinking = false;
+    G = { history: [], state: initial(), mode: val("mode"), side: val("side"), lvl: val("lvl"), sel: null };
+    render(); save(); maybeCpu();
+  }
+
+  const humanTurn = () => !G.state.winner && (G.mode === "pvp" || G.state.turn === G.side) && !thinking;
+
+  function play(m) {
+    const note = notation(G.state, m);
+    G.history.push({ state: G.state, note, by: G.state.turn });
+    G.state = apply(G.state, m);
+    G.sel = null;
+    render(true); save(); maybeCpu();
+  }
+
+  function maybeCpu() {
+    if (G.mode !== "cpu" || G.state.winner || G.state.turn === G.side) return;
+    thinking = true; render();
+    const lv = LEVELS[G.lvl];
+    cpuTimer = setTimeout(() => {
+      const m = search(G.state, lv.depth, lv.ms, lv.noise);
+      thinking = false;
+      if (m) play(m); else render();
+    }, 350);
+  }
+
+  function undo() {
+    if (!G.history.length) return;
+    clearTimeout(cpuTimer); thinking = false;
+    let h = G.history.pop();
+    if (G.mode === "cpu") {
+      while (h.by !== G.side && G.history.length) h = G.history.pop();
+    }
+    G.state = h.state; G.sel = null;
+    render(); save(); maybeCpu();
+  }
+
+  function click(i) {
+    if (!humanTurn()) return;
+    const s = G.state, p = s.b[i];
+    const legal = genMoves(s);
+    if (G.sel !== null) {
+      const mv = legal.find(m => m.k === "m" && m.from === G.sel && m.to === i);
+      if (mv) return play(mv);
+      const sw = legal.find(m => m.k === "s" && ((m.a === G.sel && m.b === i) || (m.b === G.sel && m.a === i)));
+      if (sw) return play(sw);
+      if (i === G.sel) { G.sel = null; return render(); }
+    }
+    if (p && p.c === s.turn) { G.sel = i; render(); }
+    else { G.sel = null; render(); }
+  }
+
+  function pieceSvg(p, pop) {
+    const fill = p.c === "w" ? "var(--piece-white)" : "var(--piece-black)";
+    const line = p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)";
+    const face = p.c === "w" ? "var(--piece-white)" : "#e9e1cf";
+    const eye = p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)";
+    const extra = p.t === "A" ? ` style="--face:${face}"` : "";
+    return `<svg viewBox="0 0 100 100" class="${pop ? "pop" : ""}" aria-hidden="true"${extra}>
+      <use href="#p-${p.t}" fill="${fill}" stroke="${line}" stroke-width="${p.c === "w" ? 3 : 0}" stroke-linejoin="round"/>
+      ${p.t === "A" ? `<path d="M38 48 Q50 40 62 48 Q62 62 50 64 Q38 62 38 48 Z" fill="${face}"/><path d="M42 52 q3 2.5 6 0 M52 52 q3 2.5 6 0" fill="none" stroke="${eye}" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="50" cy="20" rx="15" ry="4.5" fill="none" stroke="${p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)"}" stroke-width="3.5"/>` : ""}
+    </svg>`;
+  }
+
+  function render(animate) {
+    const s = G.state;
+    const legal = humanTurn() ? genMoves(s) : [];
+    const targets = new Map();
+    if (G.sel !== null) {
+      for (const m of legal) {
+        if (m.k === "m" && m.from === G.sel) targets.set(m.to, m.cap ? "cap" : "go");
+        if (m.k === "s" && (m.a === G.sel || m.b === G.sel)) targets.set(m.a === G.sel ? m.b : m.a, "swap");
+      }
+    }
+    const lastSet = new Set();
+    const lm = s.last;
+    if (lm) { if (lm.k === "m") { lastSet.add(lm.from); lastSet.add(lm.to); } else { lastSet.add(lm.a); lastSet.add(lm.b); } }
+    const popSet = new Set();
+    if (animate && lm) { if (lm.k === "m") popSet.add(lm.to); else { popSet.add(lm.a); popSet.add(lm.b); } }
+
+    const prevFocus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.i : null;
+    let html = "";
+    for (let i = 0; i < 25; i++) {
+      const r = (i / 5) | 0, c = i % 5, p = s.b[i];
+      const cls = ["sq"];
+      if ((r + c) % 2 === 1) cls.push("dk");
+      if (G.sel === i) cls.push("sel");
+      else if (lastSet.has(i)) cls.push("last");
+      const t = targets.get(i);
+      const desc = p ? `${p.c === "w" ? "White" : "Black"} ${NAMES[p.t]}` : "empty";
+      const act = t === "go" ? ", move here" : t === "cap" ? ", capture" : t === "swap" ? ", swap" : "";
+      html += `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${sq(i)} ${desc}${act}">`;
+      if (p) html += pieceSvg(p, popSet.has(i));
+      if (t === "go") html += `<span class="mark go"></span>`;
+      if (t === "cap") html += `<span class="mark cap"></span>`;
+      if (t === "swap") html += `<span class="mark swap">⇄</span>`;
+      html += `</button>`;
+    }
+    boardEl.innerHTML = html;
+    boardEl.classList.toggle("locked", !humanTurn());
+    if (prevFocus != null) { const el = boardEl.querySelector(`[data-i="${prevFocus}"]`); if (el) el.focus({ preventScroll: true }); }
+
+    const who = c => (c === "w" ? "White" : "Black");
+    statusEl.classList.toggle("win", !!s.winner);
+    if (s.winner) {
+      const why = s.reason === "throne" ? "took the Throne" : s.reason === "row" ? "reached the far row" : "left the opponent with no move";
+      const you = G.mode === "cpu" ? (s.winner === G.side ? " You win." : " The computer wins.") : "";
+      statusEl.textContent = `${who(s.winner)} ${why}.${you}`;
+    } else if (thinking) {
+      statusEl.textContent = "Computer is thinking…";
+    } else if (G.mode === "cpu") {
+      statusEl.textContent = `Your move (${who(G.side)})`;
+    } else {
+      statusEl.textContent = `${who(s.turn)} to move`;
+    }
+    hintEl.textContent = G.sel !== null
+      ? "Tap a dot to step, a red ring to capture, or a gold ⇄ to swap. Tap the piece again to cancel."
+      : "Tap one of your pieces. Dots show where it can step; a gold ⇄ marks a neighbour it can swap with.";
+
+    const h = G.history;
+    if (!h.length) logEl.innerHTML = `<li class="empty">No moves yet. White goes first.</li>`;
+    else {
+      let out = "";
+      for (let k = 0; k < h.length; k += 2) {
+        out += `<li class="n">${k / 2 + 1}.</li><li>${h[k].note}</li><li>${h[k + 1] ? h[k + 1].note : ""}</li>`;
+      }
+      logEl.innerHTML = out;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    undoBtn.disabled = !h.length || (G.mode === "cpu" && !h.some(x => x.by === G.side));
+    cpuOpts.hidden = val("mode") !== "cpu";
+  }
+
+  function save() { try { localStorage.setItem("monsiv-game", JSON.stringify(G)); } catch (e) {} }
+  function load() { try { const raw = localStorage.getItem("monsiv-game"); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+
+  boardEl.addEventListener("click", e => { const b = e.target.closest(".sq"); if (b) click(+b.dataset.i); });
+  document.getElementById("newBtn").addEventListener("click", newGame);
+  undoBtn.addEventListener("click", undo);
+  document.querySelectorAll('input[name="mode"],input[name="side"]').forEach(el => el.addEventListener("change", () => { cpuOpts.hidden = val("mode") !== "cpu"; newGame(); }));
+  document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { G.lvl = val("lvl"); save(); }));
+
+  function start(data) {
+    const saved = (data && data.G) || load();
+    if (saved && saved.state && saved.state.b) {
+      G = saved; G.sel = null;
+      setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl);
+      render(); maybeCpu();
+    } else newGame();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ G }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
