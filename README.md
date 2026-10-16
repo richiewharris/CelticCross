@@ -14,15 +14,15 @@ To host them free, turn on **GitHub Pages** for this repo (Settings → Pages �
 
 ## Celtic Cross Lock (v2)
 
-Pick the lock on a Celtic puzzle box. A disc of carved stones carries a single gold knot, and some stones have been turned so the knot is broken. A bronze cover hides all but a third of the disc.
+Pick the lock on a Celtic puzzle box. The dial is a disc of carved stone. Its knot is made of raised bronze pins, and some stones have been turned so the knot is broken. A bronze shield hides all but a third of the dial.
 
 ### How to play
 
 - **Turn stones:** tap a stone in the window to turn it a quarter turn clockwise. Press and hold, or right-click, to turn it anticlockwise. Each quarter turn uses one turn.
 - **Spin the disc:** drag it, or use ⟲ ⟳. Spinning is free. Use it to see the rest of the knot.
-- **The goal:** the knot has no loose ends anywhere. A loose end shows as a round knob. Any arrangement with no loose ends opens the lock.
+- **The goal:** the knot has no loose ends anywhere. A loose end shows as a round knob on a pin. Any arrangement with no loose ends opens the lock.
 - **Crossings:** stones with corner rivets are over-under crossings. They're fixed and can't turn.
-- **Open it:** pull the cover to the left by its ring pull, or press "Pull the cover". If the knot is broken anywhere, the cover snaps back, the stones scramble and your turns refill.
+- **Open it:** press the triskele button in the center of the dial, or "Try the lock". If the knot is whole, the shield catches, snaps partly open and glides away, the pins sink into their slots, and the stone dial spins free with the knot showing through. If the knot is broken anywhere, the dial spins, the stones scramble, and your turns refill.
 
 ### Difficulty and skill
 
@@ -49,7 +49,8 @@ These values in the script in `celtic-cross-lock/index.html` control the feel:
 - `TIERS`: rings, stones per ring and stones turned for each tier.
 - `spareTurns`: how many spare turns skill buys.
 - `WIN` and `WC`: the window's half-width and position, in degrees (60 and 90, a third of the disc on the right).
-- `PULL_AT`: how far the cover must be pulled to count as an attempt.
+- `pressHub` and the shield timings in `tryOpen`: the button press, the snap and the glide.
+- `ribbon`: the colours and width of the bronze pins.
 
 ---
 
