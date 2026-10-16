@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fiche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a pegged scoring board runs across the top of the table, the rolling tray sits under it with the rival's dice above and yours below; a narrow ledger beside holds the match, options, rules and the roll log. Stacks on phones. Single dark look by choice, matching the other games: bog oak, bronze and worn copper. */
+:root {
+  --oak: #17130f;
+  --oak-2: #221b15;
+  --oak-3: #2e251c;
+  --ink: #efe6d2;
+  --muted: #a99c84;
+  --line: #3d3328;
+  --bronze: #b08d55;
+  --bronze-hi: #d9b77d;
+  --you: #d9a441;
+  --rival: #9fb4c4;
+  --again: #7fae7a;
+  --lose: #d0584a;
+  --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
+  --font-body: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--oak); color: var(--ink);
+  background-image: radial-gradient(120% 70% at 50% 0%, var(--oak-2), var(--oak) 70%);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 40px;
+  min-height: 100%;
+}
+.wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.2rem, 7vw, 3.2rem); margin: 0; line-height: 1.05; color: var(--bronze-hi); }
+.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 66ch; }
+
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 30px; align-items: start; }
+@media (max-width: 860px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+.table { display: grid; gap: 12px; min-width: 0; }
+.status { font-weight: 600; text-align: center; min-height: 3.1em; text-wrap: balance; display: grid; place-items: center; }
+.status.win { color: var(--bronze-hi); }
+.status.lose { color: var(--lose); }
+.status.again { color: var(--again); }
+svg.wide { width: 100%; height: auto; display: block; }
+.disk-wrap { display: grid; gap: 4px; justify-items: center; }
+#pegs { width: 100%; max-width: 380px; height: auto; display: block; }
+.total { margin: 0; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); }
+.total b { font-size: 1.6rem; color: var(--bronze-hi); font-weight: 500; }
+#tray { border-radius: 14px; }
+
+.hand { display: grid; gap: 6px; }
+.hand-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hand-head .who { font-family: var(--font-mono); font-size: .76rem; letter-spacing: .16em; text-transform: uppercase; }
+.hand-head .who.you { color: var(--you); }
+.hand-head .who.rival { color: var(--rival); }
+.hand-head .note { font-size: .88rem; color: var(--muted); font-style: italic; }
+.dice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.die-btn {
+  font: inherit; color: var(--ink); cursor: pointer;
+  border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(160deg, var(--oak-3), var(--oak-2));
+  padding: 8px 6px 9px; display: grid; justify-items: center; gap: 2px; min-width: 0;
+  transition: transform .15s ease, border-color .15s ease, opacity .2s;
+}
+.die-btn svg { width: 100%; max-width: 120px; height: auto; aspect-ratio: 1.3; }
+.die-btn .nm { font-weight: 600; font-size: .92rem; }
+.die-btn .rg { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); }
+.die-btn .odds { font-family: var(--font-mono); font-size: .8rem; color: var(--bronze-hi); min-height: 1.2em; }
+.die-btn:enabled:hover { border-color: var(--bronze); transform: translateY(-2px); }
+.die-btn:focus-visible { outline: 2px solid var(--bronze-hi); outline-offset: 2px; }
+.die-btn:disabled { cursor: default; }
+.die-btn.spent { opacity: .22; }
+.die-btn.best { border-color: var(--bronze-hi); box-shadow: 0 0 0 1px var(--bronze-hi) inset; }
+.rival .die-btn { padding: 4px 4px 6px; }
+.rival .die-btn svg { max-width: 84px; }
+
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 9px; }
+.label { margin: 0; font-family: var(--font-mono); font-size: .74rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.match { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; }
+.match .nm { font-weight: 600; }
+.match .nm.you { color: var(--you); }
+.match .nm.rival { color: var(--rival); }
+.match .pips { display: flex; gap: 5px; }
+.match .pip { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid currentColor; }
+.match .pip.on { background: currentColor; }
+.match .row-you { color: var(--you); }
+.match .row-rival { color: var(--rival); }
+.small { margin: 0; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 7px 4px; cursor: pointer; font-size: .88rem; border-left: 1px solid var(--line); color: var(--muted); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--oak-3); color: var(--bronze-hi); font-weight: 600; box-shadow: inset 0 -2px 0 var(--bronze); }
+.seg input:focus-visible + label { outline: 2px solid var(--bronze-hi); outline-offset: -3px; }
+#cpuOpts[hidden] { display: none !important; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button.btn {
+  font: inherit; font-weight: 600; letter-spacing: .02em;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--bronze); background: transparent; color: var(--bronze-hi);
+}
+button.btn.primary { background: var(--bronze); color: var(--oak); }
+button.btn:hover { filter: brightness(1.12); }
+button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+button.btn.coach { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(--again); color: var(--ink); background: color-mix(in srgb, var(--again) 28%, transparent); }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: .93rem; }
+.rules li { display: grid; grid-template-columns: 2.3em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.rules .n { font-family: var(--font-mono); font-weight: 500; text-align: center; border-radius: 5px; padding: 1px 0; font-size: .82rem; }
+.n.again { background: color-mix(in srgb, var(--again) 30%, transparent); color: #cfe8cb; }
+.n.lose { background: color-mix(in srgb, var(--lose) 30%, transparent); color: #f2c4bd; }
+.n.draw { background: color-mix(in srgb, var(--muted) 25%, transparent); }
+.n.win { background: color-mix(in srgb, var(--bronze-hi) 35%, transparent); color: #fbe7c0; }
+.n.plain { background: var(--oak-3); }
+.note { margin: 0; font-size: .86rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.log { font-family: var(--font-mono); font-size: .8rem; font-variant-numeric: tabular-nums; margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; display: grid; gap: 3px; }
+.log li { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 8px; }
+.log .y { color: var(--you); } .log .r { color: var(--rival); } .log .e { color: var(--muted); font-style: italic; grid-column: 1 / -1; font-family: var(--font-body); }
+.log .empty { display: block; color: var(--muted); font-style: italic; font-family: var(--font-body); }
+.card {
+  background: rgb(23 19 15 / .94); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px;
+  display: grid; gap: 10px; text-align: center; justify-items: center;
+}
+.card[hidden] { display: none; }
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--bronze-hi); font-size: 1.6rem; }
+.card p { margin: 0; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .die-btn { transition: none; } }
+</style>
+</head>
+<body>
+<div style="max-width:1060px;margin:0 auto"><a href="../" style="display:inline-block;margin:0 0 6px;font:500 .8rem 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.08em;color:#a99c84;text-decoration:none">&larr; All games</a>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Fiche</h1>
+    <p class="tag">A race to twenty with three odd dice: a bone caltrop, a wire-wrapped cube, and two cubes on a rod. Take turns rolling into one shared total. Land on twenty to take the round, but mind the sevens, nines and twelves on the way.</p>
+  </header>
+
+  <div class="game">
+    <section class="table" aria-label="The table">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <div class="disk-wrap">
+        <svg id="pegs" viewBox="0 0 260 260" aria-label="Scoring spiral"></svg>
+        <p class="total" id="totalLine">Total <b>0</b></p>
+      </div>
+      <div class="hand rival" id="rivalHand">
+        <div class="hand-head"><span class="who rival" id="rivalName">Rival</span><span class="note" id="rivalNote"></span></div>
+        <div class="dice" id="rivalDice"></div>
+      </div>
+
+      <svg id="tray" class="wide" viewBox="0 0 640 258" aria-label="Rolling tray"></svg>
+      <div class="card" id="card" hidden></div>
+
+      <div class="hand you" id="youHand">
+        <div class="hand-head"><span class="who you" id="youName">You</span><span class="note" id="youNote"></span></div>
+        <div class="dice" id="youDice"></div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="label">Match</p>
+        <div class="match" id="match"></div>
+        <p class="small" id="roundLine"></p>
+      </div>
+
+      <div class="panel">
+        <p class="label">Game</p>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-cpu" value="cpu" checked><label for="mode-cpu">Computer</label>
+          <input type="radio" name="mode" id="mode-pvp" value="pvp"><label for="mode-pvp">Friend, same screen</label>
+        </div>
+        <div id="cpuOpts" class="panel">
+          <div class="seg">
+            <input type="radio" name="lvl" id="lvl-1" value="1"><label for="lvl-1">Casual</label>
+            <input type="radio" name="lvl" id="lvl-2" value="2" checked><label for="lvl-2">Steady</label>
+            <input type="radio" name="lvl" id="lvl-3" value="3"><label for="lvl-3">Shrewd</label>
+          </div>
+        </div>
+        <div class="seg">
+          <input type="radio" name="best" id="best-3" value="3" checked><label for="best-3">Best of 3</label>
+          <input type="radio" name="best" id="best-5" value="5"><label for="best-5">Best of 5</label>
+        </div>
+        <div class="row">
+          <button class="btn" type="button" id="newBtn">New match</button>
+          <button class="btn coach" type="button" id="coachBtn" aria-pressed="false">Coach</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to play</p>
+        <ul class="rules">
+          <li><span class="n plain">↻</span><span>Take turns. Pick one of your dice and roll it; its number goes onto the shared total. Each die is used once a round.</span></li>
+          <li><span class="n again">3</span><span>Roll a three on any die and you roll again, with another die if you have one, or the same one if it was your last.</span></li>
+          <li><span class="n again">7</span><span>Land the total on 7 and you roll again.</span></li>
+          <li><span class="n lose">9</span><span>Land on 9 and your opponent takes the round.</span></li>
+          <li><span class="n draw">12</span><span>Land on 12 and the round is drawn.</span></li>
+          <li><span class="n win">20</span><span>Land on 20 and you take the round. Go over 20 and you lose it.</span></li>
+          <li><span class="n plain">⚐</span><span>If all six dice are used up short of 20, the round is drawn. Whoever rolled last starts the next round.</span></li>
+        </ul>
+        <p class="note">The caltrop shows the number of notches cut into the leg standing up. The wire cube's number is how many wires run across its top. The twin cubes add the wires on their two tops, 2 to 8, and show 1 only when the bar lands standing on end.</p>
+      </div>
+
+      <div class="panel">
+        <p class="label">Rolls</p>
+        <ol class="log" id="log"></ol>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ======================= Dice and rules ======================= */
+  const DICE = [
+    { sides: 4, name: "Caltrop", range: "1–4" },
+    { sides: 6, name: "Wire cube", range: "1–6" },
+    { sides: 8, name: "Twin cubes", range: "1–8" },
+  ];
+  // Chance of each face. The twin cubes stand on end 1 time in 16; otherwise the
+  // two cubes (1–4 each) turn freely on the rod and their faces add.
+  const UPRIGHT = 1 / 16;
+  const DIST = [
+    [1, 2, 3, 4].map(v => [v, 1 / 4]),
+    [1, 2, 3, 4, 5, 6].map(v => [v, 1 / 6]),
+    [[1, UPRIGHT], ...[2, 3, 4, 5, 6, 7, 8].map(v => [v, (1 - UPRIGHT) * (4 - Math.abs(v - 5)) / 16])],
+  ];
+  const ALL = 7, bit = d => 1 << d;
+  function sample(d) { let x = Math.random(); for (const [v, p] of DIST[d]) { if ((x -= p) < 0) return v; } return DIST[d][DIST[d].length - 1][0]; }
+
+  // What a landing total means. Returns "win" | "bust" | "nine" | "draw" | "again" | null.
+  function landing(total, value) {
+    if (total === 20) return "win";
+    if (total > 20) return "bust";
+    if (total === 9) return "nine";
+    if (total === 12) return "draw";
+    if (total === 7 || value === 3) return "again";
+    return null;
+  }
+
+  /* ----- exact odds: the chance the player about to roll takes the round (a draw counts half) ----- */
+  const memo = new Map();
+  function V(t, hp, ho, forced) {
+    const key = t * 1000 + hp * 100 + ho * 10 + (forced + 1);
+    if (memo.has(key)) return memo.get(key);
+    let v;
+    if (forced >= 0) v = rollValue(t, 0, ho, forced);
+    else if (!hp) v = ho ? 1 - V(t, ho, 0, -1) : 0.5;
+    else { v = -1; for (let d = 0; d < 3; d++) if (hp & bit(d)) v = Math.max(v, rollValue(t, hp & ~bit(d), ho, d)); }
+    memo.set(key, v);
+    return v;
+  }
+  function rollValue(t, hpAfter, ho, d) {
+    let s = 0;
+    for (const [r, p] of DIST[d]) s += p * after(t + r, r, d, hpAfter, ho);
+    return s;
+  }
+  function after(T, r, d, hpAfter, ho) {
+    const what = landing(T, r);
+    if (what === "win") return 1;
+    if (what === "bust" || what === "nine") return 0;
+    if (what === "draw") return 0.5;
+    if (what === "again") return hpAfter ? V(T, hpAfter, ho, -1) : V(T, 0, ho, d);
+    if (ho) return 1 - V(T, ho, hpAfter, -1);
+    return hpAfter ? V(T, hpAfter, 0, -1) : 0.5;      // rival is out of dice: keep rolling, or all spent
+  }
+  // Win chance (for the roller) of rolling die d now.
+  const chanceOf = (t, hp, ho, d, forced) => forced >= 0 ? rollValue(t, 0, ho, forced) : rollValue(t, hp & ~bit(d), ho, d);
+
+  /* ======================= Drawing the dice ======================= */
+  const f = n => (+n).toFixed(2);
+  let uid = 0;
+  // Wire patterns on a face, in face coordinates (0–1). The number is simply how
+  // many wires run across the top face: one way for 1–3, both ways for 4–6.
+  const E = 0.05, H = y => [[E, y], [1 - E, y]], Vt = x => [[x, E], [x, 1 - E]];
+  const WIRES = {
+    1: [H(.5)],
+    2: [H(.33), H(.67)],
+    3: [H(.24), H(.5), H(.76)],
+    4: [H(.33), H(.67), Vt(.33), Vt(.67)],
+    5: [H(.24), H(.5), H(.76), Vt(.33), Vt(.67)],
+    6: [H(.24), H(.5), H(.76), Vt(.24), Vt(.5), Vt(.76)],
+  };
+  function knots(lines) {
+    const out = [];
+    for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) {
+      const [[x1, y1], [x2, y2]] = lines[i], [[x3, y3], [x4, y4]] = lines[j];
+      const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4); if (Math.abs(den) < 1e-9) continue;
+      const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den, u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+      if (t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98) out.push([x1 + t * (x2 - x1), y1 + t * (y2 - y1)]);
+    }
+    return out;
+  }
+
+  // An isometric cube at (x, y) whose top face is value, size s.
+  function cube(x, y, s, value, opts = {}) {
+    const k = 0.866, top = [x, y - s], right = [x + s * k, y - s / 2], bot = [x, y], left = [x - s * k, y - s / 2];
+    const P = (u, v) => [bot[0] + u * (right[0] - bot[0]) + v * (left[0] - bot[0]), bot[1] + u * (right[1] - bot[1]) + v * (left[1] - bot[1])];
+    const pts = a => a.map(p => f(p[0]) + "," + f(p[1])).join(" ");
+    const down = p => [p[0], p[1] + s];
+    let g = "";
+    g += `<polygon points="${pts([left, bot, down(bot), down(left)])}" fill="#4a2f1b"/>`;
+    g += `<polygon points="${pts([bot, right, down(right), down(bot)])}" fill="#331f12"/>`;
+    g += `<polygon points="${pts([left, top, right, bot])}" fill="#6b4627"/>`;
+    // top face wires and knots
+    {
+      const w = s * .085, lines = opts.blank ? [] : WIRES[value];
+      // each wire: a dark groove under a bright copper strand, so every crossing reads clearly
+      lines.forEach(([a0, b0]) => { const a = P(a0[0], a0[1]), b = P(b0[0], b0[1]); g += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#2a170b" stroke-width="${f(w * 1.9)}" stroke-linecap="butt"/>`; });
+      lines.forEach(([a0, b0], i) => { const a = P(a0[0], a0[1]), b = P(b0[0], b0[1]); g += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${i % 2 ? "#f0b878" : "#d6955a"}" stroke-width="${f(w)}" stroke-linecap="butt"/>`; });
+
+    }
+    g += `<polygon points="${pts([left, top, right, bot])}" fill="none" stroke="#1d120a" stroke-width="${f(s * .04)}"/>`;
+    g += `<polyline points="${pts([left, down(left), down(bot), down(right), right])}" fill="none" stroke="#1d120a" stroke-width="${f(s * .04)}"/>`;
+    g += `<line x1="${f(bot[0])}" y1="${f(bot[1])}" x2="${f(bot[0])}" y2="${f(bot[1] + s)}" stroke="#1d120a" stroke-width="${f(s * .04)}"/>`;
+    return g;
+  }
+
+  // The four-sided die: a caltrop of four bone legs, seen at an angle on the table.
+  // Three legs rest on the table and one stands straight up. Each leg is notched
+  // around its tip; only the standing leg's notches show, and they give the number.
+  function caltrop(value, rot) {
+    const id = "b" + (uid++), L = 38, w = 11;
+    const iso = (x, y, z) => [(x - y) * 0.866, (x + y) * 0.5 - z];
+    let g = `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="-30" y1="-50" x2="30" y2="30"><stop offset="0" stop-color="#f6ecd4"/><stop offset=".55" stop-color="#d9c8a3"/><stop offset="1" stop-color="#9c8763"/></linearGradient></defs>`;
+    g += `<ellipse cx="3" cy="15" rx="38" ry="15" fill="rgb(0 0 0 / .2)"/>`;
+    // the hub sits at the height where the three lower legs meet the table
+    const hz = L / 3, legs = [0, 120, 240].map(k => {
+      const a = (rot + k) * Math.PI / 180, h = L * Math.sqrt(8) / 3;
+      const end = iso(Math.cos(a) * h, Math.sin(a) * h, 0), depth = Math.cos(a) * h + Math.sin(a) * h;
+      return { end, depth };
+    });
+    const hub = iso(0, 0, hz), top = iso(0, 0, hz + L);
+    const bone = (s0, e0, knobs) => {
+      const dx = e0[0] - s0[0], dy = e0[1] - s0[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+      let o = `<line x1="${f(s0[0])}" y1="${f(s0[1])}" x2="${f(e0[0])}" y2="${f(e0[1])}" stroke="#4a3b28" stroke-width="${f(w + 2.2)}" stroke-linecap="round"/>`;
+      // knuckled end, like the end of a long bone
+      if (knobs) for (const sgn of [-1, 1]) o += `<circle cx="${f(e0[0] + nx * sgn * w * .42)}" cy="${f(e0[1] + ny * sgn * w * .42)}" r="${f(w * .62)}" fill="url(#${id})" stroke="#4a3b28" stroke-width="1.1"/>`;
+      o += `<line x1="${f(s0[0])}" y1="${f(s0[1])}" x2="${f(e0[0])}" y2="${f(e0[1])}" stroke="url(#${id})" stroke-width="${f(w)}" stroke-linecap="round"/>`;
+      o += `<line x1="${f(s0[0] - nx * w * .22)}" y1="${f(s0[1] - ny * w * .22)}" x2="${f(e0[0] - nx * w * .22)}" y2="${f(e0[1] - ny * w * .22)}" stroke="#fffaf0" stroke-width="1.3" stroke-linecap="round" opacity=".55"/>`;
+      return o;
+    };
+    const back = legs.filter(l => l.depth < 0), front = legs.filter(l => l.depth >= 0);
+    for (const l of back) g += bone(hub, l.end, true);
+    g += `<circle cx="${f(hub[0])}" cy="${f(hub[1])}" r="${f(w * .95)}" fill="url(#${id})" stroke="#4a3b28" stroke-width="1.1"/>`;
+    // the standing leg, with its notches cut around it near the tip
+    g += bone(hub, top, true);
+    const tip = top[1] + w * .95;
+    for (let k = 0; k < value; k++) {
+      const y = tip + 2.5 + k * 5.6, hw = w / 2 + .6;
+      g += `<path d="M${f(top[0] - hw)} ${f(y)} Q${f(top[0])} ${f(y + 3.2)} ${f(top[0] + hw)} ${f(y)}" fill="none" stroke="#2e2112" stroke-width="2.6" stroke-linecap="round"/>`;
+      g += `<path d="M${f(top[0] - hw + 1)} ${f(y + 1.9)} Q${f(top[0])} ${f(y + 4.9)} ${f(top[0] + hw - 1)} ${f(y + 1.9)}" fill="none" stroke="#fffaf0" stroke-width=".8" opacity=".5"/>`;
+    }
+    for (const l of front) g += bone(hub, l.end, true);
+    return g;
+  }
+
+  // The twin cubes on a rod. Value 1 means it stands on end.
+  function twin(value, seed) {
+    let g = "";
+    if (value === 1) {
+      g += `<ellipse cx="5" cy="30" rx="28" ry="12" fill="rgb(0 0 0 / .3)"/>`;
+      g += cube(0, 36, 26, 1, { blank: true });
+      g += `<rect x="-4" y="-6" width="8" height="18" fill="#8a8580" stroke="#2a2724" stroke-width=".8"/>`;
+      g += cube(0, -6, 26, 1);
+      return g;
+    }
+    const lo = Math.max(1, value - 4), hi = Math.min(4, value - 1);
+    const a = lo + Math.floor(seed * (hi - lo + 1)), b = value - a;
+    // The two cubes sit one behind the other along the cube's own edge direction,
+    // joined face to face by the rod, so the rod follows the same angle as the cubes.
+    const S2 = 26, gap = 24, ux = 0.866, uy = 0.5, step = S2 + gap;
+    const c1 = [-ux * step / 2, 10 - uy * step / 2], c2 = [ux * step / 2, 10 + uy * step / 2];
+    g += `<ellipse cx="4" cy="24" rx="66" ry="20" transform="rotate(30 4 24)" fill="rgb(0 0 0 / .26)"/>`;
+    g += cube(c1[0], c1[1], S2, a);
+    // rod: from the middle of the back cube's right-hand face toward the front cube
+    const r0 = [c1[0] + ux * S2 / 2, c1[1] + S2 * .25], r1 = [r0[0] + ux * (gap + 4), r0[1] + uy * (gap + 4)];
+    g += `<line x1="${f(r0[0])}" y1="${f(r0[1])}" x2="${f(r1[0])}" y2="${f(r1[1])}" stroke="#2a2724" stroke-width="9" stroke-linecap="round"/>`;
+    g += `<line x1="${f(r0[0])}" y1="${f(r0[1] - 1.2)}" x2="${f(r1[0])}" y2="${f(r1[1] - 1.2)}" stroke="#a7a29a" stroke-width="4.5" stroke-linecap="round"/>`;
+    g += cube(c2[0], c2[1], S2, b);
+    return g;
+  }
+
+  function dieArt(d, value, seed = 0.5) {
+    if (d === 0) return caltrop(value, 20 + seed * 80);
+    if (d === 1) return `<ellipse cx="5" cy="24" rx="42" ry="15" fill="rgb(0 0 0 / .28)"/>` + cube(0, 22, 40, value);
+    return twin(value, seed);
+  }
+  const handFace = [4, 6, 8];
+
+  /* ======================= The spiral board and tray ======================= */
+  // A carved disk with a spiral groove: 0 at the outer end, winding in to 20 at the centre.
+  const pegsEl = document.getElementById("pegs"), trayEl = document.getElementById("tray");
+  const DC = 130, R_OUT = 108, R_IN = 30, TURNS = 2;
+  const SPIRAL = (() => {
+    const N = 2000, pts = [], TH = TURNS * Math.PI * 2;
+    for (let i = 0; i <= N; i++) { const th = TH * i / N, r = R_IN + (R_OUT - R_IN) * (th / TH); pts.push([th, r]); }
+    const xy = ([th, r]) => [DC + r * Math.cos(-th - Math.PI / 2), DC + r * Math.sin(-th - Math.PI / 2)];
+    const cum = [0]; for (let i = 1; i <= N; i++) { const a = xy(pts[i - 1]), b = xy(pts[i]); cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+    const total = cum[N], holes = [];
+    for (let t = 0; t < 20; t++) { const target = total * (1 - t / 19); let i = 0; while (i < N && cum[i] < target) i++; holes.push(xy(pts[i])); }
+    holes.push([DC, DC]);
+    // the groove runs from the rim inward and ends in the centre hole
+    const path = pts.filter((_, i) => i % 10 === 0).reverse().map((p, i) => (i ? "L" : "M") + xy(p).map(v => v.toFixed(1)).join(" ")).join("") + `L${DC} ${DC}`;
+    return { holes, path };
+  })();
+  const MARK = { 7: ["again", "#7fae7a"], 9: ["loses", "#d0584a"], 12: ["draw", "#a99c84"], 20: ["wins", "#d9b77d"] };
+  function drawPegs() {
+    const H = SPIRAL.holes;
+    let h = `<defs><radialGradient id="dk" cx="45%" cy="38%" r="70%"><stop offset="0" stop-color="#6b4a2c"/><stop offset="1" stop-color="#3a2516"/></radialGradient>
+      <radialGradient id="peg" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#f3d79a"/><stop offset=".55" stop-color="#b08d55"/><stop offset="1" stop-color="#5c4421"/></radialGradient></defs>
+      <circle cx="${DC + 3}" cy="${DC + 5}" r="126" fill="rgb(0 0 0 / .35)"/>
+      <circle cx="${DC}" cy="${DC}" r="126" fill="url(#dk)" stroke="#1d120a" stroke-width="1.5"/>
+      <circle cx="${DC}" cy="${DC}" r="121" fill="none" stroke="#b08d55" stroke-width="1.2" opacity=".75"/>
+      <circle cx="${DC}" cy="${DC}" r="118" fill="none" stroke="rgb(255 220 170 / .12)" stroke-dasharray="2 5"/>
+      <path d="${SPIRAL.path}" fill="none" stroke="#1d120a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+      <path d="${SPIRAL.path}" fill="none" stroke="rgb(255 220 170 / .1)" stroke-width="1" transform="translate(0 -1.5)"/>`;
+    H.forEach(([x, y], t) => {
+      const m = MARK[t], big = t === 20;
+      if (m) h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big ? 17 : 11}" fill="none" stroke="${m[1]}" stroke-width="2"/>`;
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${big ? 9 : 5}" fill="#0f0905" stroke="rgb(255 220 170 / .18)"/>`;
+      // the number, set just outside the groove
+      const dx = x - DC, dy = y - DC, d = Math.hypot(dx, dy) || 1, off = t === 20 ? 0 : m ? 20 : 13;
+      const lx = t === 0 ? x - 13 : x + dx / d * off, ly = t === 0 ? y + 3.5 : y + dy / d * off + 3.2;
+      if (t !== 20) h += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="${m ? 11.5 : 10}" font-weight="${m ? 600 : 500}" fill="${m ? m[1] : "#d8c39c"}">${t}</text>`;
+    });
+    h += `<text x="${DC}" y="${DC + 31}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" font-weight="600" fill="#d9b77d">20</text>`;
+    h += `<g id="pegMark" style="transition: transform .12s ease-out"><circle cx="0" cy="0" r="7.5" fill="url(#peg)" stroke="#2a1a0a"/><circle cx="-2.2" cy="-2.6" r="1.8" fill="#fff" opacity=".55"/></g>`;
+    pegsEl.innerHTML = h;
+  }
+  // Walk the peg along the groove one hole at a time.
+  let pegAt = 0, pegTimer = null;
+  function placePeg(t, instant) {
+    const m = document.getElementById("pegMark"); if (!m) return;
+    const target = Math.min(20, t);
+    const set = k => { const [x, y] = SPIRAL.holes[k]; m.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; };
+    m.style.opacity = t > 20 ? .45 : 1;
+    clearTimeout(pegTimer);
+    if (instant || reduce || target <= pegAt) { pegAt = target; set(target); }
+    else { const stepTo = () => { pegAt++; set(pegAt); if (pegAt < target) pegTimer = setTimeout(stepTo, 110); }; stepTo(); }
+    const tl = document.getElementById("totalLine");
+    if (tl) tl.innerHTML = t > 20 ? `Total <b>${t}</b> · over` : `Total <b>${t}</b>`;
+  }
+
+  // Tray slots: two rows of five
+  const slot = i => [92 + (i % 4) * 152, 84 + Math.floor(i / 4) * 128];
+  const trayH = () => Math.max(2, Math.ceil((R.rolls.length + 1) / 4)) * 128 + 40;
+  function drawTrayBase() {
+    const H = trayH();
+    trayEl.setAttribute("viewBox", `0 0 640 ${H}`);
+    return `<defs><radialGradient id="felt" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#3a2a1c"/><stop offset="1" stop-color="#1f160f"/></radialGradient></defs>
+      <rect x="2" y="2" width="636" height="${H - 4}" rx="16" fill="url(#felt)" stroke="#3d3328" stroke-width="2"/>
+      <rect x="12" y="12" width="616" height="${H - 24}" rx="10" fill="none" stroke="rgb(255 220 170 / .07)" stroke-dasharray="3 6"/>`;
+  }
+  function drawTray(anim) {
+    let h = drawTrayBase();
+    R.rolls.forEach((r, i) => {
+      if (anim && anim.index === i) return;
+      const [x, y] = slot(i);
+      h += `<g transform="translate(${x} ${y}) scale(1.05)">${dieArt(r.d, r.v, r.seed)}</g>`;
+      h += `<text x="${x}" y="${y + 66}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" font-weight="500" fill="${r.p === 1 ? "#d9a441" : "#9fb4c4"}">${r.v}${r.v === 3 ? " ↻" : ""}</text>`;
+    });
+    if (anim) h += `<g transform="translate(${f(anim.x)} ${f(anim.y)}) rotate(${f(anim.rot)}) scale(1.05)">${dieArt(anim.d, anim.face, anim.seed)}</g>`;
+    if (!R.rolls.length && !anim) h += `<text x="320" y="${trayH() / 2 + 6}" text-anchor="middle" font-family="Spectral, Georgia, serif" font-style="italic" font-size="16" fill="#a99c84">${M.over ? "" : "The tray is empty. " + nameOf(R.turn) + " roll first."}</text>`;
+    trayEl.innerHTML = h;
+  }
+
+  /* ======================= Match state ======================= */
+  let M, R, busy = false, coach = false, timer = null;
+  const val = n => document.querySelector(`input[name="${n}"]:checked`).value;
+  const setVal = (n, v) => { const e = document.querySelector(`input[name="${n}"][value="${v}"]`); if (e) e.checked = true; };
+  const isHuman = p => M.mode === "pvp" || p === 1;
+  const nameOf = p => M.mode === "pvp" ? `Player ${p}` : p === 1 ? "You" : "Rival";
+  const verb = (p, a, b) => M.mode === "cpu" && p === 1 ? a : b;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const later = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, reduce ? Math.min(ms, 150) : ms); };
+
+  function newRound(starter) {
+    R = { total: 0, hands: { 1: ALL, 2: ALL }, turn: starter, forced: -1, again: false, rolls: [], over: null, last: starter, msg: "", kind: "" };
+  }
+  function newMatch() {
+    clearTimeout(timer); busy = false;
+    M = { mode: val("mode"), lvl: val("lvl"), best: +val("best"), wins: { 1: 0, 2: 0 }, draws: 0, round: 1, log: [], over: null };
+    newRound(Math.random() < 0.5 ? 1 : 2);
+    R.msg = `${nameOf(R.turn)} ${verb(R.turn, "won", "wins")} the toss and ${verb(R.turn, "roll", "rolls")} first.`;
+    hideCard(); render(); kick();
+  }
+  const need = () => Math.ceil(M.best / 2);
+
+  function roll(d) {
+    if (busy || R.over || M.over) return;
+    const p = R.turn;
+    if (R.forced >= 0) d = R.forced;
+    else if (!(R.hands[p] & bit(d))) return;
+    busy = true;
+    const v = sample(d), seed = Math.random();
+    if (R.forced < 0) R.hands[p] &= ~bit(d);
+    const index = R.rolls.length;
+    const [tx, ty] = slot(index), sx = 320, sy = p === 1 ? trayH() + 60 : -60;
+    const t0 = performance.now(), dur = reduce ? 1 : 750;
+    render();
+    const tick = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      const bounce = Math.sin(k * Math.PI * 2.4) * (1 - k) * 18;
+      const face = k < 0.85 ? (DIST[d][(Math.floor(now / 70) + index) % DIST[d].length][0]) : v;
+      drawTray({ index, d, face, seed: k < 0.85 ? Math.random() : seed, x: sx + (tx - sx) * e, y: sy + (ty - sy) * e - bounce, rot: (1 - e) * (p === 1 ? -420 : 420) });
+      if (k < 1) requestAnimationFrame(tick); else land(p, d, v, seed);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function land(p, d, v, seed) {
+    R.rolls.push({ p, d, v, seed });
+    R.total += v; R.last = p;
+    const forcedBefore = R.forced >= 0;
+    R.forced = -1;
+    M.log.push({ p, text: `${DICE[d].name} ${v} → ${R.total}` });
+    const what = landing(R.total, v), other = 3 - p, me = nameOf(p), them = nameOf(other);
+    placePeg(R.total);
+    if (what === "win") endRound(p, `${me} ${verb(p, "land", "lands")} on 20 and ${verb(p, "take", "takes")} the round!`);
+    else if (what === "bust") endRound(other, `${R.total}. ${me} ${verb(p, "go", "goes")} over 20 and ${verb(p, "lose", "loses")} the round.`);
+    else if (what === "nine") endRound(other, `Nine! ${them} ${verb(other, "take", "takes")} the round.`);
+    else if (what === "draw") endRound(0, "Twelve. The round is drawn.");
+    else if (what === "again") {
+      const why = v === 3 && R.total === 7 ? "A three, and the total is 7" : v === 3 ? `A three on the ${DICE[d].name.toLowerCase()}` : "The total lands on 7";
+      if (!R.hands[p]) { R.forced = d; R.msg = `${why}. ${me} ${verb(p, "roll", "rolls")} again with the same ${DICE[d].name.toLowerCase()}.`; }
+      else R.msg = `${why}. ${me} ${verb(p, "roll", "rolls")} again.`;
+      R.kind = "again"; R.turn = p;
+      M.log.push({ e: true, text: R.msg });
+    } else {
+      R.kind = "";
+      if (R.hands[other]) { R.turn = other; R.msg = ""; }
+      else if (R.hands[p]) { R.turn = p; R.msg = `${them} ${verb(other, "have", "has")} no dice left, so ${me.toLowerCase() === "you" ? "you" : me} ${verb(p, "keep", "keeps")} rolling.`; }
+      else endRound(0, `All six dice are spent at ${R.total}. The round is drawn.`);
+    }
+    busy = false;
+    render(); save();
+    if (!R.over) kick();
+  }
+
+  function endRound(winner, text) {
+    R.over = { winner, text };
+    R.msg = text; R.kind = winner === 0 ? "" : (M.mode === "cpu" ? (winner === 1 ? "win" : "lose") : "win");
+    if (winner) M.wins[winner]++; else M.draws++;
+    M.log.push({ e: true, text });
+    const champ = M.wins[1] >= need() ? 1 : M.wins[2] >= need() ? 2 : 0;
+    if (champ) {
+      M.over = champ;
+      showCard(`<h2>${M.mode === "cpu" ? (champ === 1 ? "You win the match" : "The rival wins the match") : `Player ${champ} wins the match`}</h2>
+        <p>${M.wins[1]}–${M.wins[2]}${M.draws ? `, with ${M.draws} drawn round${M.draws > 1 ? "s" : ""}` : ""}.</p>
+        <button class="btn primary" type="button" id="againBtn">Play again</button>`);
+      document.getElementById("againBtn").addEventListener("click", newMatch);
+    } else {
+      showCard(`<h2>${winner ? `${nameOf(winner)} ${verb(winner, "take", "takes")} round ${M.round}` : `Round ${M.round} is drawn`}</h2>
+        <p>${text} ${nameOf(R.last)} rolled last, so ${nameOf(R.last).toLowerCase() === "you" ? "you start" : nameOf(R.last) + " starts"} the next round.</p>
+        <button class="btn primary" type="button" id="nextBtn">Next round</button>`);
+      document.getElementById("nextBtn").addEventListener("click", () => { M.round++; const s = R.last; newRound(s); hideCard(); render(); save(); kick(); });
+    }
+  }
+  const card = document.getElementById("card");
+  function showCard(html) { card.innerHTML = html; card.hidden = false; const b = card.querySelector("button"); if (b) setTimeout(() => b.focus({ preventScroll: true }), 50); }
+  function hideCard() { card.hidden = true; card.innerHTML = ""; }
+
+  /* ----- computer ----- */
+  function aiChoice() {
+    const p = R.turn, hp = R.hands[p], ho = R.hands[3 - p];
+    if (R.forced >= 0) return R.forced;
+    const opts = [0, 1, 2].filter(d => hp & bit(d));
+    if (M.lvl === "1") return opts[(Math.random() * opts.length) | 0];
+    const scored = opts.map(d => [chanceOf(R.total, hp, ho, d, -1) + (M.lvl === "2" ? (Math.random() - 0.5) * 0.18 : 0), d]).sort((a, b) => b[0] - a[0]);
+    return scored[0][1];
+  }
+  function kick() {
+    if (R.over || M.over || isHuman(R.turn)) return;
+    busy = true; render();
+    later(R.again || R.kind === "again" ? 900 : 700, () => { busy = false; roll(aiChoice()); });
+  }
+
+  /* ======================= Render ======================= */
+  function handDice(p, el) {
+    const hp = R.hands[p], ho = R.hands[3 - p], mine = R.turn === p && !R.over && !M.over && !busy && isHuman(p);
+    let best = -1;
+    const odds = [0, 1, 2].map(d => mine && coach && (hp & bit(d) || R.forced === d) ? chanceOf(R.total, hp, ho, d, R.forced) : null);
+    if (mine && coach) { let bv = -1; odds.forEach((o, d) => { if (o != null && o > bv) { bv = o; best = d; } }); }
+    el.innerHTML = [0, 1, 2].map(d => {
+      const has = !!(hp & bit(d)), forcedHere = mine && R.forced === d;
+      const can = mine && (R.forced >= 0 ? forcedHere : has);
+      const o = odds[d];
+      return `<button type="button" class="die-btn${has || forcedHere ? "" : " spent"}${best === d && can ? " best" : ""}" data-d="${d}" ${can ? "" : "disabled"} aria-label="${DICE[d].name}, ${DICE[d].range}${has ? "" : ", already rolled"}${o != null ? `, ${Math.round(o * 100)}% chance to take the round` : ""}">
+        <svg viewBox="-72 -52 144 108" aria-hidden="true">${dieArt(d, handFace[d], .5)}</svg>
+        <span class="nm">${DICE[d].name}</span><span class="rg">${DICE[d].range}</span>
+        ${p === 1 || M.mode === "pvp" ? `<span class="odds">${o != null ? Math.round(o * 100) + "% to win" : ""}</span>` : ""}</button>`;
+    }).join("");
+    el.querySelectorAll(".die-btn").forEach(b => b.addEventListener("click", () => roll(+b.dataset.d)));
+  }
+
+  function render() {
+    // In friend mode, Player 1 sits at the bottom and Player 2 at the top.
+    document.getElementById("youName").textContent = M.mode === "pvp" ? "Player 1" : "You";
+    document.getElementById("rivalName").textContent = M.mode === "pvp" ? "Player 2" : "Rival";
+    handDice(1, document.getElementById("youDice"));
+    handDice(2, document.getElementById("rivalDice"));
+    const mine = !R.over && !M.over && isHuman(R.turn) && !busy;
+    document.getElementById("youNote").textContent = R.turn === 1 && mine ? (R.forced >= 0 ? `Roll the ${DICE[R.forced].name.toLowerCase()} again` : "Your roll. Pick a die.") : "";
+    document.getElementById("rivalNote").textContent = R.turn === 2 && !R.over ? (M.mode === "pvp" ? (mine ? (R.forced >= 0 ? `Roll the ${DICE[R.forced].name.toLowerCase()} again` : "Player 2 to roll. Pick a die.") : "") : busy ? "Thinking…" : "") : "";
+    if (!busy) drawTray(null);
+    placePeg(R.total);
+
+    const st = document.getElementById("status");
+    st.className = "status" + (R.kind ? " " + R.kind : "");
+    st.textContent = R.msg || (R.over ? "" : `Total ${R.total}. ${nameOf(R.turn)} to roll.`);
+
+    const row = (p, cls) => `<span class="nm ${cls}">${nameOf(p)}</span><span class="pips row-${cls}">${Array.from({ length: need() }, (_, k) => `<span class="pip${k < M.wins[p] ? " on" : ""}"></span>`).join("")}</span><span class="small">${M.wins[p]}</span>`;
+    document.getElementById("match").innerHTML = row(1, "you") + row(2, "rival");
+    document.getElementById("roundLine").textContent = `Round ${M.round} · best of ${M.best} · first to ${need()}${M.draws ? ` · ${M.draws} drawn` : ""}`;
+
+    const logEl = document.getElementById("log");
+    logEl.innerHTML = M.log.length ? M.log.map(l => l.e ? `<li><span class="e">${l.text}</span></li>` : `<li><span class="${l.p === 1 ? "y" : "r"}">${M.mode === "pvp" ? "P" + l.p : l.p === 1 ? "You" : "Rival"}</span><span>${l.text}</span></li>`).join("") : `<li class="empty">No rolls yet.</li>`;
+    logEl.scrollTop = logEl.scrollHeight;
+    document.getElementById("cpuOpts").hidden = val("mode") !== "cpu";
+    const cb = document.getElementById("coachBtn");
+    cb.setAttribute("aria-pressed", String(coach)); cb.textContent = coach ? "Coach on" : "Coach";
+  }
+
+  document.getElementById("newBtn").addEventListener("click", newMatch);
+  document.getElementById("coachBtn").addEventListener("click", () => { coach = !coach; try { localStorage.setItem("fiche-coach", coach ? "1" : ""); } catch (e) {} render(); });
+  document.querySelectorAll('input[name="mode"],input[name="best"]').forEach(el => el.addEventListener("change", newMatch));
+  document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { M.lvl = val("lvl"); save(); }));
+
+  function save() { try { localStorage.setItem("fiche-match", JSON.stringify({ M, R })); } catch (e) {} }
+  function load() { try { const v = JSON.parse(localStorage.getItem("fiche-match") || "null"); return v && v.M && v.R ? v : null; } catch (e) { return null; } }
+
+  function start(data) {
+    try { coach = localStorage.getItem("fiche-coach") === "1"; } catch (e) {}
+    drawPegs();
+    const saved = (data && data.M && data.R) ? data : load();
+    if (saved && !saved.M.over && !saved.R.over) {
+      M = saved.M; R = saved.R; busy = false;
+      setVal("mode", M.mode); setVal("lvl", M.lvl); setVal("best", M.best);
+      render(); kick();
+    } else newMatch();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ M, R }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>

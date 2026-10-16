@@ -9,9 +9,10 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Fidchell**: the early Irish board game | [`fidchell/index.html`](fidchell/index.html) |
 | **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | [`fidchell-cups/index.html`](fidchell-cups/index.html) |
 | **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
+| **Fiche**: a dice race to twenty | [`fiche/index.html`](fiche/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, and Goldmines River at `/goldmines-river/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, and Fiche at `/fiche/`.
 
 ---
 
@@ -101,6 +102,29 @@ Pan a Wicklow stream for gold, on the river of Ireland's 1795 gold rush.
 5. **Collect** the gold you can see. Gold still buried under sand when you finish is lost.
 
 A day is eight pans. Each pan ends with a summary of gold kept, washed out and left buried. **Coach** shows the buried gold and how well it has settled. Play by dragging the pan, with the Shake and Wash hold buttons, or with the keyboard.
+
+---
+
+## Fiche
+
+*Fiche* is Irish for twenty. Two players race one shared total to exactly 20.
+
+**The dice.** Each player has three:
+
+- **Caltrop (1–4):** four bone legs. Three rest on the table and one stands up; the notches cut around the standing leg give the number.
+- **Wire cube (1–6):** a wooden cube wrapped in copper wire. The number is how many wires run across its top.
+- **Twin cubes (1–8):** two small wire cubes on a rod. Their two tops add up to 2–8. A 1 only comes up when the bar lands standing on end, 1 time in 16.
+
+**Rules**
+
+- Take turns. Pick one of your dice and roll it; its number goes onto the shared total. Each die is used once a round.
+- Roll a **three** on any die and you roll again, with another die if you have one, or the same one if it was your last.
+- Land the total on **7** and you roll again. Land on **9** and your opponent takes the round. Land on **12** and the round is drawn.
+- Land on **20** to take the round. Go over 20 and you lose it.
+- If all six dice are used up short of 20, the round is drawn. Whoever rolled last starts the next round.
+- Play best of 3 or 5.
+
+**Coach** shows your exact chance of taking the round with each die. The Shrewd computer plays those exact odds.
 
 ---
 
