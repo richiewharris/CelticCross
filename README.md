@@ -1,14 +1,15 @@
 # Celtic Cross
 
-Two small browser games. Neither needs installing or building: open the `index.html` file in any modern browser.
+Small browser games with a Celtic theme. None needs installing or building: open the `index.html` file in any modern browser.
 
 | Game | File |
 |------|------|
 | **Celtic Cross Lock**: a lock-picking puzzle | [`celtic-cross-lock/index.html`](celtic-cross-lock/index.html) |
 | Celtic Cross Lock v1 (the original stone-swapping version) | [`celtic-cross-lock/v1/index.html`](celtic-cross-lock/v1/index.html) |
+| **Fidchell**: the early Irish board game | [`fidchell/index.html`](fidchell/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`index.html`](index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). Monsiv will be at `/`, the lock at `/celtic-cross-lock/`, and v1 at `/celtic-cross-lock/v1/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). Monsiv will be at `/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, and Fidchell at `/fidchell/`.
 
 ---
 
@@ -51,6 +52,23 @@ These values in the script in `celtic-cross-lock/index.html` control the feel:
 - `WIN` and `WC`: the window's half-width and position, in degrees (60 and 90, a third of the disc on the right).
 - `pressHub` and the shield timings in `tryOpen`: the button press, the snap and the glide.
 - `ribbon`: the colours and width of the bronze pins.
+
+---
+
+## Fidchell
+
+*Fidchell* ("wood-wisdom") was the board game of early Ireland. Its rules are lost. This version follows what the Irish texts do say: the pieces were split into gold and white halves, and a piece was taken by trapping it between two enemy pieces. Moves are borrowed from the Roman game it's often compared with, *ludus latrunculorum*, and the board is marked like the 7×7 Ballinderry board, scaled down to 5×5.
+
+### How to play
+
+- Each side has five pieces on its back row. Gold moves first.
+- On your turn, move one piece any distance along a row or column through empty holes. No diagonals, no jumping.
+- **Capture** by trapping an enemy piece between the piece you just moved and another of yours, in a line. One move can take up to three pieces.
+- Moving into a gap between two enemy pieces is safe.
+- **Win** by cutting your rival down to one piece, or by leaving them with no move.
+- After 30 moves in a row without a capture, the side with more pieces wins. Equal pieces is a draw.
+
+Play the computer (Casual, Steady or Strong, as gold or white) or a friend on the same screen. **Hints** rings your pieces in danger and shows a suggested move.
 
 ---
 
