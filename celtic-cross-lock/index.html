@@ -65,8 +65,11 @@ h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 
 .tile:focus { outline: none; }
 .tile:focus-visible { stroke: var(--glow); stroke-width: 3; }
 #lock.shake { animation: shake .45s; }
+#lock.clunk { animation: clunk .22s ease-out; }
+@keyframes clunk { 30% { transform: translateY(3px) scale(.995); } 100% { transform: none; } }
 @keyframes shake { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
-#lock.open #pins { filter: drop-shadow(0 0 2px rgb(196 163 108 / .6)); }
+/* Open: only the slotted stone face shows, turning over the fixed pins; the loose stones beneath are hidden. */
+#lock.open #disc { opacity: 0; }
 
 .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 button.btn {
@@ -108,7 +111,7 @@ aside { display: grid; gap: 22px; min-width: 0; }
 .examples figure { margin: 0; display: grid; gap: 4px; justify-items: center; font-size: .85rem; color: var(--muted); }
 .examples svg { width: 100%; max-width: 130px; height: auto; border-radius: 6px; }
 
-@media (prefers-reduced-motion: reduce) { #lock.shake { animation: none; } .meter i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #lock.shake, #lock.clunk { animation: none; } .meter i { transition: none; } }
 </style>
 </head>
 <body>
@@ -156,7 +159,7 @@ aside { display: grid; gap: 22px; min-width: 0; }
           <!-- Raised pins: the knot casts a soft shadow down and to the right onto the flat
                disc. Applied outside the spinning group so the light stays put while it turns. -->
           <filter id="raise" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="1.1" result="blur"/>
+            <feGaussianBlur id="raiseBlur" in="SourceAlpha" stdDeviation="1.1" result="blur"/>
             <feOffset id="raiseOffset" in="blur" dx="2" dy="2.8" result="off"/>
             <feFlood id="raiseFlood" flood-color="#000" flood-opacity=".7"/>
             <feComposite in2="off" operator="in" result="shadow"/>
@@ -432,7 +435,9 @@ aside { display: grid; gap: 22px; min-width: 0; }
   const pinsEl = document.getElementById("pins"), topEl = document.getElementById("top"), faceEl = document.getElementById("face");
   function applyPhi(v) {
     const t = `rotate(${f(v)})`;
-    discEl.setAttribute("transform", t); pinsEl.setAttribute("transform", t); topEl.setAttribute("transform", t); faceEl.setAttribute("transform", t);
+    discEl.setAttribute("transform", t); topEl.setAttribute("transform", t); faceEl.setAttribute("transform", t);
+    // Once the lock is open the pins stay put and the stone disc turns over them.
+    pinsEl.setAttribute("transform", `rotate(${f(S.open && S.pinPhi != null ? S.pinPhi : v)})`);
   }
 
   // Three layers turn together: the flat stones with their grooves, the raised
@@ -506,13 +511,20 @@ aside { display: grid; gap: 22px; min-width: 0; }
   }
   let raise = 1, hubScale = 1;
   // How far the pins stand out of their grooves: 1 = raised, 0 = pushed home.
+  // t = 1: pins standing proud. Above 1 they lift higher (the press catches them);
+  // 0: pushed home into their slots; a little below 0 they overshoot as they drop.
   function setRaise(t) {
     raise = t;
-    document.getElementById("raiseOffset").setAttribute("dx", f(2 * t));
-    document.getElementById("raiseOffset").setAttribute("dy", f(2.8 * t));
-    document.getElementById("raiseFlood").setAttribute("flood-opacity", f(.7 * t));
+    const up = Math.max(0, t), c = Math.min(1, up);
+    document.getElementById("raiseOffset").setAttribute("dx", f(2 * up));
+    document.getElementById("raiseOffset").setAttribute("dy", f(2.8 * up));
+    document.getElementById("raiseBlur").setAttribute("stdDeviation", f(1.1 + 1.6 * Math.max(0, t - 1)));
+    document.getElementById("raiseFlood").setAttribute("flood-opacity", f(.7 * c));
     document.getElementById("pinLift").setAttribute("transform", `translate(${f(-.9 * t)} ${f(-1.3 * t)})`);
-    document.getElementById("face").setAttribute("opacity", f(Math.min(1, Math.max(0, (1 - t) * 1.6 - .3))));
+    // the pins darken as they go down into the stone
+    pinsEl.style.filter = `brightness(${f(0.6 + 0.4 * c + 0.12 * Math.max(0, t - 1))})`;
+    // the slotted stone face shows from halfway down, so you watch the pins drop into it
+    document.getElementById("face").setAttribute("opacity", f(Math.min(1, Math.max(0, (1 - t) * 2.2 - .1))));
   }
   function setHub(sc) { hubScale = sc; const h = document.getElementById("hubFace"); if (h) h.setAttribute("transform", `scale(${f(sc)})`); }
   function placeCover() {
@@ -555,17 +567,18 @@ aside { display: grid; gap: 22px; min-width: 0; }
       const ends = looseEnds(S.cur, g.R, g.C).length;
       hb.textContent = ends ? `Cover is see-through. Badges show which way each stone needs turning. ${ends} loose end${ends === 1 ? "" : "s"} left.` : "No loose ends. Press the center.";
     }
-    svg.classList.toggle("open", S.open);
+    svg.classList.toggle("open", S.open && raise <= 0);
   }
   function drawAll() { drawDisc(); placeCover(); drawLedger(); }
 
   /* ---------- Actions ---------- */
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function tween(from, to, ms, set, done) {
+  const easeIn = t => t * t * t;
+  function tween(from, to, ms, set, done, ease) {
     if (reduce || ms <= 0) { set(to); done && done(); return; }
     const t0 = performance.now();
     const step = now => {
-      const t = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - t, 3);
+      const t = Math.min(1, (now - t0) / ms), e = ease ? ease(t) : 1 - Math.pow(1 - t, 3);
       set(from + (to - from) * e);
       if (t < 1) requestAnimationFrame(step); else done && done();
     };
@@ -611,7 +624,12 @@ aside { display: grid; gap: 22px; min-width: 0; }
         // The shield catches, snaps about 28% open, then glides the rest of the way.
         const slide = v => { S.cover = v; placeCover(); };
         wait(220, () => tween(0, 120, 90, slide, () => wait(260, () => tween(120, 430, 500, slide, () => {
-          tween(1, 0, 700, setRaise, () => {
+          const drop = done => tween(1, 1.55, 260, setRaise, () => tween(1.55, -0.22, 560, setRaise, () => {
+            svg.classList.remove("clunk"); void svg.getBoundingClientRect(); svg.classList.add("clunk");
+            tween(-0.22, 0, 220, setRaise, () => wait(320, done));
+          }, easeIn));
+          drop(() => {
+            S.pinPhi = S.phi;
             drawDisc(); svg.classList.add("open");
             tween(S.phi, S.phi + 360, 2400, spinSet, () => { busy = false; drawDisc(); });
           });
