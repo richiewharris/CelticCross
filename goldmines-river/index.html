@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Goldmines River</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the pan, seen from above in the stream, is the hero; gauges and pan controls sit under it. A narrow ledger beside holds the river map with its spots, the day's pans and haul, and the steps of panning. Stacks on phones. Single dark look by choice: peat water, wet slate and gold. */
+:root {
+  --peat: #141716;
+  --peat-2: #1c2220;
+  --slate: #29302d;
+  --ink: #ece6d6;
+  --muted: #a3a08f;
+  --line: #36403b;
+  --gold: #e2b33c;
+  --gold-hi: #f6d77a;
+  --water: #6f9a93;
+  --garnet: #d0584a;
+  --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
+  --font-body: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--peat); color: var(--ink);
+  background-image: radial-gradient(120% 80% at 50% 0%, var(--peat-2), var(--peat) 70%);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 40px;
+  min-height: 100%;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.1rem, 6.5vw, 3.1rem); margin: 0; line-height: 1.05; color: var(--gold); }
+.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 66ch; }
+
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 30px; align-items: start; }
+@media (max-width: 840px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.status { font-weight: 600; text-align: center; min-height: 3.1em; text-wrap: balance; max-width: 40ch; display: grid; place-items: center; }
+.status.warn { color: var(--garnet); }
+.status.good { color: var(--gold-hi); }
+.canvas-wrap { position: relative; width: min(100%, 600px); aspect-ratio: 1; max-width: 100%; }
+#pan { width: 100%; height: 100%; display: block; border-radius: 16px; touch-action: none; cursor: grab; }
+#pan.dragging { cursor: grabbing; }
+#pan:focus { outline: none; }
+#pan:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+
+.card {
+  position: absolute; inset: 0; margin: auto; width: min(86%, 380px); height: fit-content;
+  background: rgb(20 23 22 / .93); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px 22px; display: grid; gap: 10px; text-align: center;
+  box-shadow: 0 16px 40px rgb(0 0 0 / .55);
+}
+.card[hidden] { display: none; }
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--gold); font-size: 1.6rem; }
+.card .big { font-family: var(--font-mono); font-size: 1.6rem; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+.card dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; text-align: left; font-size: .95rem; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.card p { margin: 0; color: var(--muted); font-size: .92rem; }
+
+.gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(100%, 600px); }
+.gauge { display: grid; gap: 4px; }
+.gauge[hidden] { display: none; }
+.gauge .bar { height: 8px; border-radius: 4px; background: var(--slate); position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.gauge .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }
+#waterBar i { background: var(--water); }
+#settleBar i { background: var(--gold); }
+#tiltBar i { background: var(--ink); }
+#tiltBar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 72%; right: 0; background: color-mix(in srgb, var(--garnet) 40%, transparent); }
+.label { margin: 0; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-family: var(--font-mono); }
+
+.controls { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; }
+button.btn {
+  font: inherit; font-weight: 600; letter-spacing: .02em;
+  padding: 8px 15px; border-radius: 6px; cursor: pointer; touch-action: none;
+  border: 1px solid var(--gold); background: transparent; color: var(--gold-hi);
+  -webkit-user-select: none; user-select: none;
+}
+button.btn.primary { background: var(--gold); color: var(--peat); }
+button.btn:hover { filter: brightness(1.12); }
+button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+button.btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+button.btn.held { background: color-mix(in srgb, var(--gold) 25%, transparent); }
+button.btn.coach { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(--water); color: var(--ink); background: color-mix(in srgb, var(--water) 30%, transparent); }
+.keys { margin: 0; font-size: .84rem; color: var(--muted); text-align: center; max-width: 60ch; }
+.keys kbd { font-family: var(--font-mono); font-size: .78rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--slate); color: var(--ink); }
+
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 9px; }
+#river { width: 100%; height: auto; display: block; border-radius: 10px; }
+.spot-mark { cursor: pointer; }
+.spot-mark:focus { outline: none; }
+.spot-mark:focus-visible circle.ring { stroke: var(--gold-hi); stroke-width: 3; }
+.spots { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.spots button {
+  width: 100%; text-align: left; font: inherit; color: var(--ink); background: var(--slate);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; cursor: pointer;
+  display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline;
+}
+.spots button:hover { border-color: var(--gold); }
+.spots button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.spots button:disabled { opacity: .45; cursor: not-allowed; }
+.spots .k { font-family: var(--font-mono); color: var(--gold); font-size: .85rem; }
+.spots .nm { font-weight: 600; font-size: .93rem; }
+.spots .yd { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.spots .tip { grid-column: 2 / 4; font-size: .84rem; color: var(--muted); }
+.day { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; }
+.pips { display: flex; gap: 5px; flex-wrap: wrap; }
+.pip { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--gold); }
+.pip.on { background: var(--gold); }
+.haul { font-family: var(--font-mono); font-size: 1.3rem; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+.small { margin: 0; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: .93rem; counter-reset: s; }
+.steps li { padding-left: 26px; position: relative; color: var(--muted); }
+.steps li b { color: var(--ink); }
+.steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: .1em; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); font-family: var(--font-mono); font-size: .72rem; display: grid; place-items: center; color: var(--muted); }
+.steps li.now { color: var(--ink); }
+.steps li.now::before { background: var(--gold); border-color: var(--gold); color: var(--peat); }
+.note { margin: 0; font-size: .86rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Goldmines River</h1>
+    <p class="tag">Pan a Wicklow stream for gold. Shake the pan so the heavy gold sinks, toss out the stones, then tilt and wash the light gravel over the lip without letting the gold go with it.</p>
+  </header>
+
+  <div class="game">
+    <section class="stage" aria-label="Gold pan">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <div class="canvas-wrap">
+        <canvas id="pan" tabindex="0" aria-label="Gold pan. Drag side to side to shake, drag down to tilt and wash, tap stones and gold. Keys: left and right arrows shake, down arrow tilts, space dips."></canvas>
+        <div class="card" id="card" hidden></div>
+      </div>
+      <div class="gauges">
+        <div class="gauge"><p class="label">Water</p><div class="bar" id="waterBar"><i></i></div></div>
+        <div class="gauge"><p class="label">Tilt</p><div class="bar" id="tiltBar"><i></i></div></div>
+        <div class="gauge" id="settleGauge" hidden><p class="label">Gold settled</p><div class="bar" id="settleBar"><i></i></div></div>
+      </div>
+      <div class="controls">
+        <button class="btn" type="button" id="shakeBtn" title="Hold to shake">Shake</button>
+        <button class="btn" type="button" id="washBtn" title="Hold to tilt and wash">Wash</button>
+        <button class="btn" type="button" id="dipBtn">Dip</button>
+        <button class="btn" type="button" id="stonesBtn">Stones</button>
+        <button class="btn primary" type="button" id="finishBtn">Finish pan</button>
+        <button class="btn coach" type="button" id="coachBtn" aria-pressed="false">Coach</button>
+      </div>
+      <p class="keys">Drag the pan side to side to shake and down to tilt, or hold Shake and Wash. Dip refills the water, Stones tosses out stones that have come up. Keys: <kbd>←</kbd> <kbd>→</kbd> shake, hold <kbd>↓</kbd> to wash (<kbd>Shift</kbd> for steeper), <kbd>Space</kbd> dip, <kbd>S</kbd> stones, <kbd>Enter</kbd> finish.</p>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="label">The river</p>
+        <svg id="river" viewBox="0 0 320 210" aria-label="Map of the river with panning spots"></svg>
+        <ul class="spots" id="spots"></ul>
+      </div>
+
+      <div class="panel">
+        <p class="label">Today</p>
+        <div class="day">
+          <span class="small">Pans left</span><span class="pips" id="pips"></span>
+          <span class="small">In the vial</span><span class="haul" id="haul">0 mg</span>
+        </div>
+        <p class="small" id="best"></p>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to pan</p>
+        <ol class="steps" id="steps">
+          <li><b>Scoop</b> from a spot on the river. Gold drops where the water slows down.</li>
+          <li><b>Shake</b> the pan side to side under water. Gold is heavy and sinks; stones and gravel rise.</li>
+          <li><b>Pick out the stones</b> once they come to the top.</li>
+          <li><b>Wash.</b> Tilt the pan so water carries the top layer over the lip. Dip for more water. Tilt too steep and the gold goes too.</li>
+          <li><b>Collect</b> the gold you can see. Anything still buried under sand when you finish is lost.</li>
+        </ol>
+        <p class="note">In September 1795, gold was found on the slopes of Croghan Kinsella in County Wicklow. For one month, crowds panned the Goldmines River, finding a nugget of about 22 ounces, before soldiers took over the site.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ======================= Panning physics (no DOM) ======================= */
+  // Each particle lives in the pan's unit disc (x, y), with a depth d: 0 is the top
+  // of the pile, 1 the bottom. Shaking pulls each particle toward the depth its
+  // weight gives it. Tilting lets water carry the top of the pile toward the lip.
+  const KIND = {
+    stone:  { target: [0.00, 0.08], mob: 0.12, r: [12, 19] },
+    gravel: { target: [0.08, 0.34], mob: 0.75, r: [3.4, 5.8] },
+    sand:   { target: [0.32, 0.66], mob: 1.25, r: [1.5, 2.5] },
+    black:  { target: [0.70, 0.90], mob: 0.55, r: [1.1, 1.8] },
+    gold:   { target: [0.93, 1.00], mob: 0.32, r: [2.1, 4.0] },
+  };
+  const RIN = 205;            // radius of the pan floor, in canvas units
+  const STEEP = 0.72;         // tilt above this starts to move settled material
+  const rand = (a, b) => a + Math.random() * (b - a);
+  function poisson(l) { let k = 0, p = 1; const L = Math.exp(-l); do { k++; p *= Math.random(); } while (p > L); return k - 1; }
+  function inDisc(maxR) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * maxR; return [Math.cos(a) * r, Math.sin(a) * r]; }
+  function blob(n, jitter) { const pts = []; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; pts.push([Math.cos(a) * (1 - jitter / 2 + Math.random() * jitter), Math.sin(a) * (1 - jitter / 2 + Math.random() * jitter)]); } return pts; }
+
+  function makeParticle(kind, extra = {}) {
+    const K = KIND[kind];
+    const [x, y] = inDisc(0.9);
+    const p = { kind, x, y, d: Math.random(), target: rand(...K.target), r: rand(...K.r), rot: Math.random() * Math.PI, alive: true, ...extra };
+    if (kind === "sand") p.col = `hsl(${rand(32, 46) | 0} ${rand(22, 40) | 0}% ${rand(46, 64) | 0}%)`;
+    if (kind === "gravel") p.col = `hsl(${rand(18, 40) | 0} ${rand(6, 18) | 0}% ${rand(34, 58) | 0}%)`;
+    if (kind === "stone") { p.col = `hsl(${rand(22, 36) | 0} ${rand(5, 13) | 0}% ${rand(36, 52) | 0}%)`; p.shape = blob(9, .35); }
+    if (kind === "black") p.col = `hsl(${rand(200, 230) | 0} 8% ${rand(9, 17) | 0}%)`;
+    if (kind === "gold") { p.shape = blob(p.nugget ? 9 : 6, p.nugget ? .3 : .55); p.phase = Math.random() * 6.28; }
+    return p;
+  }
+  function scoop(spot) {
+    const rich = spot.remaining, ps = [];
+    for (let i = 0; i < spot.stones + poisson(1.5); i++) ps.push(makeParticle("stone"));
+    for (let i = 0; i < 95; i++) ps.push(makeParticle("gravel"));
+    for (let i = 0; i < 420; i++) ps.push(makeParticle("sand"));
+    for (let i = 0; i < 70 + rich * 25; i++) ps.push(makeParticle("black"));
+    const flakes = poisson(rich * 4.5);
+    for (let i = 0; i < flakes; i++) {
+      const mg = Math.max(0.6, Math.exp(rand(0, 2.6)));      // about 1 to 13 mg
+      ps.push(makeParticle("gold", { mg, r: 1.7 + Math.sqrt(mg) * 0.75 }));
+    }
+    if (Math.random() < 0.035 * rich) {
+      const mg = rand(90, 650);
+      ps.push(makeParticle("gold", { mg, nugget: true, r: 4.2 + Math.sqrt(mg) * 0.16 }));
+    }
+    return {
+      particles: ps, W: 0.6, tilt: 0, ox: 0, E: 0, shakeTime: 0,
+      lostFlakes: 0, lostMg: 0, keptMg: 0, keptFlakes: 0,
+      startLight: ps.filter(p => p.kind === "sand" || p.kind === "gravel").length,
+      goldTotal: ps.filter(p => p.kind === "gold").reduce((a, p) => a + p.mg, 0),
+    };
+  }
+
+  // Advance the pan by dt seconds. Returns gold particles that washed out this step.
+  function step(pan, dt) {
+    const lost = [];
+    const wf = 0.25 + 0.75 * Math.min(1, pan.W / 0.5);      // shaking needs water
+    const E = pan.E;
+    if (E > 0.02) {
+      const k = Math.min(1, E * 1.35 * dt * wf);
+      for (const p of pan.particles) {
+        if (!p.alive) continue;
+        p.d += (p.target - p.d) * k + (Math.random() - 0.5) * 0.05 * E * dt;
+        p.d = Math.min(1, Math.max(0, p.d));
+        const j = 0.012 * E * (1.2 - p.d);
+        p.x += (Math.random() - 0.5) * j; p.y += (Math.random() - 0.5) * j;
+        const m = Math.hypot(p.x, p.y); if (m > 0.93) { p.x *= 0.93 / m; p.y *= 0.93 / m; }
+      }
+      pan.shakeTime += dt * Math.min(1, E * 1.5);
+      pan.W = Math.max(0, pan.W - E * 0.015 * dt);
+    }
+    const t = pan.tilt;
+    if (t > 0.04 && pan.W > 0.01) {
+      const stonesIn = pan.particles.reduce((n, p) => n + (p.alive && p.kind === "stone" && p.d < 0.3), 0);
+      const F = t * Math.min(1, pan.W * 1.4) * Math.max(0.55, 1 - 0.05 * stonesIn);
+      const steep = Math.max(0, (t - STEEP) / (1 - STEEP));
+      for (const p of pan.particles) {
+        if (!p.alive) continue;
+        const mob = KIND[p.kind].mob * ((1 - p.d) ** 2 + steep * 0.65);
+        const v = F * mob * 1.3 * dt;
+        p.y += v; p.x += (Math.random() - 0.5) * v * 0.6;
+        const m = Math.hypot(p.x, p.y);
+        if (m > 0.95) {
+          if (p.y > 0.2) { p.alive = false; if (p.kind === "gold") lost.push(p); }
+          else { p.x *= 0.95 / m; p.y *= 0.95 / m; }
+        }
+      }
+      pan.W = Math.max(0, pan.W - F * 0.3 * dt);
+      pan.flow = F;
+    } else pan.flow = 0;
+    for (const g of lost) { pan.lostFlakes++; pan.lostMg += g.mg; }
+    return lost;
+  }
+
+  // Each light particle stands for a good handful of sediment. Gold can be seen (and
+  // picked) only once the sediment lying over it nearby has been washed thin.
+  const BULK = { sand: 1, gravel: 2.5, stone: 4 };
+  const NEAR = 26, EXPOSE_AT = 1.3;
+  function coverOver(pan, g) {
+    let cover = 0;
+    const gx = g.x * RIN, gy = g.y * RIN;
+    for (const q of pan.particles) {
+      const w = BULK[q.kind];
+      if (!w || !q.alive || q.d >= g.d) continue;
+      const dx = q.x * RIN - gx, dy = q.y * RIN - gy, dd = dx * dx + dy * dy;
+      if (dd < NEAR * NEAR) cover += w * (1 - Math.sqrt(dd) / NEAR);
+    }
+    return cover;
+  }
+  const exposed = (pan, g) => coverOver(pan, g) < EXPOSE_AT;
+  // Sediment thickness on a coarse grid across the pan floor, for drawing.
+  const GRID = 22;
+  function sedimentGrid(pan) {
+    const gr = new Float32Array(GRID * GRID);
+    for (const q of pan.particles) {
+      const w = BULK[q.kind];
+      if (!w || !q.alive || q.kind === "stone") continue;
+      const gx = Math.min(GRID - 1, Math.max(0, ((q.x + 1) / 2 * GRID) | 0)), gy = Math.min(GRID - 1, Math.max(0, ((q.y + 1) / 2 * GRID) | 0));
+      gr[gy * GRID + gx] += w;
+    }
+    return gr;
+  }
+  function dip(pan) {
+    pan.W = 1;
+    for (const p of pan.particles) if (p.alive && p.d < 0.45) p.d = Math.max(0, p.d - Math.random() * 0.06);
+  }
+  const lightLeft = pan => pan.particles.reduce((n, p) => n + (p.alive && (p.kind === "sand" || p.kind === "gravel")), 0) / Math.max(1, pan.startLight);
+  const goldSettled = pan => { const g = pan.particles.filter(p => p.alive && p.kind === "gold"); return g.length ? g.filter(p => p.d > 0.85).length / g.length : 1; };
+
+  /* ======================= The river and the day ======================= */
+  const SPOTS = [
+    { id: "A", name: "Bedrock crack", base: 2.4, stones: 2, x: 74, y: 64, tip: "Gold wedges into cracks in the bedrock and stays there." },
+    { id: "B", name: "Inside of the bend", base: 1.7, stones: 3, x: 132, y: 128, tip: "Slack water on the inside of a bend drops its gold." },
+    { id: "C", name: "Behind the boulder", base: 2.0, stones: 7, x: 210, y: 92, tip: "The eddy behind a big rock traps gold, and plenty of stones." },
+    { id: "D", name: "Riffle", base: 0.7, stones: 4, x: 252, y: 150, tip: "Fast, shallow water. Gold rarely gets the chance to settle." },
+    { id: "E", name: "Outside of the bend", base: 0.3, stones: 3, x: 166, y: 162, tip: "The current scours the outside bank and carries gold away." },
+  ];
+  const PANS_PER_DAY = 8;
+  function newDay() {
+    const pocket = (Math.random() * SPOTS.length) | 0;
+    return {
+      pansLeft: PANS_PER_DAY, mg: 0, flakes: 0, lost: 0,
+      spots: SPOTS.map((s, i) => ({ id: s.id, remaining: s.base * rand(0.45, 1.5) * (i === pocket ? 1.8 : 1), lastMg: null, pans: 0 })),
+    };
+  }
+  const fmt = mg => mg >= 1000 ? `${(mg / 1000).toFixed(2)} g` : `${mg < 10 ? mg.toFixed(1) : Math.round(mg)} mg`;
+
+  /* ======================= Drawing ======================= */
+  const W0 = 600, CX = 300, CY = 312, ROUT = 252;
+  const cv = document.getElementById("pan"), ctx = cv.getContext("2d");
+  let scale = 1, bed = null;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function resize() {
+    const w = cv.getBoundingClientRect().width || 600, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr); scale = cv.width / W0;
+    bed = document.createElement("canvas"); bed.width = cv.width; bed.height = cv.height;
+    const b = bed.getContext("2d"); b.setTransform(scale, 0, 0, scale, 0, 0);
+    const g = b.createLinearGradient(0, 0, 0, W0); g.addColorStop(0, "#26302b"); g.addColorStop(1, "#1a201d");
+    b.fillStyle = g; b.fillRect(0, 0, W0, W0);
+    // Streambed pebbles
+    let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 420; i++) {
+      const x = r() * W0, y = r() * W0, rr = 4 + r() * 16, l = 22 + r() * 22;
+      b.fillStyle = `hsl(${25 + r() * 20} ${6 + r() * 10}% ${l}%)`;
+      b.beginPath(); b.ellipse(x, y, rr, rr * (0.6 + r() * 0.35), r() * 3, 0, 7); b.fill();
+      b.fillStyle = `rgb(255 245 220 / ${0.05 + r() * 0.06})`;
+      b.beginPath(); b.ellipse(x - rr * 0.25, y - rr * 0.25, rr * 0.45, rr * 0.25, 0, 0, 7); b.fill();
+    }
+    b.fillStyle = "rgb(30 52 48 / .55)"; b.fillRect(0, 0, W0, W0);
+  }
+
+  function particlePath(c, p, s) {
+    if (p.shape) {
+      c.beginPath();
+      p.shape.forEach(([a, b], i) => { const x = a * s * Math.cos(p.rot) - b * s * Math.sin(p.rot), y = a * s * Math.sin(p.rot) + b * s * Math.cos(p.rot); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+      c.closePath();
+    } else { c.beginPath(); c.ellipse(0, 0, s, p.kind === "gravel" ? s * 0.72 : s, p.rot, 0, 7); }
+  }
+  function drawParticle(p, now, isExposed) {
+    const x = p.x * RIN, y = p.y * RIN;
+    ctx.save(); ctx.translate(x, y);
+    if (p.kind === "gold") {
+      particlePath(ctx, p, p.r);
+      ctx.fillStyle = p.nugget ? "#d9a52e" : "#e2b33c"; ctx.fill();
+      ctx.strokeStyle = "rgb(110 70 10 / .6)"; ctx.lineWidth = .5; ctx.stroke();
+      particlePath(ctx, p, p.r * 0.5); ctx.fillStyle = "#fff0a8"; ctx.fill();
+      if (isExposed) {
+        const tw = 0.5 + 0.5 * Math.sin(now * 3 + p.phase);
+        if (tw > 0.55) {
+          const L = p.r * (1.6 + tw * 1.6);
+          ctx.strokeStyle = `rgb(255 248 210 / ${(tw - 0.55) * 1.8})`; ctx.lineWidth = .9;
+          ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.moveTo(0, -L); ctx.lineTo(0, L); ctx.stroke();
+        }
+      }
+    } else if (p.kind === "stone") {
+      particlePath(ctx, p, p.r); ctx.fillStyle = p.col; ctx.fill();
+      ctx.strokeStyle = "rgb(0 0 0 / .45)"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.save(); ctx.translate(-p.r * 0.22, -p.r * 0.25); particlePath(ctx, p, p.r * 0.55); ctx.fillStyle = "rgb(255 245 225 / .13)"; ctx.fill(); ctx.restore();
+    } else {
+      particlePath(ctx, p, p.r); ctx.fillStyle = p.col; ctx.fill();
+      if (p.kind === "gravel") { ctx.beginPath(); ctx.arc(-p.r * 0.3, -p.r * 0.3, p.r * 0.35, 0, 7); ctx.fillStyle = "rgb(255 245 225 / .16)"; ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
+  function draw(now) {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.drawImage(bed, 0, 0, W0, W0);
+    // moving light on the stream
+    if (!reduce) {
+      ctx.strokeStyle = "rgb(200 230 220 / .06)"; ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        ctx.beginPath();
+        for (let x = 0; x <= W0; x += 20) { const y = 40 + i * 66 + Math.sin(x * 0.02 + now * 0.9 + i) * 8 + ((now * 14) % 66); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+    }
+    const pan = S.pan, t = pan ? pan.tilt : 0, ox = pan ? pan.ox : 0;
+    const sy = 1 - 0.3 * t, py = CY - 20 * t, dipS = 1 - 0.04 * dipAnim;
+    ctx.save();
+    ctx.translate(CX + ox, py); ctx.scale(dipS, sy * dipS);
+    // shadow
+    ctx.fillStyle = "rgb(0 0 0 / .35)"; ctx.beginPath(); ctx.ellipse(10, 16, ROUT, ROUT, 0, 0, 7); ctx.fill();
+    // rim and sloped wall: blackened iron
+    let g = ctx.createRadialGradient(-60, -80, 40, 0, 0, ROUT);
+    g.addColorStop(0, "#4a4744"); g.addColorStop(.75, "#2b2928"); g.addColorStop(1, "#151413");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, ROUT, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgb(255 240 220 / .18)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, ROUT - 2, Math.PI * 1.05, Math.PI * 1.75); ctx.stroke();
+    g = ctx.createRadialGradient(0, 0, RIN - 4, 0, 0, ROUT - 8);
+    g.addColorStop(0, "#1e1d1b"); g.addColorStop(1, "#3a3734");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, ROUT - 8, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1f1d1b"; ctx.beginPath(); ctx.arc(0, 0, RIN, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgb(255 240 220 / .07)"; ctx.lineWidth = .8; ctx.beginPath(); ctx.arc(0, 0, RIN, 0, 7); ctx.stroke();
+
+    if (pan) {
+      // Bottom of the pile: black sand and gold. Then the bulk of the sediment as a
+      // soft layer whose thickness follows the light material left. Then the loose
+      // sand, gravel and stones on top.
+      const vis = pan.particles.filter(p => p.alive);
+      const deep = vis.filter(p => p.kind === "black" || p.kind === "gold").sort((a, b) => b.d - a.d);
+      for (const p of deep) if (p.kind === "black") drawParticle(p, now, false);
+      for (const p of deep) if (p.kind === "gold") drawParticle(p, now, p._exp);
+      const gr = sedimentGrid(pan), cell = (RIN * 2) / GRID, sz = cell * 1.55;
+      ctx.save(); ctx.beginPath(); ctx.arc(0, 0, RIN, 0, 7); ctx.clip();
+      for (let i = 0; i < gr.length; i++) {
+        if (gr[i] <= 0) continue;
+        ctx.globalAlpha = Math.min(0.9, gr[i] / 2.4);
+        const x = -RIN + (i % GRID + 0.5) * cell, y = -RIN + (((i / GRID) | 0) + 0.5) * cell;
+        ctx.drawImage(SED, x - sz, y - sz, sz * 2, sz * 2);
+      }
+      ctx.restore();
+      const top = vis.filter(p => p.kind !== "black" && p.kind !== "gold").sort((a, b) => b.d - a.d);
+      for (const p of top) drawParticle(p, now, false);
+      // Coach: see the gold through the pile
+      if (S.coach) {
+        ctx.lineWidth = 1.2;
+        for (const p of vis) if (p.kind === "gold" && !p._exp) {
+          ctx.strokeStyle = `rgb(246 215 122 / ${0.35 + 0.25 * Math.sin(now * 4 + p.phase)})`;
+          ctx.beginPath(); ctx.arc(p.x * RIN, p.y * RIN, p.r + 3, 0, 7); ctx.stroke();
+        }
+      }
+      // Water in the pan, pooling toward the lip as it tilts
+      if (pan.W > 0.01) {
+        const k = Math.min(1, t * 3);
+        const top = (-1 + k * (2 - 2 * Math.min(1, pan.W))) * RIN;
+        ctx.save(); ctx.beginPath(); ctx.arc(0, 0, RIN + 1, 0, 7); ctx.clip();
+        ctx.beginPath(); ctx.moveTo(-RIN, RIN + 2);
+        for (let x = -RIN; x <= RIN; x += 12) ctx.lineTo(x, top + Math.sin(x * 0.05 + now * 3) * 3 * k);
+        ctx.lineTo(RIN, RIN + 2); ctx.closePath();
+        ctx.fillStyle = `rgb(90 128 120 / ${0.12 + 0.2 * Math.min(1, pan.W) * (1 + k)})`; ctx.fill();
+        if (k > 0.1) { ctx.strokeStyle = "rgb(220 240 235 / .25)"; ctx.lineWidth = 1.2; ctx.stroke(); }
+        // ripples while shaking
+        if (pan.E > 0.1) {
+          ctx.strokeStyle = `rgb(220 240 235 / ${0.12 * pan.E})`; ctx.lineWidth = 1;
+          for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, RIN * (0.3 + i * 0.25) + Math.sin(now * 12 + i) * 4, 0, 7); ctx.stroke(); }
+        }
+        ctx.restore();
+      }
+      // Water pouring over the front lip
+      if (pan.flow > 0.03) {
+        ctx.strokeStyle = `rgb(225 240 236 / ${Math.min(0.55, pan.flow * 0.8)})`; ctx.lineWidth = 2;
+        for (let i = 0; i < 12; i++) {
+          const a = Math.PI * (0.3 + i * 0.035) + Math.sin(now * 5 + i) * 0.02, ph = (now * 2.2 + i * 0.37) % 1;
+          const r1 = RIN - 6 + ph * 30, r2 = r1 + 14;
+          ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+
+    // stones being tossed, gold flying to the vial, floating words
+    for (const f of flyers) {
+      ctx.save();
+      if (f.kind === "stone") { ctx.globalAlpha = Math.max(0, 1 - f.t); ctx.translate(f.x, f.y); ctx.rotate(f.spin * f.t); const p = f.p; particlePath(ctx, p, p.r); ctx.fillStyle = p.col; ctx.fill(); }
+      else { const e = f.t * f.t * (3 - 2 * f.t); const x = f.x + (VIAL.x - f.x) * e, y = f.y + (VIAL.y + 40 - f.y) * e - Math.sin(e * Math.PI) * 60; ctx.translate(x, y); particlePath(ctx, f.p, f.p.r * 1.2); ctx.fillStyle = "#f0c64a"; ctx.fill(); }
+      ctx.restore();
+    }
+    drawVial();
+    for (const m of floats) {
+      ctx.globalAlpha = Math.max(0, 1 - m.t / 1.6);
+      ctx.font = "600 15px Spectral, Georgia, serif"; ctx.textAlign = "center";
+      ctx.fillStyle = m.col; ctx.fillText(m.text, m.x, m.y - m.t * 28);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // A soft blob of wet sediment, stamped across the pan to build up the pile
+  const SED = (() => {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgb(132 108 76 / .9)"); g.addColorStop(.55, "rgb(124 101 72 / .5)"); g.addColorStop(1, "rgb(120 98 70 / 0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64); return c;
+  })();
+
+  const VIAL = { x: 548, y: 26 };
+  function drawVial() {
+    const x = VIAL.x, y = VIAL.y, w = 26, h = 92;
+    const shown = Math.min(1, displayMg / 1000);
+    ctx.fillStyle = "rgb(20 24 22 / .55)"; ctx.beginPath(); ctx.roundRect(x - w / 2 - 10, y - 10, w + 20, h + 40, 10); ctx.fill();
+    ctx.fillStyle = "rgb(210 230 225 / .12)"; ctx.strokeStyle = "rgb(220 235 230 / .55)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y + 6, w, h - 6, [3, 3, 12, 12]); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#6b4a2a"; ctx.fillRect(x - w / 2 - 2, y, w + 4, 9);
+    if (shown > 0) {
+      const fh = (h - 12) * Math.max(0.03, shown);
+      ctx.save(); ctx.beginPath(); ctx.roundRect(x - w / 2 + 2, y + 8, w - 4, h - 10, [2, 2, 10, 10]); ctx.clip();
+      const g = ctx.createLinearGradient(0, y + h - fh, 0, y + h); g.addColorStop(0, "#f6d77a"); g.addColorStop(1, "#b98a1f");
+      ctx.fillStyle = g; ctx.fillRect(x - w / 2, y + h - fh, w, fh); ctx.restore();
+    }
+    ctx.fillStyle = "#ece6d6"; ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textAlign = "center";
+    ctx.fillText(fmt(displayMg), x, y + h + 20);
+  }
+
+  /* ======================= Game state and UI ======================= */
+  let S = { phase: "choose", day: newDay(), pan: null, spot: null, coach: false, best: 0 };
+  let flyers = [], floats = [], dipAnim = 0, displayMg = 0, expTimer = 0, uiTimer = 0;
+  const input = { dragging: false, sx: 0, sy: 0, x: 0, y: 0, t0: 0, moved: false, keyOx: 0, keyTilt: 0, holdShake: false, holdWash: false };
+
+  try { const v = JSON.parse(localStorage.getItem("goldmines-meta") || "{}"); S.best = v.best || 0; S.coach = !!v.coach; } catch (e) {}
+  const saveMeta = () => { try { localStorage.setItem("goldmines-meta", JSON.stringify({ best: S.best, coach: S.coach })); } catch (e) {} };
+
+  function startPan(id) {
+    if (S.phase !== "choose" || S.day.pansLeft <= 0) return;
+    const spot = S.day.spots.find(s => s.id === id);
+    S.spot = spot; S.pan = scoop(spot); S.phase = "pan";
+    hideCard(); ui();
+  }
+  function finishPan() {
+    if (S.phase !== "pan") return;
+    const pan = S.pan, spot = S.spot;
+    let kept = 0, keptN = 0, buriedN = 0, buriedMg = 0;
+    for (const p of pan.particles) {
+      if (!p.alive || p.kind !== "gold") continue;
+      if (exposed(pan, p)) { kept += p.mg; keptN++; flyGold(p); }
+      else { buriedN++; buriedMg += p.mg; }
+    }
+    pan.keptMg += kept; pan.keptFlakes += keptN;
+    const total = pan.keptMg;
+    S.day.mg += total; S.day.flakes += pan.keptFlakes; S.day.lost += pan.lostFlakes;
+    S.day.pansLeft--;
+    spot.remaining *= 0.72; spot.pans++; spot.lastMg = total;
+    S.phase = "summary";
+    const nugget = pan.particles.some(p => p.nugget && !p.alive && p.picked);
+    showCard(`<h2>${total > 0 ? "Colour in the pan" : "Not a speck"}</h2>
+      <div class="big">${fmt(total)}</div>
+      <dl><dt>Flakes kept</dt><dd>${pan.keptFlakes}</dd>
+      <dt>Washed out over the lip</dt><dd>${pan.lostFlakes}${pan.lostFlakes ? ` (${fmt(pan.lostMg)})` : ""}</dd>
+      <dt>Left buried in the sand</dt><dd>${buriedN}${buriedN ? ` (${fmt(buriedMg)})` : ""}</dd></dl>
+      ${nugget ? "<p>A nugget! Wicklow's biggest weighed about 22 ounces.</p>" : ""}
+      <p>${adviceFor(pan, buriedN)}</p>
+      <button class="btn primary" type="button" id="nextBtn">${S.day.pansLeft > 0 ? "Choose the next spot" : "End the day"}</button>`);
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      if (S.day.pansLeft > 0) { S.phase = "choose"; S.pan = null; hideCard(); ui(); }
+      else endDay();
+    });
+    document.getElementById("nextBtn").focus();
+    ui();
+  }
+  function adviceFor(pan, buriedN) {
+    if (pan.lostFlakes > 0 && pan.lostFlakes >= buriedN) return "Gold went over the lip. Shake longer before washing, and keep the tilt out of the red.";
+    if (buriedN > 0) return "Some gold was still under sand. Wash the pan down further before you finish.";
+    if (pan.goldTotal === 0) return "This scoop had no gold in it. Try a spot where the water slows.";
+    return "A clean pan. Every flake you scooped is in the vial.";
+  }
+  function endDay() {
+    const d = S.day, best = Math.max(S.best, d.mg), isBest = d.mg > S.best && d.mg > 0;
+    S.best = best; saveMeta(); S.phase = "dayEnd";
+    showCard(`<h2>Dusk on the river</h2><div class="big">${fmt(d.mg)}</div>
+      <dl><dt>Flakes in the vial</dt><dd>${d.flakes}</dd><dt>Flakes washed away</dt><dd>${d.lost}</dd><dt>Best day</dt><dd>${fmt(best)}</dd></dl>
+      ${isBest ? "<p>Your best day yet.</p>" : ""}
+      <p>Overnight the river moves its gravel, so tomorrow's best spots may be different.</p>
+      <button class="btn primary" type="button" id="dayBtn">Start a new day</button>`);
+    document.getElementById("dayBtn").addEventListener("click", () => { S.day = newDay(); S.phase = "choose"; S.pan = null; displayMg = 0; hideCard(); ui(); });
+    document.getElementById("dayBtn").focus();
+    ui();
+  }
+  const card = document.getElementById("card");
+  function showCard(html) { card.innerHTML = html; card.hidden = false; }
+  function hideCard() { card.hidden = true; card.innerHTML = ""; }
+
+  function flyGold(p) {
+    p.alive = false; p.picked = true;
+    const [x, y] = toScreen(p);
+    flyers.push({ kind: "gold", p, x, y, t: 0, mg: p.mg });
+  }
+  function tossStone(p) {
+    p.alive = false;
+    const [x, y] = toScreen(p);
+    flyers.push({ kind: "stone", p, x, y, vx: (x < CX ? -1 : 1) * rand(260, 380), vy: rand(-320, -220), spin: rand(-6, 6), t: 0 });
+  }
+  function toScreen(p) {
+    const pan = S.pan, t = pan.tilt, sy = 1 - 0.3 * t;
+    return [CX + pan.ox + p.x * RIN, CY - 20 * t + p.y * RIN * sy];
+  }
+  function float(text, x, y, col = "#f6d77a") { floats.push({ text, x, y, t: 0, col }); }
+
+  function pickStones() {
+    if (S.phase !== "pan") return;
+    const top = S.pan.particles.filter(p => p.alive && p.kind === "stone" && p.d < 0.3);
+    const all = S.pan.particles.filter(p => p.alive && p.kind === "stone");
+    if (!top.length) { float(all.length ? "Shake first, so the stones come up" : "No stones left", CX, 120, "#ece6d6"); return; }
+    top.forEach((p, i) => setTimeout(() => { if (p.alive) tossStone(p); }, i * 90));
+  }
+  function doDip() {
+    if (S.phase !== "pan" || dipAnim > 0) return;
+    input.keyTilt = 0; input.holdWash = false;
+    dipAnim = 1; dip(S.pan);
+  }
+
+  function tapAt(x, y) {
+    if (S.phase !== "pan") return;
+    // topmost stone or exposed gold under the finger
+    let best = null, bd = Infinity;
+    for (const p of S.pan.particles) {
+      if (!p.alive || (p.kind !== "stone" && p.kind !== "gold")) continue;
+      const [sx, sy] = toScreen(p), reach = p.kind === "gold" ? Math.max(16, p.r + 10) : p.r + 6;
+      const dd = Math.hypot(sx - x, sy - y);
+      if (dd < reach && (p.d < (best ? best.d : 9) || dd < bd - 4)) { best = p; bd = dd; }
+    }
+    if (!best) return;
+    if (best.kind === "stone") {
+      if (best.d < 0.3) tossStone(best); else float("Shake first, so it comes up", x, y - 10, "#ece6d6");
+    } else {
+      if (exposed(S.pan, best)) { S.pan.keptMg += best.mg; S.pan.keptFlakes++; flyGold(best); float(best.nugget ? "A nugget!" : `+${fmt(best.mg)}`, x, y - 12); }
+      else float("Still under the sand", x, y - 10, "#ece6d6");
+    }
+  }
+
+  // ----- input: drag the pan -----
+  const toLogical = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W0, (e.clientY - r.top) / r.height * W0]; };
+  cv.addEventListener("pointerdown", e => {
+    if (S.phase !== "pan" || e.button > 0) return;
+    const [x, y] = toLogical(e);
+    Object.assign(input, { dragging: true, sx: x, sy: y, x, y, t0: performance.now(), moved: false });
+    cv.setPointerCapture(e.pointerId); cv.classList.add("dragging");
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!input.dragging) return;
+    const [x, y] = toLogical(e);
+    input.x = x; input.y = y;
+    if (Math.hypot(x - input.sx, y - input.sy) > 8) input.moved = true;
+  });
+  const endPointer = e => {
+    if (!input.dragging) return;
+    input.dragging = false; cv.classList.remove("dragging");
+    if (!input.moved && performance.now() - input.t0 < 450) { const [x, y] = toLogical(e); tapAt(x, y); }
+  };
+  cv.addEventListener("pointerup", endPointer);
+  cv.addEventListener("pointercancel", () => { input.dragging = false; cv.classList.remove("dragging"); });
+
+  // ----- keys -----
+  cv.addEventListener("keydown", e => {
+    if (S.phase !== "pan") return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); input.keyOx = (e.key === "ArrowLeft" ? -1 : 1) * 46; input.keyOxT = performance.now(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); input.keyTilt = e.shiftKey ? 0.92 : 0.55; }
+    else if (e.key === " ") { e.preventDefault(); doDip(); }
+    else if (e.key === "s" || e.key === "S") pickStones();
+    else if (e.key === "Enter") finishPan();
+  });
+  cv.addEventListener("keyup", e => { if (e.key === "ArrowDown") input.keyTilt = 0; });
+
+  // ----- hold buttons -----
+  function holdButton(id, key) {
+    const b = document.getElementById(id);
+    const on = e => { if (S.phase !== "pan") return; e.preventDefault(); input[key] = true; b.classList.add("held"); try { b.setPointerCapture(e.pointerId); } catch (_) {} };
+    const off = () => { input[key] = false; b.classList.remove("held"); };
+    b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointercancel", off); b.addEventListener("pointerleave", off);
+    b.addEventListener("keydown", e => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); if (S.phase === "pan") { input[key] = true; b.classList.add("held"); } } });
+    b.addEventListener("keyup", e => { if (e.key === " " || e.key === "Enter") off(); });
+  }
+  holdButton("shakeBtn", "holdShake");
+  holdButton("washBtn", "holdWash");
+  document.getElementById("dipBtn").addEventListener("click", doDip);
+  document.getElementById("stonesBtn").addEventListener("click", pickStones);
+  document.getElementById("finishBtn").addEventListener("click", finishPan);
+  document.getElementById("coachBtn").addEventListener("click", () => { S.coach = !S.coach; saveMeta(); ui(); });
+
+  // ----- the river map -----
+  function drawRiver() {
+    const svg = document.getElementById("river");
+    const path = "M-10 40 C 60 30, 70 90, 120 110 S 190 170, 220 120 S 280 60, 330 170";
+    let h = `<defs><linearGradient id="rw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f5f59"/><stop offset="1" stop-color="#2c4541"/></linearGradient></defs>
+      <rect width="320" height="210" fill="#232a26"/>
+      <path d="${path}" fill="none" stroke="#3a3328" stroke-width="44" stroke-linecap="round" opacity=".7"/>
+      <path d="${path}" fill="none" stroke="url(#rw)" stroke-width="30" stroke-linecap="round"/>
+      <path d="${path}" fill="none" stroke="rgb(220 240 235 / .18)" stroke-width="1.2" stroke-dasharray="6 9"/>
+      <ellipse cx="200" cy="99" rx="9" ry="7" fill="#6b6559" stroke="#2a2620"/>
+      <path d="M58 52 l14 22 M66 48 l12 20" stroke="#18140f" stroke-width="1.6"/>
+      <text x="16" y="198" font-family="IBM Plex Mono, monospace" font-size="9" fill="#a3a08f">downstream →</text>`;
+    for (const s of SPOTS) {
+      const st = S.day.spots.find(x => x.id === s.id);
+      const lit = st.lastMg != null && st.lastMg > 0;
+      h += `<g class="spot-mark" data-id="${s.id}" tabindex="-1" role="button" aria-label="${s.name}">
+        <circle class="ring" cx="${s.x}" cy="${s.y}" r="11" fill="${lit ? "#e2b33c" : "#141716"}" stroke="#e2b33c" stroke-width="1.6"/>
+        <text x="${s.x}" y="${s.y + 4}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="${lit ? "#141716" : "#f6d77a"}">${s.id}</text></g>`;
+    }
+    svg.innerHTML = h;
+    svg.querySelectorAll(".spot-mark").forEach(g => g.addEventListener("click", () => startPan(g.dataset.id)));
+  }
+  function drawSpots() {
+    const ul = document.getElementById("spots");
+    ul.innerHTML = SPOTS.map(s => {
+      const st = S.day.spots.find(x => x.id === s.id);
+      const yd = st.pans ? `${st.pans} pan${st.pans > 1 ? "s" : ""} · ${st.lastMg > 0 ? fmt(st.lastMg) : "none"}` : "";
+      return `<li><button type="button" data-id="${s.id}" ${S.phase !== "choose" || S.day.pansLeft <= 0 ? "disabled" : ""}><span class="k">${s.id}</span><span class="nm">${s.name}</span><span class="yd">${yd}</span><span class="tip">${s.tip}</span></button></li>`;
+    }).join("");
+    ul.querySelectorAll("button").forEach(b => b.addEventListener("click", () => startPan(b.dataset.id)));
+  }
+
+  function ui() {
+    drawRiver(); drawSpots();
+    document.getElementById("pips").innerHTML = Array.from({ length: PANS_PER_DAY }, (_, k) => `<span class="pip${k < S.day.pansLeft ? " on" : ""}"></span>`).join("");
+    document.getElementById("haul").textContent = fmt(S.day.mg);
+    document.getElementById("best").textContent = S.best ? `Best day: ${fmt(S.best)}` : "";
+    const inPan = S.phase === "pan";
+    for (const id of ["shakeBtn", "washBtn", "dipBtn", "stonesBtn", "finishBtn"]) document.getElementById(id).disabled = !inPan;
+    const cb = document.getElementById("coachBtn");
+    cb.setAttribute("aria-pressed", String(S.coach)); cb.textContent = S.coach ? "Coach on" : "Coach";
+    document.getElementById("settleGauge").hidden = !S.coach;
+    status();
+  }
+  function status() {
+    const el = document.getElementById("status");
+    let text = "", kind = "", stepNow = 0;
+    if (S.phase === "choose") { text = S.day.pansLeft === PANS_PER_DAY ? "Pick a spot on the river to scoop your first pan." : "Pick a spot for the next pan."; stepNow = 0; }
+    else if (S.phase === "pan") {
+      const pan = S.pan, stonesTop = pan.particles.some(p => p.alive && p.kind === "stone" && p.d < 0.3), ll = lightLeft(pan);
+      if (pan.tilt > STEEP && pan.W > 0.05) { text = "Too steep! The gold will wash out with the gravel."; kind = "warn"; stepNow = 3; }
+      else if (pan.W < 0.1) { text = "The pan's nearly dry. Dip it in the stream."; stepNow = 3; }
+      else if (pan.shakeTime < 2.2) { text = "Shake the pan side to side under the water."; stepNow = 1; }
+      else if (stonesTop) { text = "The stones have come up. Tap them, or pick them out."; stepNow = 2; }
+      else if (ll > 0.12) { text = "Drag down to tilt and wash the top layer away. Shake again now and then."; stepNow = 3; }
+      else { text = "You're down to the black sand. Tap the gold to pick it, then finish the pan."; kind = "good"; stepNow = 4; }
+      if (pan.tilt > STEEP && pan.W > 0.05) stepNow = 3;
+    } else if (S.phase === "summary") { text = "Pan finished."; stepNow = 4; }
+    else { text = "The day is done."; stepNow = -1; }
+    el.textContent = text; el.className = "status" + (kind ? " " + kind : "");
+    document.querySelectorAll("#steps li").forEach((li, i) => li.classList.toggle("now", i === stepNow));
+  }
+
+  /* ======================= Main loop ======================= */
+  let last = performance.now();
+  function frame(now) {
+    const dtReal = Math.min(0.25, (now - last) / 1000), dt = Math.min(0.05, dtReal); last = now;
+    const pan = S.pan;
+    if (pan && S.phase === "pan") {
+      // pan offset and tilt follow the drag, keys or hold buttons
+      let tOx = 0, tTilt = 0;
+      if (input.dragging) { tOx = Math.max(-75, Math.min(75, (input.x - input.sx) * 0.9)); tTilt = Math.max(0, Math.min(1, (input.y - input.sy) / 170)); }
+      if (input.keyOx && now - (input.keyOxT || 0) < 140) tOx = input.keyOx;
+      if (input.holdShake) tOx = Math.sin(now / 1000 * 15) * 48;
+      if (input.keyTilt) tTilt = Math.max(tTilt, input.keyTilt);
+      if (input.holdWash) tTilt = Math.max(tTilt, 0.55);
+      if (dipAnim > 0) { tTilt = 0; tOx = 0; }
+      const prevOx = pan.ox;
+      pan.ox += (tOx - pan.ox) * Math.min(1, dtReal * 22);
+      pan.tilt += (tTilt - pan.tilt) * Math.min(1, dtReal * 7);
+      const v = Math.abs(pan.ox - prevOx) / Math.max(dtReal, 1e-3);
+      pan.E += (Math.min(1, v / 520) - pan.E) * Math.min(1, dtReal * 7);
+      const lost = [];
+      const n = Math.max(1, Math.ceil(dtReal / (1 / 60)));
+      for (let k = 0; k < n; k++) lost.push(...step(pan, dtReal / n));
+      for (const g of lost) { const [x] = toScreen(g); float(g.nugget ? "The nugget washed out!" : "A flake washed out", Math.min(520, Math.max(80, x)), 560, "#e58c7f"); }
+      expTimer -= dt;
+      if (expTimer <= 0) { expTimer = 0.18; for (const p of pan.particles) if (p.alive && p.kind === "gold") p._exp = exposed(pan, p); }
+      document.querySelector("#waterBar i").style.width = (pan.W * 100).toFixed(1) + "%";
+      document.querySelector("#tiltBar i").style.width = (pan.tilt * 100).toFixed(1) + "%";
+      document.querySelector("#tiltBar i").style.background = pan.tilt > STEEP ? "var(--garnet)" : "";
+      if (S.coach) document.querySelector("#settleBar i").style.width = (goldSettled(pan) * 100).toFixed(0) + "%";
+      uiTimer -= dt; if (uiTimer <= 0) { uiTimer = 0.25; status(); }
+    } else {
+      document.querySelector("#waterBar i").style.width = "0%";
+      document.querySelector("#tiltBar i").style.width = "0%";
+    }
+    if (dipAnim > 0) dipAnim = Math.max(0, dipAnim - dt * 2.2);
+    for (const f of flyers) {
+      f.t += dt * (f.kind === "stone" ? 1.4 : 1.25);
+      if (f.kind === "stone") { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 900 * dt; }
+    }
+    for (const f of flyers) if (f.kind === "gold" && f.t >= 1 && !f.done) { f.done = true; displayMg += f.mg; }
+    flyers = flyers.filter(f => f.t < 1);
+    for (const m of floats) m.t += dt;
+    floats = floats.filter(m => m.t < 1.6);
+    if (S.phase !== "pan" && !flyers.some(f => f.kind === "gold")) displayMg += (S.day.mg - displayMg) * Math.min(1, dt * 6);
+    draw(now / 1000);
+    document.getElementById("haul").textContent = fmt(S.phase === "pan" ? S.day.mg + (S.pan ? S.pan.keptMg : 0) : S.day.mg);
+    requestAnimationFrame(frame);
+  }
+
+  function start(data) {
+    if (data && data.S && data.S.day) { S = data.S; if (S.phase === "summary" || S.phase === "dayEnd") { S.phase = S.day.pansLeft > 0 ? "choose" : "choose"; if (S.day.pansLeft <= 0) S.day = newDay(); S.pan = null; } displayMg = S.day.mg; }
+    resize(); ui();
+    new ResizeObserver(() => resize()).observe(cv);
+    requestAnimationFrame(frame);
+  }
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fidchell of Cups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the yew board of cups is the hero, with the two dice, the Roll button and the Queen's toast right beneath it; a narrow ledger beside holds each side's jug and drinks, the Queen's number, the opponent, the rules and the move list. Stacks on phones. Single dark look by choice, matching Fidchell: bog oak, yew, bronze and silver. */
+:root {
+  --oak: #17130f;
+  --oak-2: #221b15;
+  --oak-3: #2e251c;
+  --ink: #efe6d2;
+  --muted: #a99c84;
+  --line: #3d3328;
+  --bronze: #b08d55;
+  --bronze-hi: #d2b27a;
+  --queen: #e8c97e;
+  --garnet: #d0584a;
+  --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
+  --font-body: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--oak); color: var(--ink);
+  background-image: radial-gradient(120% 80% at 50% 0%, var(--oak-2), var(--oak) 70%);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 40px;
+  min-height: 100%;
+}
+.wrap { max-width: 1020px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.1rem, 6.5vw, 3.1rem); margin: 0; line-height: 1.05; color: var(--bronze-hi); text-wrap: balance; }
+.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 66ch; }
+
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 32px; align-items: start; }
+@media (max-width: 820px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.status { font-weight: 600; text-align: center; min-height: 1.6em; text-wrap: balance; max-width: 38ch; }
+.status.win { color: var(--bronze-hi); }
+.status.lose { color: var(--garnet); }
+#board { width: min(100%, 540px); aspect-ratio: 1; max-width: 100%; display: block; user-select: none; -webkit-user-select: none; border-radius: 14px; }
+#board:focus { outline: none; }
+#board:focus-visible { outline: 3px solid var(--bronze-hi); outline-offset: 4px; }
+.cellhit { cursor: pointer; fill: transparent; }
+.locked .cellhit { cursor: default; }
+.pc { transition: transform .32s cubic-bezier(.3,.75,.3,1), opacity .35s ease; }
+.pc.gone { opacity: 0; transition: transform .32s, opacity .35s ease .75s; }
+.pc.fresh { animation: pour .6s ease-out; }
+@keyframes pour { from { opacity: 0; } to { opacity: 1; } }
+.pc .liquid { transform-box: fill-box; transform-origin: center; transition: transform .7s ease-in; }
+.pc.gone .liquid { transform: scale(0); }
+
+.dicebar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+#dice { width: 150px; height: 70px; display: block; }
+#dice.tumble { animation: tumble .7s cubic-bezier(.3,.6,.4,1); }
+@keyframes tumble { 0% { transform: translateX(-24px) rotate(-12deg); } 30% { transform: translateX(10px) rotate(8deg); } 60% { transform: translateX(-4px) rotate(-3deg); } 100% { transform: none; } }
+.roll-note { margin: 0; font-size: .95rem; color: var(--muted); text-align: center; min-height: 1.4em; max-width: 50ch; text-wrap: balance; }
+.roll-note.warn { color: var(--garnet); }
+.roll-note.queen { color: var(--queen); }
+
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 9px; }
+.label { margin: 0; font-size: .74rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); font-family: var(--font-mono); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 7px 4px; cursor: pointer; font-size: .88rem; border-left: 1px solid var(--line); color: var(--muted); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--oak-3); color: var(--bronze-hi); font-weight: 600; box-shadow: inset 0 -2px 0 var(--bronze); }
+.seg input:focus-visible + label { outline: 2px solid var(--bronze-hi); outline-offset: -3px; }
+#cpuOpts[hidden], #toastBtn[hidden] { display: none !important; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button.btn {
+  font: inherit; font-weight: 600; letter-spacing: .02em;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--bronze); background: transparent; color: var(--bronze-hi);
+}
+button.btn.primary { background: var(--bronze); color: var(--oak); }
+button.btn.big { padding: 11px 24px; font-size: 1.05rem; }
+button.btn.queen { border-color: var(--queen); background: var(--queen); color: var(--oak); }
+button.btn:hover { filter: brightness(1.12); }
+button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+button.btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+button.btn.hint { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+button.btn.hint[aria-pressed="true"] { border-style: solid; border-color: var(--garnet); color: var(--ink); background: color-mix(in srgb, var(--garnet) 30%, transparent); }
+
+.sides { display: grid; gap: 12px; }
+.side { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+.side .name { font-weight: 600; }
+.side .jugs { display: flex; gap: 6px; align-items: end; }
+.jug { width: 15px; height: 20px; border: 1.5px solid var(--bronze); border-radius: 4px 4px 6px 6px; position: relative; overflow: hidden; }
+.jug::before { content: ""; position: absolute; left: 3px; right: 3px; top: -1.5px; height: 4px; border: 1.5px solid var(--bronze); border-top: 0; background: var(--oak); }
+.jug i { position: absolute; left: 0; right: 0; bottom: 0; height: 72%; }
+.jug.mead i { background: #c68a24; }
+.jug.wine i { background: #7a1c2c; }
+.jug.empty i { display: none; }
+.side .sub { grid-column: 2; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.queenline { margin: 0; font-size: .95rem; }
+.queenline b { font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; color: var(--queen); vertical-align: -2px; margin-left: 4px; }
+.quiet { margin: 0; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: .94rem; }
+.rules li { padding-left: 16px; position: relative; }
+.rules li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; transform: rotate(45deg); background: var(--bronze); }
+.note { margin: 0; font-size: .86rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.log { font-family: var(--font-mono); font-size: .8rem; font-variant-numeric: tabular-nums; margin: 0; padding: 0; list-style: none; max-height: 210px; overflow-y: auto; display: grid; gap: 3px; }
+.log li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 8px; }
+.log .who { color: var(--muted); }
+.log .empty { display: block; color: var(--muted); font-family: var(--font-body); font-style: italic; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) { .pc, .pc .liquid, .pc.gone { transition: none; } #dice.tumble, .pc.fresh { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Fidchell of Cups</h1>
+    <p class="tag">Fidchell played by the rules of Tablero. Mead against wine on the 7×7 board: two dice move your cups, trap a rival cup between two of yours and drink it, and they refill it from their own jug. Drain their jug to win.</p>
+  </header>
+
+  <div class="game">
+    <section class="stage" aria-label="Fidchell of Cups board">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <svg id="board" viewBox="0 0 520 520" tabindex="0" aria-label="Board. Arrow keys move the cursor, Enter selects.">
+        <defs>
+          <filter id="yew" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency=".006 .09" numOctaves="3" seed="11" result="grain"/>
+            <feColorMatrix in="grain" type="matrix" values="0 0 0 0 .17  0 0 0 0 .1  0 0 0 0 .05  0 0 0 1.1 -.35" result="streak"/>
+            <feComposite in="streak" in2="SourceGraphic" operator="in" result="streakIn"/>
+            <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="streakIn"/></feMerge>
+          </filter>
+          <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7a4f2c"/><stop offset=".55" stop-color="#5f3b20"/><stop offset="1" stop-color="#47291a"/>
+          </linearGradient>
+          <radialGradient id="hole" cx="50%" cy="42%" r="55%">
+            <stop offset="0" stop-color="#070504"/><stop offset=".75" stop-color="#140c07"/><stop offset="1" stop-color="#2a1a0f"/>
+          </radialGradient>
+          <radialGradient id="bronzeRim" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#e3c891"/><stop offset=".5" stop-color="#a7844c"/><stop offset="1" stop-color="#4c381c"/></radialGradient>
+          <radialGradient id="silverRim" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#f4f2ec"/><stop offset=".5" stop-color="#b3afa4"/><stop offset="1" stop-color="#5c5951"/></radialGradient>
+          <radialGradient id="bronzeWall" cx="60%" cy="66%" r="70%"><stop offset="0" stop-color="#3a2a14"/><stop offset="1" stop-color="#7d6036"/></radialGradient>
+          <radialGradient id="silverWall" cx="60%" cy="66%" r="70%"><stop offset="0" stop-color="#4a4740"/><stop offset="1" stop-color="#9b978c"/></radialGradient>
+          <radialGradient id="meadDrink" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="#f2c45c"/><stop offset=".6" stop-color="#c68a24"/><stop offset="1" stop-color="#7c4f10"/></radialGradient>
+          <radialGradient id="wineDrink" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="#a63345"/><stop offset=".6" stop-color="#6b1726"/><stop offset="1" stop-color="#360812"/></radialGradient>
+          <filter id="pegShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="1.6" dy="2.4" stdDeviation="1.6" flood-color="#000" flood-opacity=".6"/></filter>
+          <pattern id="plait" width="24" height="16" patternUnits="userSpaceOnUse">
+            <path d="M0 4 C 6 4, 6 12, 12 12 S 18 4, 24 4" fill="none" stroke="#2a180c" stroke-width="3.6"/>
+            <path d="M0 4 C 6 4, 6 12, 12 12 S 18 4, 24 4" fill="none" stroke="#8e6b3f" stroke-width="1.6"/>
+            <path d="M0 12 C 6 12, 6 4, 12 4 S 18 12, 24 12" fill="none" stroke="#2a180c" stroke-width="3.6"/>
+            <path d="M0 12 C 6 12, 6 4, 12 4 S 18 12, 24 12" fill="none" stroke="#8e6b3f" stroke-width="1.6"/>
+          </pattern>
+        </defs>
+        <g id="boardArt"></g>
+        <g id="marks"></g>
+        <g id="pieces" filter="url(#pegShadow)"></g>
+        <g id="overlay"></g>
+        <g id="hits"></g>
+      </svg>
+
+      <div class="dicebar">
+        <svg id="dice" viewBox="0 0 150 70" aria-hidden="true"></svg>
+        <button class="btn primary big" type="button" id="rollBtn">Roll</button>
+        <button class="btn queen big" type="button" id="toastBtn" hidden>To the Queen!</button>
+      </div>
+      <p class="roll-note" id="rollNote" aria-live="polite"></p>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="queenline" id="queenLine"></p>
+        <div class="sides" id="sides"></div>
+        <p class="quiet" id="quiet"></p>
+      </div>
+
+      <div class="panel">
+        <p class="label">Game</p>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-cpu" value="cpu" checked><label for="mode-cpu">Computer</label>
+          <input type="radio" name="mode" id="mode-pvp" value="pvp"><label for="mode-pvp">Friend, same screen</label>
+        </div>
+        <div id="cpuOpts" class="panel">
+          <div class="seg">
+            <input type="radio" name="side" id="side-m" value="1" checked><label for="side-m">Play mead</label>
+            <input type="radio" name="side" id="side-w" value="2"><label for="side-w">Play wine</label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="lvl" id="lvl-1" value="1"><label for="lvl-1">Casual</label>
+            <input type="radio" name="lvl" id="lvl-2" value="2" checked><label for="lvl-2">Steady</label>
+            <input type="radio" name="lvl" id="lvl-3" value="3"><label for="lvl-3">Strong</label>
+          </div>
+        </div>
+        <div class="seg" title="How long a turn lasts">
+          <input type="radio" name="turns" id="turns-t" value="tablero" checked><label for="turns-t">Roll till a pass</label>
+          <input type="radio" name="turns" id="turns-1" value="one"><label for="turns-1">One roll a turn</label>
+        </div>
+        <div class="row">
+          <button class="btn" type="button" id="newBtn">New game</button>
+          <button class="btn hint" type="button" id="hintBtn" aria-pressed="false">Hints</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to play</p>
+        <ul class="rules">
+          <li>Each side has seven cups on its back row and a jug holding four refills. Mead goes first.</li>
+          <li>Roll both dice. Each die moves a different cup exactly that many holes, in a straight line along a row or column, through empty holes. You choose the cups and the directions.</li>
+          <li>If a move fits a die, you must make it. If neither die fits, your turn ends.</li>
+          <li>A total of 7, 11 or 12 is a pass: your turn ends. Otherwise, keep rolling until you roll a pass or can't move.</li>
+          <li>Trap a rival cup between the cup you moved and another of yours, in a line, and drink it. Moving into a gap between two rival cups is safe.</li>
+          <li>A drunk cup goes back to its owner's back row, refilled from their jug. A player who must refill an empty jug loses.</li>
+          <li><b>The Queen's number</b> is rolled before play. Roll it and you toast the Queen: drink any rival cup instead of moving, then roll again. Roll again without toasting and that's treason. Your rival drinks one of your cups.</li>
+          <li>If 60 moves pass with no cup drunk, whoever has drunk more wins.</li>
+        </ul>
+        <p class="note">Built from Fidchell's capture-by-trapping and Tablero's board, dice, pass numbers, Queen's toast and refills. A win where your jug was never touched is a skunk.</p>
+      </div>
+
+      <div class="panel">
+        <p class="label">Rolls</p>
+        <ol class="log" id="log"></ol>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ================= Rules engine ================= */
+  const N = 7, MEAD = 1, WINE = 2, MID = 3, JUG = 4, QUIET_LIMIT = 60, PASS = [7, 11, 12];
+  const other = s => 3 - s;
+  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const at = (r, c) => r * N + c;
+  const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const sq = i => "abcdefg"[i % N] + (N - ((i / N) | 0));
+  const NAME = { 1: "Mead", 2: "Wine" };
+  const d6 = () => 1 + ((Math.random() * 6) | 0);
+  const baseRow = side => side === MEAD ? N - 1 : 0;
+
+  function newState(queen) {
+    const b = new Array(N * N).fill(0), pieces = [];
+    let id = 0;
+    for (let c = 0; c < N; c++) { b[at(0, c)] = WINE; pieces.push({ id: id++, side: WINE, pos: at(0, c), alive: true }); }
+    for (let c = 0; c < N; c++) { b[at(N - 1, c)] = MEAD; pieces.push({ id: id++, side: MEAD, pos: at(N - 1, c), alive: true }); }
+    return { b, pieces, nextId: id, turn: MEAD, dice: null, used: [false, false], movedTo: -1, jug: { 1: JUG, 2: JUG }, drinks: { 1: 0, 2: 0 },
+             quiet: 0, queen, queenPending: false, winner: null, reason: null };
+  }
+  const clone = s => ({ ...s, b: s.b.slice(), pieces: s.pieces.map(p => ({ ...p })), used: s.used.slice(), jug: { ...s.jug }, drinks: { ...s.drinks }, dice: s.dice && s.dice.slice() });
+
+  // Moves of exactly d holes in a straight line through empty holes. `skip` is a square whose cup may not move.
+  function movesFor(b, side, d, skip = -1) {
+    const out = [];
+    for (let i = 0; i < N * N; i++) {
+      if (b[i] !== side || i === skip) continue;
+      const r = (i / N) | 0, c = i % N;
+      for (const [dr, dc] of DIRS) {
+        let ok = true;
+        for (let k = 1; k <= d; k++) { const rr = r + dr * k, cc = c + dc * k; if (!inB(rr, cc) || b[at(rr, cc)]) { ok = false; break; } }
+        if (ok) out.push([i, at(r + dr * d, c + dc * d)]);
+      }
+    }
+    return out;
+  }
+  function capturesFor(b, to, side) {
+    const r = (to / N) | 0, c = to % N, foe = other(side), caps = [];
+    for (const [dr, dc] of DIRS) {
+      const r1 = r + dr, c1 = c + dc, r2 = r + 2 * dr, c2 = c + 2 * dc;
+      if (inB(r2, c2) && b[at(r1, c1)] === foe && b[at(r2, c2)] === side) caps.push(at(r1, c1));
+    }
+    return caps;
+  }
+  // Where a refilled cup goes: its owner's back row, nearest the middle; failing that, the next row in.
+  function refillSpot(b, side) {
+    const cols = [3, 2, 4, 1, 5, 0, 6];
+    for (let k = 0; k < N; k++) {
+      const r = side === MEAD ? N - 1 - k : k;
+      for (const c of cols) if (!b[at(r, c)]) return at(r, c);
+    }
+    return -1;
+  }
+  // Drink the cups at `squares` for `drinker`; each owner refills from their jug, or loses if it's dry.
+  function drink(s, squares, drinker) {
+    const owner = other(drinker), events = [];
+    for (const x of squares) {
+      if (s.winner !== null) break;
+      s.b[x] = 0;
+      const p = s.pieces.find(q => q.alive && q.pos === x); if (p) p.alive = false;
+      s.drinks[drinker]++;
+      if (s.jug[owner] > 0) {
+        s.jug[owner]--;
+        const spot = refillSpot(s.b, owner);
+        s.b[spot] = owner;
+        s.pieces.push({ id: s.nextId++, side: owner, pos: spot, alive: true, fresh: true });
+        events.push({ at: x, refill: spot });
+      } else { s.winner = drinker; s.reason = "dry"; events.push({ at: x, refill: -1 }); }
+    }
+    if (squares.length) s.quiet = 0;
+    return events;
+  }
+  function legalNow(s) {
+    // [die index, from, to] for every unused die
+    if (!s.dice || s.queenPending || s.winner !== null) return [];
+    const out = [];
+    for (let k = 0; k < 2; k++) if (!s.used[k]) for (const [f, t] of movesFor(s.b, s.turn, s.dice[k], s.movedTo)) out.push([k, f, t]);
+    return out;
+  }
+  function move(s0, k, from, to) {
+    const s = clone(s0), side = s.turn;
+    s.pieces.forEach(p => { p.fresh = false; });
+    s.b[to] = side; s.b[from] = 0;
+    s.pieces.find(p => p.alive && p.pos === from).pos = to;
+    s.used[k] = true; s.movedTo = to;
+    const caps = capturesFor(s.b, to, side);
+    const events = drink(s, caps, side);
+    if (!caps.length) s.quiet++;
+    if (s.winner === null && s.quiet >= QUIET_LIMIT) {
+      const a = s.drinks[MEAD], w = s.drinks[WINE];
+      s.winner = a > w ? MEAD : w > a ? WINE : 0; s.reason = "quiet";
+    }
+    return { s, caps, events };
+  }
+  function rollOutcome(s) {
+    const sum = s.dice[0] + s.dice[1];
+    if (sum === s.queen) return "queen";
+    if (PASS.includes(sum)) return "pass";
+    return legalNow(s).length ? "move" : "stuck";
+  }
+  const withDice = (s, d) => ({ ...clone(s), dice: d, used: [false, false], movedTo: -1, queenPending: (d[0] + d[1]) === s.queen });
+  const passTurn = s => ({ ...clone(s), turn: other(s.turn), dice: null, used: [false, false], movedTo: -1, queenPending: false });
+  const rollAgain = s => ({ ...clone(s), dice: null, used: [false, false], movedTo: -1, queenPending: false });
+  // After a toast (or treason): decide whether the roller rolls again or the dice pass.
+  function afterQueen(s, wasPassNumber) { return wasPassNumber ? passTurn(s) : rollAgain(s); }
+  function toast(s0, target) {
+    const s = clone(s0), sum = s.dice[0] + s.dice[1];
+    s.pieces.forEach(p => { p.fresh = false; });
+    const events = drink(s, [target], s.turn);
+    s.queenPending = false;
+    return { s: s.winner !== null ? s : afterQueen(s, PASS.includes(sum)), events };
+  }
+  function treason(s0, victim) {
+    const s = clone(s0);
+    s.pieces.forEach(p => { p.fresh = false; });
+    const events = drink(s, [victim], other(s.turn));
+    s.queenPending = false;
+    return { s: s.winner !== null ? s : rollAgain(s), events };
+  }
+
+  /* ================= Computer ================= */
+  const BIG = 1e6;
+  function threatCount(b, side) {
+    // How many of `side`'s cups the rival could drink with one move of any length.
+    const foe = other(side), hit = new Set();
+    for (let d = 1; d <= 6; d++) for (const [f, t] of movesFor(b, foe, d)) {
+      const c = b.slice(); c[t] = foe; c[f] = 0;
+      for (const x of capturesFor(c, t, foe)) hit.add(x);
+    }
+    return hit.size;
+  }
+  function evaluate(s, side, deep) {
+    if (s.winner === side) return BIG;
+    if (s.winner === other(side)) return -BIG;
+    if (s.winner === 0) return 0;
+    let v = (s.jug[side] - s.jug[other(side)]) * 100 + (s.drinks[side] - s.drinks[other(side)]) * 5;
+    if (deep) {
+      v -= threatCount(s.b, side) * (s.jug[side] === 0 ? 4000 : 38);
+      v += threatCount(s.b, other(side)) * (s.jug[other(side)] === 0 ? 300 : 12);
+    }
+    return v;
+  }
+  // Every way to play the current roll: both dice if possible (that's forced), otherwise one.
+  function plans(s) {
+    const out = [], seen = new Set();
+    const orders = s.used[0] || s.used[1] ? [[s.used[0] ? 1 : 0]] : (s.dice[0] === s.dice[1] ? [[0, 1]] : [[0, 1], [1, 0]]);
+    for (const order of orders) {
+      const [a, b2] = order;
+      const firsts = movesFor(s.b, s.turn, s.dice[a], s.movedTo);
+      for (const [f, t] of firsts) {
+        const r1 = move(s, a, f, t);
+        if (b2 === undefined || r1.s.winner !== null) { out.push({ steps: [[a, f, t]], s: r1.s }); continue; }
+        const seconds = movesFor(r1.s.b, s.turn, s.dice[b2], t);
+        if (!seconds.length) { out.push({ steps: [[a, f, t]], s: r1.s }); continue; }
+        for (const [f2, t2] of seconds) {
+          const key = [f, t, f2, t2].join(",");
+          if (seen.has(key)) continue; seen.add(key);
+          out.push({ steps: [[a, f, t], [b2, f2, t2]], s: move(r1.s, b2, f2, t2).s });
+        }
+      }
+    }
+    if (!out.length && orders.length === 2) {
+      // Neither order lets the first die move; try the other die alone.
+      for (const k of [1, 0]) for (const [f, t] of movesFor(s.b, s.turn, s.dice[k], s.movedTo)) out.push({ steps: [[k, f, t]], s: move(s, k, f, t).s });
+    }
+    const longest = Math.max(0, ...out.map(p => p.steps.length));
+    return out.filter(p => p.steps.length === longest);
+  }
+  const OUTCOMES = (() => { const o = []; for (let a = 1; a <= 6; a++) for (let b = a; b <= 6; b++) o.push([a, b, a === b ? 1 / 36 : 2 / 36]); return o; })();
+  // The rival's expected best reply to `s` over all 21 rolls, scored for `me`.
+  function expectedReply(s, me) {
+    const foe = other(me), base = { ...passTurn(s), turn: foe };
+    let total = 0;
+    for (const [a, b, p] of OUTCOMES) {
+      const sum = a + b;
+      if (sum === s.queen) { total += p * (s.jug[me] === 0 ? -BIG : evaluate(s, me, false) - 100); continue; }
+      if (PASS.includes(sum)) { total += p * evaluate(s, me, false); continue; }
+      const ps = plans(withDice(base, [a, b]));
+      if (!ps.length) { total += p * evaluate(s, me, false); continue; }
+      let worst = Infinity;
+      for (const q of ps) { const v = evaluate(q.s, me, false); if (v < worst) worst = v; }
+      total += p * worst;
+    }
+    return total;
+  }
+  const LEVELS = { 1: { deep: false, noise: 160, look: 0 }, 2: { deep: true, noise: 4, look: 0 }, 3: { deep: true, noise: 0, look: 6 } };
+  function bestPlan(s, lvl) {
+    const L = LEVELS[lvl], me = s.turn;
+    const ps = plans(s);
+    if (!ps.length) return null;
+    for (const p of ps) p.v = evaluate(p.s, me, L.deep) + (L.noise ? (Math.random() - .5) * L.noise : 0);
+    ps.sort((x, y) => y.v - x.v);
+    if (L.look) {
+      for (const p of ps.slice(0, L.look)) if (p.s.winner === null) p.v = p.v * .35 + expectedReply(p.s, me) * .65 - threatCount(p.s.b, me) * (p.s.jug[me] === 0 ? 4000 : 20);
+      ps.sort((x, y) => y.v - x.v);
+    }
+    return ps[0];
+  }
+  function bestToastTarget(s) {
+    // Drink the rival cup that threatens you most; failing that, the most advanced one.
+    const me = s.turn, foe = other(me);
+    let best = -1, bv = -Infinity;
+    for (let i = 0; i < N * N; i++) if (s.b[i] === foe) {
+      const t = clone(s); t.b[i] = 0;
+      const v = -threatCount(t.b, me) * 50 + Math.abs(((i / N) | 0) - baseRow(foe)) * 3 + Math.random();
+      if (v > bv) { bv = v; best = i; }
+    }
+    return best;
+  }
+
+  /* ================= Drawing ================= */
+  const PAD = 50, CELL = 60, PR = 22, HR = 8;
+  const cx = i => PAD + CELL / 2 + (i % N) * CELL;
+  const cy = i => PAD + CELL / 2 + ((i / N) | 0) * CELL;
+  const svg = document.getElementById("board");
+  const piecesEl = document.getElementById("pieces"), marksEl = document.getElementById("marks"), overlayEl = document.getElementById("overlay"), hitsEl = document.getElementById("hits");
+  const diceEl = document.getElementById("dice");
+
+  function drawBoard() {
+    let h = `<rect x="4" y="4" width="512" height="512" rx="14" fill="url(#wood)" filter="url(#yew)"/>` +
+      `<rect x="4.5" y="4.5" width="511" height="511" rx="14" fill="none" stroke="#1d110a" stroke-width="1.2"/>` +
+      `<path d="M14 14H506V506H14Z M40 40V480H480V40Z" fill="url(#plait)" fill-rule="evenodd" opacity=".9"/>` +
+      `<rect x="13.5" y="13.5" width="493" height="493" rx="8" fill="none" stroke="#2a180c" stroke-width="1"/>` +
+      `<rect x="40.5" y="40.5" width="439" height="439" rx="3" fill="none" stroke="#2a180c" stroke-width="1"/>` +
+      `<rect x="42" y="42" width="436" height="436" rx="2" fill="none" stroke="rgb(255 225 180 / .12)" stroke-width=".6"/>`;
+    for (let k = 0; k < N; k++) {
+      const p = PAD + CELL / 2 + k * CELL, a = PAD + CELL / 2, z = a + (N - 1) * CELL;
+      h += `<line x1="${a}" y1="${p}" x2="${z}" y2="${p}" stroke="#2a180c" stroke-width=".8" opacity=".55"/><line x1="${p}" y1="${a}" x2="${p}" y2="${z}" stroke="#2a180c" stroke-width=".8" opacity=".55"/>`;
+    }
+    for (let i = 0; i < N * N; i++) {
+      const r = (i / N) | 0, c = i % N;
+      const marked = (r === MID && c === MID) || ((r === 0 || r === N - 1) && (c === 0 || c === N - 1));
+      if (marked) h += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${HR + 9}" fill="none" stroke="#2a180c" stroke-width="1.2"/><circle cx="${cx(i)}" cy="${cy(i)}" r="${HR + 9.8}" fill="none" stroke="rgb(255 225 180 / .14)" stroke-width=".5"/>`;
+      h += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${HR}" fill="url(#hole)" stroke="rgb(255 225 180 / .16)" stroke-width=".6"/>`;
+    }
+    for (let k = 0; k < N; k++) {
+      h += `<text x="${PAD + CELL / 2 + k * CELL}" y="494" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#d9b98a" opacity=".55">${"abcdefg"[k]}</text>` +
+           `<text x="27" y="${PAD + CELL / 2 + k * CELL + 3.5}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#d9b98a" opacity=".55">${N - k}</text>`;
+    }
+    document.getElementById("boardArt").innerHTML = h;
+    let hits = "";
+    for (let i = 0; i < N * N; i++) hits += `<rect class="cellhit" data-i="${i}" x="${cx(i) - CELL / 2}" y="${cy(i) - CELL / 2}" width="${CELL}" height="${CELL}"/>`;
+    hitsEl.innerHTML = hits;
+  }
+
+  function cupMarkup(p) {
+    const mead = p.side === MEAD;
+    return `<g class="pc${p.fresh ? " fresh" : ""}" id="pc${p.id}" style="transform: translate(${cx(p.pos)}px, ${cy(p.pos)}px)">` +
+      `<path d="M${PR - 2} -5 C ${PR + 7} -6, ${PR + 7} 6, ${PR - 2} 5" fill="none" stroke="${mead ? "#6e5328" : "#7d7a71"}" stroke-width="3.4" stroke-linecap="round"/>` +
+      `<circle r="${PR}" fill="url(#${mead ? "bronzeRim" : "silverRim"})" stroke="${mead ? "#3a2a14" : "#4a4740"}" stroke-width=".8"/>` +
+      `<circle r="${PR - 3.4}" fill="url(#${mead ? "bronzeWall" : "silverWall"})"/>` +
+      `<circle class="liquid" r="${PR - 5.6}" fill="url(#${mead ? "meadDrink" : "wineDrink"})"/>` +
+      `<ellipse class="liquid" cx="-5" cy="-6" rx="5.2" ry="2.4" fill="#fff" opacity="${mead ? .28 : .18}" transform="rotate(-30 -5 -6)"/>` +
+      `<circle r="${PR - .5}" fill="none" stroke="rgb(255 250 235 / .35)" stroke-width=".5"/></g>`;
+  }
+
+  const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
+  function drawDice(d, used, queen) {
+    const one = (x, v, dim) => {
+      let pips = "";
+      if (v) for (const [a, b] of PIPS[v]) pips += `<circle cx="${x + a * 13}" cy="${35 + b * 13}" r="4.4" fill="none" stroke="#3b2f22" stroke-width="1.3"/><circle cx="${x + a * 13}" cy="${35 + b * 13}" r="1.6" fill="#3b2f22"/>`;
+      return `<g opacity="${dim ? .35 : 1}"><rect x="${x - 28}" y="7" width="56" height="56" rx="10" fill="url(#boneD)" stroke="${queen ? "#e8c97e" : "#6d6250"}" stroke-width="${queen ? 2.2 : 1}"/>` +
+             `<rect x="${x - 24}" y="10" width="48" height="8" rx="4" fill="#fffaf0" opacity=".3"/>${pips}</g>`;
+    };
+    diceEl.innerHTML = `<defs><linearGradient id="boneD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ead6"/><stop offset=".6" stop-color="#d8cbac"/><stop offset="1" stop-color="#a4977b"/></linearGradient></defs>` +
+      one(38, d ? d[0] : 0, used && used[0]) + one(112, d ? d[1] : 0, used && used[1]);
+  }
+
+  /* ================= Game flow and UI ================= */
+  let G, busy = false, hints = false, timer = null;
+  const val = n => document.querySelector(`input[name="${n}"]:checked`).value;
+  const setVal = (n, v) => { const e = document.querySelector(`input[name="${n}"][value="${v}"]`); if (e) e.checked = true; };
+  const over = () => G.state.winner !== null;
+  const isHuman = side => G.mode === "pvp" || side === +G.side;
+  const humanTurn = () => !over() && !busy && isHuman(G.state.turn);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const later = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, reduce ? Math.min(ms, 200) : ms); };
+  const oneRoll = () => G.turns === "one";
+
+  function newGame() {
+    clearTimeout(timer); busy = false;
+    const q = d6() + d6();
+    G = { state: newState(q), mode: val("mode"), side: val("side"), lvl: val("lvl"), turns: val("turns"), sel: null, cursor: at(N - 1, MID),
+          note: `The Queen rolls ${q}. That's the Queen's number for this game.`, noteKind: "queen", picking: false, log: [] };
+    piecesEl.innerHTML = "";
+    render(); save(); kickAI();
+  }
+  function addLog(text) { G.log.push({ who: NAME[G.state.turn], text }); }
+  function say(text, kind = "") { G.note = text; G.noteKind = kind; }
+
+  function roll() {
+    if (over() || busy) return;
+    const s = G.state;
+    if (s.dice && !s.queenPending) return;
+    if (s.queenPending) {
+      // Rolling on without toasting the Queen is treason.
+      if (isHuman(s.turn) && G.mode === "cpu") {
+        const victim = (() => { const t = { ...clone(s), turn: other(s.turn) }; return bestToastTarget(t); })();
+        const r = treason(s, victim);
+        addLog("treason! rival drinks " + sq(victim));
+        G.state = r.s;
+        say(`Treason to the Queen! ${NAME[other(s.turn)]} drinks one of your cups.`, "warn");
+        render(); save();
+        if (over()) return;
+      } else if (isHuman(s.turn)) {
+        // Two people on one screen: the rival picks which cup to drink
+        G.treasonPick = true; say(`Treason to the Queen! ${NAME[other(s.turn)]}, tap one of ${NAME[s.turn].toLowerCase()}'s cups to drink it.`, "warn"); render(); return;
+      }
+    }
+    busy = true;
+    let ticks = 0;
+    diceEl.classList.remove("tumble"); void diceEl.getBoundingClientRect(); diceEl.classList.add("tumble");
+    const spin = setInterval(() => { drawDice([d6(), d6()]); if (++ticks > 6) { clearInterval(spin); land(); } }, reduce ? 10 : 85);
+    function land() {
+      busy = false;
+      const d = [d6(), d6()], sum = d[0] + d[1];
+      G.state = withDice(G.state, d);
+      G.sel = null;
+      const out = rollOutcome(G.state), who = NAME[G.state.turn];
+      if (out === "queen") {
+        addLog(`${sum}: the Queen's number`);
+        if (isHuman(G.state.turn)) { say(`${sum}, the Queen's number! Tap “To the Queen!”, then pick a ${NAME[other(G.state.turn)].toLowerCase()} cup to drink.`, "queen"); render(); save(); }
+        else { say(`${who} rolled the Queen's number, ${sum}. “To the Queen!”`, "queen"); render(); busy = true; later(1100, () => { busy = false; doToast(bestToastTarget(G.state)); }); }
+        return;
+      }
+      if (out === "pass" || out === "stuck") {
+        addLog(out === "pass" ? `${sum}: pass` : `${d[0]}+${d[1]}: no move`);
+        say(out === "pass" ? `${who} rolled ${sum}, a pass number. The dice go to ${NAME[other(G.state.turn)].toLowerCase()}.` : `${who} rolled ${d[0]} and ${d[1]}. No cup can move that far, so the turn ends.`, "warn");
+        render(); busy = true;
+        later(1500, () => { busy = false; G.state = passTurn(G.state); say(""); render(); save(); kickAI(); });
+        return;
+      }
+      G.pendingLog = `${d[0]}+${d[1]}:`;
+      say(isHuman(G.state.turn) ? `${d[0]} and ${d[1]}. Move a cup for each die, two different cups. You must use both if you can.` : "");
+      render(); save();
+      if (!isHuman(G.state.turn)) aiPlay();
+    }
+  }
+
+  function afterMoveStep() {
+    // Called after each single move. Either another die waits, or this roll is done.
+    const s = G.state;
+    if (over()) { finishLog(); render(); save(); return; }
+    if (legalNow(s).length) { render(); save(); if (!isHuman(s.turn)) aiPlay(); return; }
+    finishLog();
+    if (oneRoll()) { G.state = passTurn(s); say(""); render(); save(); kickAI(); }
+    else {
+      G.state = rollAgain(s);
+      if (isHuman(G.state.turn)) say(G.note && /drinks|Sláinte/.test(G.note) ? G.note + " Roll again." : "Roll again.", G.noteKind);
+      render(); save(); kickAI();
+    }
+  }
+  function finishLog() { if (G.pendingLog) { addLog(G.pendingLog.replace(/,$/, "")); G.pendingLog = null; } }
+
+  function doMove(k, from, to) {
+    const before = G.state;
+    const r = move(before, k, from, to);
+    G.state = r.s; G.sel = null;
+    G.pendingLog = (G.pendingLog || "") + ` ${sq(from)}${r.caps.length ? "×" : "–"}${sq(to)},`;
+    if (r.caps.length) say(`${NAME[before.turn]} drinks ${r.caps.length === 1 ? "a cup" : r.caps.length + " cups"} of ${NAME[other(before.turn)].toLowerCase()}. Sláinte!`, "queen");
+    else if (isHuman(before.turn)) say(legalNow(G.state).length ? "Now move a different cup with the other die." : "", "");
+    afterMoveStep();
+  }
+
+  function doToast(target) {
+    const s = G.state, sum = s.dice[0] + s.dice[1];
+    const r = toast(s, target);
+    addLog(`toasts the Queen, drinks ${sq(target)}`);
+    G.state = r.s; G.picking = false;
+    say(`“To the Queen!” ${NAME[s.turn]} drinks a cup of ${NAME[other(s.turn)].toLowerCase()}.` + (over() ? "" : PASS.includes(sum) ? " That was also a pass number, so the dice go across." : isHuman(s.turn) ? " Roll again." : ""), "queen");
+    render(); save(); kickAI();
+  }
+
+  function kickAI() {
+    if (over() || isHuman(G.state.turn)) return;
+    if (G.state.dice === null) { busy = true; later(900, () => { busy = false; roll(); }); }
+  }
+  function aiPlay() {
+    busy = true; render();
+    later(650, () => {
+      const plan = bestPlan(G.state, G.lvl);
+      busy = false;
+      if (!plan) { afterMoveStep(); return; }
+      const [k, f, t] = plan.steps[0];
+      doMove(k, f, t);
+    });
+  }
+
+  function clickCell(i) {
+    const s = G.state;
+    if (G.treasonPick) {
+      // Friend mode: the wronged rival picks a cup of the traitor's to drink
+      if (s.b[i] !== s.turn) return;
+      const r = treason(s, i);
+      addLog("treason! rival drinks " + sq(i));
+      G.state = r.s; G.treasonPick = false; say(`${NAME[other(s.turn)]} drinks for the Queen. Now roll.`, "warn");
+      render(); save(); return;
+    }
+    if (!humanTurn()) return;
+    G.cursor = i;
+    if (G.picking) { if (s.b[i] === other(s.turn)) doToast(i); return; }
+    if (!s.dice || s.queenPending) return;
+    const legal = legalNow(s);
+    if (G.sel !== null) {
+      const m = legal.find(x => x[1] === G.sel && x[2] === i);
+      if (m) return doMove(m[0], m[1], m[2]);
+      if (i === G.sel) { G.sel = null; return render(); }
+    }
+    G.sel = legal.some(x => x[1] === i) ? i : null;
+    render();
+  }
+
+  function render() {
+    const s = G.state;
+    for (const p of s.pieces) {
+      let el = document.getElementById("pc" + p.id);
+      if (p.alive) {
+        if (!el) { piecesEl.insertAdjacentHTML("beforeend", cupMarkup(p)); el = document.getElementById("pc" + p.id); }
+        el.classList.remove("gone");
+        el.style.transform = `translate(${cx(p.pos)}px, ${cy(p.pos)}px)`;
+      } else if (el && !el.classList.contains("gone")) el.classList.add("gone");
+    }
+    // Board marks
+    let ov = "";
+    const myMove = humanTurn() && s.dice && !s.queenPending && !G.picking;
+    if (myMove) {
+      const legal = legalNow(s);
+      if (G.sel === null) for (const f of new Set(legal.map(x => x[1]))) ov += `<circle cx="${cx(f)}" cy="${cy(f)}" r="${PR + 5}" fill="none" stroke="#f0d79c" stroke-width="1.1" stroke-dasharray="3 4" opacity=".8"/>`;
+      else {
+        ov += `<circle cx="${cx(G.sel)}" cy="${cy(G.sel)}" r="${PR + 5}" fill="none" stroke="#f0d79c" stroke-width="2"/>`;
+        for (const [k, f, t] of legal) {
+          if (f !== G.sel) continue;
+          const c = s.b.slice(); c[t] = s.turn; c[f] = 0;
+          const cap = capturesFor(c, t, s.turn).length;
+          ov += `<circle cx="${cx(t)}" cy="${cy(t)}" r="10" fill="${cap ? "#d0584a" : "#f0d79c"}" opacity=".92"/><text x="${cx(t)}" y="${cy(t) + 3.8}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#17130f">${s.dice[k]}</text>`;
+        }
+      }
+      if (hints) {
+        const plan = bestPlan(s, 2);
+        if (plan) for (const [, f, t] of plan.steps.slice(0, 1)) {
+          const x1 = cx(f), y1 = cy(f), x2 = cx(t), y2 = cy(t), len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+          const sx = x1 + ux * (PR + 3), sy = y1 + uy * (PR + 3), ex = x2 - ux * 12, ey = y2 - uy * 12;
+          ov += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="#e8c97e" stroke-width="2.2" stroke-linecap="round"/><path d="M${ex + ux * 6} ${ey + uy * 6} L${ex - uy * 5} ${ey + ux * 5} L${ex + uy * 5} ${ey - ux * 5} Z" fill="#e8c97e"/>`;
+        }
+      }
+    }
+    if ((G.picking && humanTurn()) || G.treasonPick) {
+      const victims = G.treasonPick ? s.turn : other(s.turn);
+      for (let i = 0; i < N * N; i++) if (s.b[i] === victims) ov += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${PR + 5}" fill="none" stroke="${G.treasonPick ? "#d0584a" : "#e8c97e"}" stroke-width="1.8" stroke-dasharray="4 3"/>`;
+    }
+    if (hints && humanTurn() && !G.picking) {
+      const foe = other(s.turn);
+      for (let d = 1; d <= 6; d++) for (const [f, t] of movesFor(s.b, foe, d)) {
+        const c = s.b.slice(); c[t] = foe; c[f] = 0;
+        for (const x of capturesFor(c, t, foe)) ov += `<circle cx="${cx(x)}" cy="${cy(x)}" r="${PR + 8}" fill="none" stroke="#d0584a" stroke-width="1.4" stroke-dasharray="2 3" opacity=".9"/>`;
+      }
+    }
+    if (document.activeElement === svg && G.cursor != null) ov += `<rect x="${cx(G.cursor) - PR - 7}" y="${cy(G.cursor) - PR - 7}" width="${2 * PR + 14}" height="${2 * PR + 14}" rx="9" fill="none" stroke="#f0d79c" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    overlayEl.innerHTML = ov;
+    svg.classList.toggle("locked", !(myMove || G.picking || G.treasonPick));
+
+    // Status
+    const st = document.getElementById("status");
+    st.className = "status";
+    if (over()) {
+      const w = s.winner;
+      if (w === 0) st.textContent = `${QUIET_LIMIT} quiet moves and both sides drank the same. A draw.`;
+      else {
+        const skunk = s.jug[w] === JUG ? " A skunk!" : "";
+        st.textContent = s.reason === "dry" ? `${NAME[w]} wins. ${NAME[other(w)]}'s jug ran dry.${skunk}` : `${NAME[w]} wins, having drunk more after ${QUIET_LIMIT} quiet moves.${skunk}`;
+        if (G.mode === "cpu") st.className = "status " + (w === +G.side ? "win" : "lose");
+      }
+    } else if (G.mode === "cpu") st.textContent = s.turn === +G.side ? `Your turn (${NAME[G.side]})` : "The computer's turn";
+    else st.textContent = `${NAME[s.turn]}'s turn`;
+
+    // Dice and buttons
+    if (!busy) drawDice(s.dice, s.used, s.queenPending);
+    const rb = document.getElementById("rollBtn"), tb = document.getElementById("toastBtn");
+    const canRoll = humanTurn() && (s.dice === null || (s.queenPending && !G.picking)) && !G.treasonPick;
+    rb.disabled = !canRoll;
+    rb.textContent = s.queenPending && humanTurn() ? "Roll on (treason)" : "Roll";
+    tb.hidden = !(humanTurn() && s.queenPending && !G.picking);
+    const rn = document.getElementById("rollNote");
+    rn.className = "roll-note" + (G.noteKind ? " " + G.noteKind : "");
+    rn.textContent = G.picking ? `Tap a ${NAME[other(s.turn)].toLowerCase()} cup to drink to the Queen.` : (G.note || (humanTurn() && s.dice === null ? "Roll the dice to start your turn." : ""));
+
+    // Ledger
+    document.getElementById("queenLine").innerHTML = `The Queen's number <b>${s.queen}</b>`;
+    const side = sd => {
+      const cls = sd === MEAD ? "mead" : "wine";
+      return `<div class="side"><span class="name">${NAME[sd]}</span><span class="jugs" aria-label="${s.jug[sd]} refills left">${Array.from({ length: JUG }, (_, k) => `<span class="jug ${cls}${k < s.jug[sd] ? "" : " empty"}"><i></i></span>`).join("")}</span>` +
+        `<span class="sub">${s.jug[sd]} refill${s.jug[sd] === 1 ? "" : "s"} left · drunk ${s.drinks[sd]}</span></div>`;
+    };
+    document.getElementById("sides").innerHTML = side(MEAD) + side(WINE);
+    document.getElementById("quiet").textContent = over() ? "" : `Moves since a cup was drunk: ${s.quiet} of ${QUIET_LIMIT}`;
+    const logEl = document.getElementById("log");
+    logEl.innerHTML = G.log.length ? G.log.map(l => `<li><span class="who">${l.who}</span><span>${l.text}</span></li>`).join("") : `<li class="empty">No rolls yet. Mead goes first.</li>`;
+    logEl.scrollTop = logEl.scrollHeight;
+    document.getElementById("cpuOpts").hidden = val("mode") !== "cpu";
+    const hb = document.getElementById("hintBtn");
+    hb.setAttribute("aria-pressed", String(hints)); hb.textContent = hints ? "Hints on" : "Hints";
+  }
+
+  /* ---------- Input ---------- */
+  hitsEl.addEventListener("click", e => { const r = e.target.closest(".cellhit"); if (r) clickCell(+r.dataset.i); });
+  svg.addEventListener("keydown", e => {
+    const r = (G.cursor / N) | 0, c = G.cursor % N;
+    const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+    if (mv) { e.preventDefault(); const nr = r + mv[0], nc = c + mv[1]; if (inB(nr, nc)) G.cursor = at(nr, nc); render(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (G.state.dice === null) roll(); else clickCell(G.cursor); }
+    else if (e.key === "Escape" && G.sel !== null) { G.sel = null; render(); }
+  });
+  svg.addEventListener("focus", () => render());
+  svg.addEventListener("blur", () => render());
+  document.getElementById("rollBtn").addEventListener("click", roll);
+  document.getElementById("toastBtn").addEventListener("click", () => { if (humanTurn() && G.state.queenPending) { G.picking = true; render(); } });
+  document.getElementById("newBtn").addEventListener("click", newGame);
+  document.getElementById("hintBtn").addEventListener("click", () => { hints = !hints; render(); });
+  document.querySelectorAll('input[name="mode"],input[name="side"]').forEach(el => el.addEventListener("change", newGame));
+  document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { G.lvl = val("lvl"); save(); }));
+  document.querySelectorAll('input[name="turns"]').forEach(el => el.addEventListener("change", () => { G.turns = val("turns"); save(); }));
+
+  function save() { try { localStorage.setItem("fidchell-cups-tablero", JSON.stringify(G)); } catch (e) {} }
+  function load() { try { const v = JSON.parse(localStorage.getItem("fidchell-cups-tablero") || "null"); return v && v.state && v.state.b && v.state.b.length === N * N ? v : null; } catch (e) { return null; } }
+
+  function start(data) {
+    drawBoard();
+    const saved = (data && data.G) || load();
+    if (saved) {
+      G = saved; G.sel = null; G.picking = false;
+      setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl); setVal("turns", G.turns || "tablero");
+      piecesEl.innerHTML = "";
+      render();
+      if (!over() && !isHuman(G.state.turn)) {
+        const s = G.state;
+        if (s.dice === null) kickAI();
+        else if (s.queenPending) { busy = true; later(600, () => { busy = false; doToast(bestToastTarget(G.state)); }); }
+        else aiPlay();
+      }
+    } else newGame();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ G }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>

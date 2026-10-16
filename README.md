@@ -7,9 +7,11 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Celtic Cross Lock**: a lock-picking puzzle | [`celtic-cross-lock/index.html`](celtic-cross-lock/index.html) |
 | Celtic Cross Lock v1 (the original stone-swapping version) | [`celtic-cross-lock/v1/index.html`](celtic-cross-lock/v1/index.html) |
 | **Fidchell**: the early Irish board game | [`fidchell/index.html`](fidchell/index.html) |
+| **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | [`fidchell-cups/index.html`](fidchell-cups/index.html) |
+| **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`index.html`](index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). Monsiv will be at `/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, and Fidchell at `/fidchell/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). Monsiv will be at `/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, and Goldmines River at `/goldmines-river/`.
 
 ---
 
@@ -69,6 +71,36 @@ These values in the script in `celtic-cross-lock/index.html` control the feel:
 - After 30 moves in a row without a capture, the side with more pieces wins. Equal pieces is a draw.
 
 Play the computer (Casual, Steady or Strong, as gold or white) or a friend on the same screen. **Hints** rings your pieces in danger and shows a suggested move.
+
+---
+
+## Fidchell of Cups
+
+Fidchell played by the rules of [Tablero](https://www.drinkiwiki.com/Tablero), with cups instead of stones. Mead in bronze cups against wine in silver ones.
+
+- Seven cups a side on a 7×7 board. Each side has a jug holding four refills. Mead goes first.
+- Roll two dice. Each die moves a different cup exactly that many holes along a row or column, through empty holes. You choose the cups and directions. If a move fits a die you must make it; if neither fits, your turn ends.
+- A total of 7, 11 or 12 is a pass. Otherwise keep rolling until you pass or can't move. (A switch allows one roll per turn instead.)
+- Trap a rival cup between the cup you moved and another of yours to drink it. Moving into a gap between two rival cups is safe.
+- A drunk cup goes back to its owner's back row, refilled from their jug. Whoever has to refill from an empty jug loses. Winning without touching your own jug is a skunk.
+- **The Queen's number** is rolled before play. Roll it and you toast the Queen: drink any rival cup instead of moving, then roll again. Roll on without toasting and it's treason: your rival drinks one of your cups.
+- After 60 moves with no cup drunk, whoever has drunk more wins.
+
+Play the computer (Casual, Steady or Strong) or a friend on the same screen. **Hints** rings your cups in danger and suggests a move.
+
+---
+
+## Goldmines River
+
+Pan a Wicklow stream for gold, on the river of Ireland's 1795 gold rush.
+
+1. **Scoop** from one of five spots on the river. Gold drops where the water slows: behind boulders, in bedrock cracks, on the inside of bends. The best spots change each day, and a spot yields less each time you pan it.
+2. **Shake** the pan side to side under water. Gold sinks; stones and gravel rise.
+3. **Pick out the stones** once they're on top.
+4. **Wash** by tilting the pan so water carries the top layer over the lip. Dip for more water. Tilt too steep and the gold goes too.
+5. **Collect** the gold you can see. Gold still buried under sand when you finish is lost.
+
+A day is eight pans. Each pan ends with a summary of gold kept, washed out and left buried. **Coach** shows the buried gold and how well it has settled. Play by dragging the pan, with the Shake and Wash hold buttons, or with the keyboard.
 
 ---
 
