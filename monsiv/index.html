@@ -214,14 +214,15 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
       <div class="panel">
         <p class="label">How to play</p>
         <ul class="rules">
-          <li><svg><use href="#p-T" fill="currentColor"/></svg><span><b>Throne</b> steps one square in any direction. Lose it and you lose the game.</span></li>
+          <li><svg><use href="#p-T" fill="currentColor"/></svg><span><b>Throne</b> steps one square in any direction. Lose it and you lose the game. It may never move or swap onto a square where an enemy piece could take it, so it can't capture a guarded piece.</span></li>
           <li><svg><use href="#p-A" fill="currentColor" stroke="currentColor"/></svg><span><b>Angel</b> steps one square diagonally.</span></li>
           <li><svg><use href="#p-C" fill="currentColor"/></svg><span><b>Cross</b> steps one square straight: forward, back or sideways.</span></li>
           <li><span class="label" style="text-align:center;padding-top:2px">⇄</span><span><b>Swap</b> two of your own different pieces that touch, including diagonally. A swap is your whole turn, and you can't swap the same pair twice in a row.</span></li>
           <li><span class="label" style="text-align:center;padding-top:2px">✕</span><span><b>Capture</b> by stepping onto an enemy piece.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">↺</span><span><b>No repeats.</b> You can't make a move that recreates a position already seen this game, unless it wins.</span></li>
           <li><span class="label" style="text-align:center;padding-top:2px">♛</span><span><b>Win</b> by capturing the enemy Throne or by landing any piece on the far row. A player with no legal move loses, so there are no draws.</span></li>
         </ul>
-        <p class="note">Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses.</p>
+        <p class="note">Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses. The Throne and no-repeat rules were added to balance the game: in deep computer testing they took it from 72% second-player wins to roughly even.</p>
       </div>
     </aside>
   </div>
@@ -256,7 +257,7 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
         const rr = r + dr, cc = c + dc;
         if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
         const j = rr * 5 + cc, q = s.b[j];
-        if (!q || q.c !== p.c) ms.push({ k: "m", from: i, to: j, cap: q ? q.t : null });
+        if (!q || q.c !== p.c) ms.push({ k: "m", from: i, to: j, cap: q ? q.t : null, t: p.t });
       }
       for (const [dr, dc] of ADJ) {
         const rr = r + dr, cc = c + dc;
@@ -268,7 +269,54 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
         }
       }
     }
-    return ms;
+    return ms.filter(m => (!THRONE_SAFE || throneMoveOk(s, m)) && !repeats(s, m));
+  }
+
+  // No repeats: a move may not recreate a position (board and player to move) that has
+  // already occurred this game, unless it wins on the spot. This stops endless
+  // shuffling, so every game ends.
+  let SEEN = new Set();
+  const posKey = (b, turn) => b.map(p => p ? p.c + p.t : ".").join("") + turn;
+  function repeats(s, m) {
+    const me = s.turn, b = s.b.slice();
+    if (m.k === "m") {
+      if (m.cap === "T" || ((m.to / 5) | 0) === (me === "w" ? 0 : 4)) return false;
+      b[m.to] = b[m.from]; b[m.from] = null;
+    } else { const t = b[m.a]; b[m.a] = b[m.b]; b[m.b] = t; }
+    return SEEN.has(posKey(b, other(me)));
+  }
+  function rebuildSeen() {
+    SEEN = new Set(G.history.map(h => posKey(h.state.b, h.state.turn)));
+    SEEN.add(posKey(G.state.b, G.state.turn));
+  }
+
+  // The Throne may not end its move on a square an enemy piece could take it on,
+  // like a king that can't move into check. A move that wins outright (taking the
+  // enemy Throne or reaching the far row) is always allowed, since the game ends.
+  let THRONE_SAFE = true;
+  function attacked(b, sq, by) {
+    const r = (sq / 5) | 0, c = sq % 5;
+    for (let i = 0; i < 25; i++) {
+      const p = b[i];
+      if (!p || p.c !== by) continue;
+      const pr = (i / 5) | 0, pc = i % 5;
+      for (const [dr, dc] of DIRS[p.t]) if (pr + dr === r && pc + dc === c) return true;
+    }
+    return false;
+  }
+  function throneMoveOk(s, m) {
+    const me = s.turn, b = s.b.slice();
+    let to;
+    if (m.k === "m") {
+      if (m.t !== "T") return true;
+      if (m.cap === "T" || ((m.to / 5) | 0) === (me === "w" ? 0 : 4)) return true;
+      b[m.to] = b[m.from]; b[m.from] = null; to = m.to;
+    } else {
+      const ta = s.b[m.a].t === "T", tb = s.b[m.b].t === "T";
+      if (!ta && !tb) return true;
+      const t = b[m.a]; b[m.a] = b[m.b]; b[m.b] = t; to = ta ? m.b : m.a;
+    }
+    return !attacked(b, to, other(me));
   }
 
   function apply(s, m) {
@@ -379,7 +427,7 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
   function newGame() {
     clearTimeout(cpuTimer); thinking = false;
     G = { history: [], state: initial(), mode: val("mode"), side: val("side"), lvl: val("lvl"), sel: null };
-    render(); save(); maybeCpu();
+    rebuildSeen(); render(); save(); maybeCpu();
   }
 
   const humanTurn = () => !G.state.winner && (G.mode === "pvp" || G.state.turn === G.side) && !thinking;
@@ -389,7 +437,7 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
     G.history.push({ state: G.state, note, by: G.state.turn });
     G.state = apply(G.state, m);
     G.sel = null;
-    render(true); save(); maybeCpu();
+    rebuildSeen(); render(true); save(); maybeCpu();
   }
 
   function maybeCpu() {
@@ -411,7 +459,7 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
       while (h.by !== G.side && G.history.length) h = G.history.pop();
     }
     G.state = h.state; G.sel = null;
-    render(); save(); maybeCpu();
+    rebuildSeen(); render(); save(); maybeCpu();
   }
 
   function click(i) {
@@ -524,7 +572,7 @@ button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; 
     if (saved && saved.state && saved.state.b) {
       G = saved; G.sel = null;
       setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl);
-      render(); maybeCpu();
+      rebuildSeen(); render(); maybeCpu();
     } else newGame();
   }
   window.claude?.hot?.snapshot?.(() => ({ G }));

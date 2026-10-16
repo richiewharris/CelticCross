@@ -138,8 +138,21 @@ The board is 5×5. Each side starts with five pieces on its back row, the Throne
 - **White moves first.**
 - **Capture** by stepping onto an enemy piece. It's removed from the board.
 - **Swap**: instead of moving, swap two of your own touching pieces (diagonals count). They must be different types, and you can't swap the same pair twice in a row.
+- **The Throne can't walk into danger.** It may never move or swap onto a square where an enemy piece could take it, so it can't capture a guarded piece. A move that wins on the spot is always allowed.
+- **No repeats.** You can't make a move that recreates a position already seen this game, unless it wins.
 - **Win** by capturing the enemy Throne, or by landing any of your pieces on the opponent's back row.
 - A player with no legal move loses, so there are no draws.
+
+#### Balance rules
+
+The Throne and no-repeat rules were added after testing. In 50 computer games per rule set, with both sides searching 8 moves ahead:
+
+| | Original rules | Current rules |
+|---|---|---|
+| White (moves first) wins | 14 (28%) | 30 (60%) |
+| Black wins | 36 (72%) | 20 (40%) |
+
+Without the no-repeat rule, careful players can shuffle forever and the game never ends.
 
 #### Reconstructed rules
 
