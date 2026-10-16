@@ -1,6 +1,6 @@
 # Celtic Cross
 
-Small browser games with a Celtic theme. None needs installing or building: open the `index.html` file in any modern browser.
+Small browser games with a Celtic theme. None needs installing or building: open `index.html` for the front page that links them all, or open a game's own `index.html`.
 
 | Game | File |
 |------|------|
@@ -9,9 +9,9 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Fidchell**: the early Irish board game | [`fidchell/index.html`](fidchell/index.html) |
 | **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | [`fidchell-cups/index.html`](fidchell-cups/index.html) |
 | **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
-| **Monsiv**: a 5×5 chess-like strategy game | [`index.html`](index.html) |
+| **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). Monsiv will be at `/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, and Goldmines River at `/goldmines-river/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, and Goldmines River at `/goldmines-river/`.
 
 ---
 
@@ -110,7 +110,7 @@ A playable rebuild of **Monsiv**, a browser strategy game first released around 
 
 ### Play
 
-Open `index.html` in any modern browser. There's nothing to install or build.
+Open `monsiv/index.html` in any modern browser. There's nothing to install or build.
 
 To host it free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder).
 
