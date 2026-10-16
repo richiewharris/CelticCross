@@ -7,26 +7,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one carved puzzle box. The ringed cross of stones is the hero; a narrow ledger beside it holds the lock tier, skill and moves. Stacks on phones. Single dark look by choice: bog oak, carved stone and worked metal. */
+/* Layout: one carved puzzle box. A knot disc turns beneath a bronze cover with a one-third window; a narrow ledger beside it holds moves, skill and the lock tier. Stacks on phones. Single dark look by choice: bog oak, carved stone and worked bronze. */
 :root {
   --oak: #17130f;
   --oak-2: #221b15;
   --oak-3: #2e251c;
-  --stone: #6f6a5f;
-  --stone-hi: #8c8676;
-  --stone-lo: #4b4740;
   --ink: #efe6d2;
   --muted: #a99c84;
   --line: #3d3328;
   --gold: #d6a640;
-  --verdigris: #4fa58c;
-  --garnet: #c1503f;
-  --strand-edge: #120e0a;
+  --bronze: #9c7a3c;
+  --garnet: #d0584a;
   --glow: #f3cf6a;
   --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
   --font-body: "Spectral", Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  --cell: min(66px, calc((100vw - 56px) / 5));
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -42,83 +37,61 @@ body {
   padding-block: 22px 40px;
   min-height: 100%;
 }
-.wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 26px; }
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 24px; }
 header { display: grid; gap: 4px; }
 h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 6.5vw, 3rem); margin: 0; line-height: 1.05; color: var(--gold); text-wrap: balance; }
-.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 60ch; }
+.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 62ch; }
 
 .game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
-@media (max-width: 760px) { .game { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 780px) { .game { grid-template-columns: minmax(0, 1fr); } }
 
-/* The box */
 .box {
-  justify-self: center; min-width: 0;
-  padding: 22px; border-radius: 10px;
+  min-width: 0; padding: 18px; border-radius: 12px;
   background: linear-gradient(160deg, var(--oak-3), var(--oak-2));
   box-shadow: inset 0 0 0 2px var(--line), inset 0 0 0 7px var(--oak), inset 0 0 0 8px var(--line), 0 18px 40px rgb(0 0 0 / .55);
-  display: grid; gap: 14px; justify-items: center;
+  display: grid; gap: 12px; justify-items: center;
 }
-.status { font-family: var(--font-body); font-weight: 600; text-align: center; min-height: 1.6em; text-wrap: balance; max-width: 30ch; }
+.status { font-weight: 600; text-align: center; min-height: 1.6em; text-wrap: balance; max-width: 34ch; }
 .status.good { color: var(--glow); }
 .status.bad { color: var(--garnet); }
-.board {
-  position: relative;
-  width: calc(var(--cell) * 5); height: calc(var(--cell) * 7);
-  display: grid; grid-template-columns: repeat(5, var(--cell)); grid-template-rows: repeat(7, var(--cell));
-  touch-action: none; user-select: none; -webkit-user-select: none;
-}
-.ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transition: transform .9s cubic-bezier(.3,1.4,.5,1); transform-origin: 50% 35.714%; }
-.board.open .ring { transform: rotate(45deg); }
-.cell {
-  position: relative; z-index: 1;
-  border: 0; padding: 0; margin: 0; cursor: grab;
-  background: var(--stone);
-  box-shadow: inset 2px 2px 0 var(--stone-hi), inset -2px -2px 0 var(--stone-lo), inset 0 0 0 1px rgb(0 0 0 / .35);
-  touch-action: none;
-}
-.cell svg { width: 100%; height: 100%; display: block; pointer-events: none; }
-.cell:focus-visible { outline: 3px solid var(--glow); outline-offset: -3px; z-index: 3; }
-.cell.sel { box-shadow: inset 0 0 0 3px var(--glow), inset 2px 2px 0 var(--stone-hi); z-index: 2; }
-.cell.over { filter: brightness(1.25); box-shadow: inset 0 0 0 3px var(--gold); z-index: 2; }
-.cell.lifted { opacity: .25; }
-.cell.flash { animation: flash .35s ease-out; }
-@keyframes flash { from { filter: brightness(1.6); } to { filter: none; } }
-.cell.wrong::after { content: ""; position: absolute; inset: 0; background: var(--garnet); opacity: .22; pointer-events: none; }
-.cell.hint { box-shadow: inset 0 0 0 3px var(--glow), 0 0 14px var(--glow); z-index: 2; }
-.cell.hint.sel { box-shadow: inset 0 0 0 4px var(--glow), 0 0 18px var(--glow); }
-.hintbox { margin: 0; font-size: .92rem; text-align: center; color: var(--glow); min-height: 1.4em; max-width: 32ch; text-wrap: balance; }
-button.btn.cheat { border-style: dashed; border-color: var(--muted); color: var(--muted); }
-button.btn.cheat[aria-pressed="true"] { border-style: solid; border-color: var(--garnet); color: var(--ink); background: color-mix(in srgb, var(--garnet) 35%, transparent); }
-.board.open .cell { cursor: default; animation: glow 1.4s ease-in-out infinite alternate; }
-@keyframes glow { from { filter: none; } to { filter: brightness(1.18) drop-shadow(0 0 6px var(--glow)); } }
-.board.shake { animation: shake .45s; }
-@keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
-.ghost { position: fixed; z-index: 50; pointer-events: none; width: var(--cell); height: var(--cell); transform: translate(-50%, -50%) scale(1.12); box-shadow: 0 12px 26px rgb(0 0 0 / .6); background: var(--stone); }
-.ghost svg { width: 100%; height: 100%; display: block; }
+#lock { width: min(100%, 470px); aspect-ratio: 1; max-width: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 10px; }
+#lock:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
+#cover { cursor: w-resize; }
+#cover.pulling { cursor: grabbing; }
+.tile { cursor: pointer; }
+.tile.hidden { cursor: default; }
+.tile:focus { outline: none; }
+.tile:focus-visible { stroke: var(--glow); stroke-width: 3; }
+#lock.shake { animation: shake .45s; }
+@keyframes shake { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
+#lock.open #knot { filter: drop-shadow(0 0 5px var(--glow)); }
 
-.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 button.btn {
   font: inherit; font-weight: 600; letter-spacing: .02em;
-  padding: 9px 18px; border-radius: 6px; cursor: pointer;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer;
   border: 1px solid var(--gold); background: transparent; color: var(--gold);
 }
 button.btn.primary { background: var(--gold); color: var(--oak); }
+button.btn.icon { padding: 8px 14px; font-size: 1.1rem; line-height: 1.2; }
 button.btn:hover { filter: brightness(1.12); }
 button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 button.btn:disabled { opacity: .4; cursor: not-allowed; }
+button.btn.cheat { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+button.btn.cheat[aria-pressed="true"] { border-style: solid; border-color: var(--garnet); color: var(--ink); background: color-mix(in srgb, var(--garnet) 35%, transparent); }
+.hintbox { margin: 0; font-size: .92rem; text-align: center; color: var(--glow); min-height: 1.4em; max-width: 36ch; text-wrap: balance; }
 
-/* Ledger */
 aside { display: grid; gap: 22px; min-width: 0; }
 .panel { display: grid; gap: 9px; }
 .label { margin: 0; font-size: .74rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); font-family: var(--font-mono); }
-.big { font-family: var(--font-display); font-size: 2rem; line-height: 1; color: var(--ink); }
+.big { font-family: var(--font-display); font-size: 2rem; line-height: 1; }
 .big small { font-family: var(--font-body); font-size: .95rem; color: var(--muted); font-style: italic; margin-left: 6px; }
 .meter { height: 8px; border-radius: 4px; background: var(--oak-3); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--gold); transition: width .5s; }
 .pips { display: flex; flex-wrap: wrap; gap: 5px; }
-.pip { width: 14px; height: 14px; transform: rotate(45deg); border: 1.5px solid var(--gold); }
+.pip { width: 13px; height: 13px; transform: rotate(45deg); border: 1.5px solid var(--gold); }
 .pip.on { background: var(--gold); }
-.moves-line { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: .9rem; color: var(--muted); margin: 0; }
+.moves-line, .stats { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: .86rem; color: var(--muted); margin: 0; }
 .tiers { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .tiers input { position: absolute; opacity: 0; pointer-events: none; }
 .tiers label { text-align: center; padding: 7px 2px; cursor: pointer; font-size: .82rem; border-left: 1px solid var(--line); color: var(--muted); }
@@ -129,15 +102,11 @@ aside { display: grid; gap: 22px; min-width: 0; }
 .how { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: .95rem; }
 .how li { padding-left: 16px; position: relative; }
 .how li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; transform: rotate(45deg); background: var(--gold); }
-.key { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
-.key span { display: inline-flex; align-items: center; gap: 6px; }
-.key svg { width: 34px; height: 14px; }
-.stats { font-family: var(--font-mono); font-size: .82rem; color: var(--muted); margin: 0; font-variant-numeric: tabular-nums; }
+.examples { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.examples figure { margin: 0; display: grid; gap: 4px; justify-items: center; font-size: .85rem; color: var(--muted); }
+.examples svg { width: 100%; max-width: 130px; height: auto; border-radius: 6px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .ring, .meter i { transition: none; }
-  .board.shake, .cell.flash, .board.open .cell { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { #lock.shake { animation: none; } .meter i { transition: none; } }
 </style>
 </head>
 <body>
@@ -145,23 +114,43 @@ aside { display: grid; gap: 22px; min-width: 0; }
 <div class="wrap">
   <header>
     <h1>Celtic Cross Lock</h1>
-    <p class="tag">Rejoin the knotwork on the ringed cross. When every strand meets its match, try the lock.</p>
+    <p class="tag">Turn the stones until the knot runs unbroken all the way round. You can only see a third of it at a time, so spin the disc to check your work, then pull the cover to the left to open the box.</p>
   </header>
 
   <div class="game">
     <section class="box" aria-label="Puzzle box">
       <div class="status" id="status" role="status" aria-live="polite"></div>
-      <div class="board" id="board">
-        <svg class="ring" viewBox="0 0 500 700" aria-hidden="true">
-          <circle cx="250" cy="250" r="141" fill="none" stroke="#3a352e" stroke-width="58"/>
-          <circle cx="250" cy="250" r="141" fill="none" stroke="#575247" stroke-width="50"/>
-          <circle cx="250" cy="250" r="118" fill="none" stroke="#2c2823" stroke-width="2"/>
-          <circle cx="250" cy="250" r="164" fill="none" stroke="#2c2823" stroke-width="2"/>
-          <circle cx="250" cy="250" r="141" fill="none" stroke="#6b6558" stroke-width="3" stroke-dasharray="4 14"/>
-        </svg>
-      </div>
-      <div class="actions">
-        <button class="btn primary" type="button" id="tryBtn">Try the lock</button>
+      <svg id="lock" viewBox="-210 -210 420 420" tabindex="0" aria-label="Lock. Left and right arrow keys spin the disc.">
+        <defs>
+          <radialGradient id="plate" cx="50%" cy="40%" r="75%">
+            <stop offset="0" stop-color="#4a3a27"/>
+            <stop offset="1" stop-color="#231b13"/>
+          </radialGradient>
+          <radialGradient id="stoneGrad" cx="50%" cy="50%" r="60%">
+            <stop offset="0" stop-color="#7a7466"/>
+            <stop offset="1" stop-color="#5b564c"/>
+          </radialGradient>
+        </defs>
+        <rect x="-210" y="-210" width="420" height="420" fill="#120e0a"/>
+        <g id="disc"></g>
+        <g id="cover">
+          <path id="coverPlate" fill="url(#plate)" fill-rule="evenodd" stroke="#0c0906" stroke-width="2"/>
+          <rect x="-198" y="-198" width="396" height="396" rx="14" fill="none" stroke="#9c7a3c" stroke-width="2" pointer-events="none"/>
+          <rect x="-190" y="-190" width="380" height="380" rx="10" fill="none" stroke="#9c7a3c" stroke-width="1" stroke-dasharray="2 6" pointer-events="none"/>
+          <path id="windowRim" fill="none" stroke="#c49a4a" stroke-width="3" pointer-events="none"/>
+          <g id="triskele" pointer-events="none"></g>
+          <g pointer-events="none">
+            <rect x="-164" y="-34" width="14" height="68" rx="4" fill="#3a2d1f" stroke="#9c7a3c" stroke-width="1.5"/>
+            <circle cx="-178" cy="0" r="16" fill="none" stroke="#c49a4a" stroke-width="6"/>
+            <circle cx="-178" cy="0" r="16" fill="none" stroke="#6e5428" stroke-width="1.5"/>
+            <text x="-140" y="4" text-anchor="start" fill="#c49a4a" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="4">◀ PULL</text>
+          </g>
+        </g>
+      </svg>
+      <div class="controls">
+        <button class="btn icon" type="button" id="spinL" aria-label="Spin anticlockwise">⟲</button>
+        <button class="btn icon" type="button" id="spinR" aria-label="Spin clockwise">⟳</button>
+        <button class="btn primary" type="button" id="pullBtn">Pull the cover</button>
         <button class="btn" type="button" id="newBtn">New lock</button>
         <button class="btn cheat" type="button" id="cheatBtn" aria-pressed="false">Cheat</button>
       </div>
@@ -170,7 +159,7 @@ aside { display: grid; gap: 22px; min-width: 0; }
 
     <aside>
       <div class="panel">
-        <p class="label">Moves left</p>
+        <p class="label">Turns left</p>
         <div class="pips" id="pips" aria-hidden="true"></div>
         <p class="moves-line" id="movesLine"></p>
       </div>
@@ -197,16 +186,15 @@ aside { display: grid; gap: 22px; min-width: 0; }
       <div class="panel">
         <p class="label">How to pick it</p>
         <ul class="how">
-          <li>Drag a stone onto another to swap them. You can also tap one stone, then another. Each swap uses a move.</li>
-          <li>The lock opens when every strand meets a strand of the same kind on the next stone, and no strand runs off the edge of the cross.</li>
-          <li>Try the lock whenever you think it's done. If it isn't, the tumblers fall: the stones scramble again and your moves refill.</li>
-          <li>Higher skill gives you more spare moves.</li>
-          <li>Stuck? Turn on Cheat to see broken joins (red notches), stones out of place (red tint) and the next swap to make. A lock opened with Cheat on is practice and doesn't raise your skill.</li>
+          <li>Tap a stone in the window to give it a quarter turn clockwise. Press and hold (or right-click) to turn it anticlockwise. Each quarter turn uses one turn.</li>
+          <li>Drag the disc, or use ⟲ ⟳, to spin it. Spinning is free.</li>
+          <li>The lock is solved when the knot has no loose ends anywhere on the disc. A loose end shows as a round knob.</li>
+          <li>Stones with corner rivets are crossings. They're fixed and can't turn.</li>
+          <li>Pull the cover to the left to try the lock. If the knot is broken anywhere, the stones scramble and your turns refill.</li>
         </ul>
-        <div class="key" aria-label="Strand kinds">
-          <span><svg viewBox="0 0 34 14"><line x1="2" y1="7" x2="32" y2="7" stroke="#120e0a" stroke-width="12"/><line x1="2" y1="7" x2="32" y2="7" stroke="#d6a640" stroke-width="7"/></svg>Gold</span>
-          <span><svg viewBox="0 0 34 14"><line x1="2" y1="7" x2="32" y2="7" stroke="#120e0a" stroke-width="12"/><line x1="2" y1="7" x2="32" y2="7" stroke="#4fa58c" stroke-width="7"/><line x1="2" y1="7" x2="32" y2="7" stroke="#120e0a" stroke-width="2"/></svg>Verdigris</span>
-          <span><svg viewBox="0 0 34 14"><line x1="2" y1="7" x2="32" y2="7" stroke="#120e0a" stroke-width="12"/><line x1="2" y1="7" x2="32" y2="7" stroke="#c1503f" stroke-width="7"/><line x1="4" y1="7" x2="32" y2="7" stroke="#f0c6a8" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="0.1 7"/></svg>Garnet</span>
+        <div class="examples">
+          <figure><svg id="exGood" viewBox="0 0 120 60" aria-hidden="true"></svg><figcaption>Joined</figcaption></figure>
+          <figure><svg id="exBad" viewBox="0 0 120 60" aria-hidden="true"></svg><figcaption>Loose end</figcaption></figure>
         </div>
       </div>
     </aside>
@@ -215,359 +203,414 @@ aside { display: grid; gap: 22px; min-width: 0; }
 
 <script>
 (() => {
-  /* ---------- Shape: a ringed cross on a 5×7 grid ---------- */
-  const CELLS = [[0,2],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3],[2,4],[3,1],[3,2],[3,3],[4,2],[5,2],[6,2]];
-  const idxOf = new Map(CELLS.map(([r, c], i) => [r + "," + c, i]));
-  const DIRS = [["n", -1, 0, "s"], ["e", 0, 1, "w"], ["s", 1, 0, "n"], ["w", 0, -1, "e"]];
-  const neighbor = (i, dr, dc) => { const [r, c] = CELLS[i]; const k = idxOf.get((r + dr) + "," + (c + dc)); return k === undefined ? -1 : k; };
-  const DIR_WORD = { n: "top", e: "right", s: "bottom", w: "left" };
-  const KIND = ["", "gold", "verdigris", "garnet"];
-
-  const TIERS = {
-    1: { name: "Iron",   colors: 1, p: .55, scramble: 2, desc: "One strand kind, a few stones out of place." },
-    2: { name: "Bronze", colors: 2, p: .6,  scramble: 4, desc: "Two strand kinds. A handful of stones moved." },
-    3: { name: "Silver", colors: 2, p: .7,  scramble: 6, desc: "Two strand kinds, denser knotwork." },
-    4: { name: "Gold",   colors: 3, p: .72, scramble: 8, desc: "Three strand kinds. Most stones out of place." },
-    5: { name: "Ogham",  colors: 3, p: .8,  scramble: 11, desc: "Three kinds, dense knots, nearly every stone moved." },
-  };
-  const RANKS = [[0, "Novice"], [20, "Apprentice"], [40, "Journeyman"], [60, "Adept"], [80, "Master"]];
-  const rank = s => RANKS.filter(r => s >= r[0]).pop()[1];
+  /* ---------- Rules: tiles on a polar grid ---------- */
+  // Each stone has four sides: N (outward), E (clockwise), S (inward), W (anticlockwise).
+  const N = 1, E = 2, S_ = 4, W = 8;
+  const BITS = [N, E, S_, W];
+  const OPP = { 1: 4, 4: 1, 2: 8, 8: 2 };
+  const pop = m => (m & 1) + (m >> 1 & 1) + (m >> 2 & 1) + (m >> 3 & 1);
+  const rotCW = m => ((m << 1) | (m >> 3)) & 15;
   const rnd = n => Math.floor(Math.random() * n);
 
-  /* ---------- Puzzle generation ---------- */
-  function makeLock(tier) {
-    const T = TIERS[tier];
-    for (let tries = 0; tries < 500; tries++) {
-      const tiles = CELLS.map(() => ({ n: 0, e: 0, s: 0, w: 0 }));
-      for (let i = 0; i < CELLS.length; i++) {
-        for (const [d, dr, dc, opp] of DIRS) {
-          if (d !== "e" && d !== "s") continue;
-          const j = neighbor(i, dr, dc);
-          if (j < 0) continue;
-          const v = Math.random() < T.p ? 1 + rnd(T.colors) : 0;
-          tiles[i][d] = v; tiles[j][opp] = v;
-        }
-      }
-      const deg = t => (t.n > 0) + (t.e > 0) + (t.s > 0) + (t.w > 0);
-      if (tiles.some(t => deg(t) === 0)) continue;
-      const used = new Set(tiles.flatMap(t => [t.n, t.e, t.s, t.w]).filter(Boolean));
-      if (used.size < T.colors) continue;
-      const sigs = new Set(tiles.map(sig));
-      if (sigs.size < Math.min(8, CELLS.length - 4)) continue;
-      return tiles;
-    }
-    throw new Error("Could not generate a lock");
-  }
-  const sig = t => `${t.n}${t.e}${t.s}${t.w}`;
+  const TIERS = {
+    1: { name: "Iron",   rings: 2, sectors: 6,  turned: 3, desc: "12 stones. Three are turned." },
+    2: { name: "Bronze", rings: 2, sectors: 8,  turned: 4, desc: "16 stones. Four are turned." },
+    3: { name: "Silver", rings: 3, sectors: 6,  turned: 5, desc: "18 stones with crossings. Five are turned." },
+    4: { name: "Gold",   rings: 3, sectors: 8,  turned: 6, desc: "24 stones with crossings. Six are turned." },
+    5: { name: "Ogham",  rings: 3, sectors: 10, turned: 8, desc: "30 stones with crossings. Eight are turned." },
+  };
 
-  function scramble(tiles, tier) {
-    const T = TIERS[tier];
-    for (let tries = 0; tries < 200; tries++) {
-      const arr = tiles.map((_, i) => i);
-      const k = Math.max(1, T.scramble + rnd(3) - 1);
-      let done = 0, guard = 0;
-      while (done < k && guard++ < 400) {
-        const a = rnd(arr.length), b = rnd(arr.length);
-        if (a === b || sig(tiles[arr[a]]) === sig(tiles[arr[b]])) continue;
-        [arr[a], arr[b]] = [arr[b], arr[a]]; done++;
-      }
-      if (!solved(tiles, arr)) return arr;
-    }
-    return tiles.map((_, i) => i).reverse();
+  function nb(k, bit, R, C) {
+    const r = (k / C) | 0, s = k % C;
+    if (bit === N) return r + 1 < R ? k + C : -1;
+    if (bit === S_) return r > 0 ? k - C : -1;
+    if (bit === E) return r * C + (s + 1) % C;
+    return r * C + (s - 1 + C) % C;
   }
 
-  function minSwaps(tiles, arr) {
-    // Cycle count over tile identities: an upper bound on swaps needed.
-    const seen = new Array(arr.length).fill(false);
-    let swaps = 0;
-    for (let i = 0; i < arr.length; i++) {
-      if (seen[i]) continue;
-      let len = 0, j = i;
-      while (!seen[j]) { seen[j] = true; j = arr[j]; len++; }
-      swaps += len - 1;
+  function countLoops(m, R, C) {
+    const parent = new Map();
+    const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    const piece = (k, b) => m[k] === 15 ? 2 * k + ((b === N || b === S_) ? 0 : 1) : 2 * k;
+    for (let k = 0; k < m.length; k++) for (const b of BITS) if (m[k] & b) { const p = piece(k, b); if (!parent.has(p)) parent.set(p, p); }
+    for (let k = 0; k < m.length; k++) for (const b of BITS) {
+      if (!(m[k] & b)) continue;
+      const j = nb(k, b, R, C); if (j < 0) continue;
+      const a = find(piece(k, b)), c = find(piece(j, OPP[b]));
+      if (a !== c) parent.set(a, c);
     }
-    return swaps;
+    const roots = new Set(); for (const p of parent.keys()) roots.add(find(p));
+    return roots.size;
   }
 
-  function solved(tiles, arr) {
-    for (let i = 0; i < CELLS.length; i++) {
-      const t = tiles[arr[i]];
-      for (const [d, dr, dc, opp] of DIRS) {
-        const j = neighbor(i, dr, dc);
-        if (j < 0) { if (t[d]) return false; }
-        else if (t[d] !== tiles[arr[j]][opp]) return false;
+  // Build a closed knot: every stone has 2 strand ends (a bend or a straight) or 4 (a crossing).
+  // Toggling the four joins around a 2×2 block keeps every stone's count of strand
+  // ends even, so the strands always form closed loops. Start from concentric rings,
+  // toggle random blocks, then repair any empty stones by toggling a block next to them.
+  function makeKnot(T) {
+    const R = T.rings, C = T.sectors, n = R * C;
+    const blocksOf = k => {
+      const r = (k / C) | 0, s = k % C, out = [];
+      for (const rr of [r - 1, r]) for (const ss of [s - 1, s]) if (rr >= 0 && rr < R - 1) out.push([rr, (ss + C) % C]);
+      return out;
+    };
+    for (let tries = 0; tries < 4000; tries++) {
+      const m = new Array(n).fill(0);
+      const tog = (a, ba, b, bb) => { m[a] ^= ba; m[b] ^= bb; };
+      const block = (r, s) => {
+        const a = r * C + s, b = r * C + (s + 1) % C, c = (r + 1) * C + (s + 1) % C, d = (r + 1) * C + s;
+        tog(a, E, b, W); tog(d, E, c, W); tog(a, N, d, S_); tog(b, N, c, S_);
+      };
+      for (let r = 0; r < R; r++) for (let s = 0; s < C; s++) { const k = r * C + s; tog(k, E, nb(k, E, R, C), W); }
+      for (let r = 0; r < R - 1; r++) for (let s = 0; s < C; s++) if (Math.random() < .5) block(r, s);
+      for (let fix = 0; fix < 300; fix++) {
+        const empty = []; for (let k = 0; k < n; k++) if (!m[k]) empty.push(k);
+        if (!empty.length) break;
+        const bl = blocksOf(empty[rnd(empty.length)]);
+        const [r, s] = bl[rnd(bl.length)]; block(r, s);
       }
+      if (m.some(x => { const p = pop(x); return p !== 2 && p !== 4; })) continue;
+      const crossings = m.filter(x => x === 15).length;
+      const bends = m.filter(x => x !== 15 && x !== 5 && x !== 10).length;
+      if ((R >= 3 && crossings < 1) || crossings > n * .3 || bends < n * .35) continue;
+      if (countLoops(m, R, C) > (R >= 4 ? 3 : 2)) continue;
+      return m;
+    }
+    throw new Error("Could not build a knot");
+  }
+
+  function solved(cur, R, C) {
+    for (let k = 0; k < cur.length; k++) for (const b of BITS) {
+      if (!(cur[k] & b)) continue;
+      const j = nb(k, b, R, C);
+      if (j < 0 || !(cur[j] & OPP[b])) return false;
     }
     return true;
   }
-
-  function spareMoves(skill, tier) {
-    return Math.max(1, Math.round(1.5 + skill / 16 - tier * 0.5 + Math.random()));
+  function looseEnds(cur, R, C) {
+    const out = [];
+    for (let k = 0; k < cur.length; k++) for (const b of BITS) {
+      if (!(cur[k] & b)) continue;
+      const j = nb(k, b, R, C);
+      if (j < 0 || !(cur[j] & OPP[b])) out.push([k, b]);
+    }
+    return out;
   }
+  const rotCCW = m => ((m >> 1) | (m << 3)) & 15;
+  function cwSteps(c, t) { for (let i = 0; i < 4; i++) { if (c === t) return i; c = rotCW(c); } return 0; }
+  // Fewest quarter turns either way (positive = clockwise, negative = anticlockwise).
+  function signedSteps(c, t) { const n = cwSteps(c, t); return n === 3 ? -1 : n; }
+  const stepsTo = (c, t) => Math.abs(signedSteps(c, t));
+
+  // Turn a fixed number of stones (about one either way) away from the solved knot.
+  function scramble(sol, T) {
+    const R = T.rings, C = T.sectors;
+    const turnable = sol.map((m, k) => m === 15 ? -1 : k).filter(k => k >= 0);
+    const K = Math.min(turnable.length, Math.max(2, T.turned + rnd(3) - 1));
+    for (let tries = 0; tries < 200; tries++) {
+      const cur = sol.slice(), pool = turnable.slice();
+      for (let i = 0; i < K; i++) {
+        const k = pool.splice(rnd(pool.length), 1)[0], m = sol[k];
+        if (m === 5 || m === 10) cur[k] = rotCW(m);
+        else { const n = Math.random() < .8 ? 1 + 2 * rnd(2) : 2; let x = m; for (let j = 0; j < n; j++) x = rotCW(x); cur[k] = x; }
+      }
+      if (!solved(cur, R, C)) return cur;
+    }
+    const cur = sol.slice(); cur[turnable[0]] = rotCW(cur[turnable[0]]); return cur;
+  }
+  const minTurns = (cur, sol) => cur.reduce((n, c, k) => n + stepsTo(c, sol[k]), 0);
+  const spareTurns = (skill, tier) => Math.max(1, Math.round(2 + skill / 14 - tier * 0.6 + Math.random()));
 
   /* ---------- State ---------- */
-  let S; // { tier, tiles, arr, movesLeft, budget, open, sel, msg, msgKind }
+  const RANKS = [[0, "Novice"], [20, "Apprentice"], [40, "Journeyman"], [60, "Adept"], [80, "Master"]];
+  const rank = s => RANKS.filter(r => s >= r[0]).pop()[1];
   let P = { skill: 20, opened: 0, attempts: 0 };
+  let S;
+  let cheat = false;
+  function loadProfile() { try { const v = JSON.parse(localStorage.getItem("ccl2-profile") || "null"); if (v && typeof v.skill === "number") P = v; } catch (e) {} }
+  function saveProfile() { try { localStorage.setItem("ccl2-profile", JSON.stringify(P)); } catch (e) {} }
 
-  function loadProfile() { try { const v = JSON.parse(localStorage.getItem("ccl-profile") || "null"); if (v && typeof v.skill === "number") P = v; } catch (e) {} }
-  function saveProfile() { try { localStorage.setItem("ccl-profile", JSON.stringify(P)); } catch (e) {} }
-
-  function deal(tiles, tier, msg, kind) {
-    const arr = scramble(tiles, tier);
-    const budget = minSwaps(tiles, arr) + spareMoves(P.skill, tier);
-    S = { tier, tiles, arr, movesLeft: budget, budget, open: false, sel: null, msg, msgKind: kind || "", cheated: cheat };
+  function deal(tier, sol, msg, kind) {
+    const T = TIERS[tier];
+    const cur = scramble(sol, T);
+    const budget = minTurns(cur, sol) + spareTurns(P.skill, tier);
+    const da = 360 / T.sectors;
+    S = { tier, sol, cur, turnsLeft: budget, budget, open: false, msg, msgKind: kind || "", cheated: cheat, phi: WC - (rnd(T.sectors) + .5) * da, cover: 0 };
   }
   function newLock(tier) {
-    deal(makeLock(tier), tier, `A ${TIERS[tier].name.toLowerCase()} lock. Rejoin the knotwork.`);
-    render();
+    deal(tier, makeKnot(TIERS[tier]), "Spin the disc to see the rest of the knot.");
+    drawAll();
   }
+
+  /* ---------- Geometry ---------- */
+  const RIN = 54, ROUT = 186, WIN = 60, WC = 90; // window spans ±60° around 3 o'clock: one third of the disc, on the right
+  const rad = d => d * Math.PI / 180;
+  const pt = (deg, rho) => [rho * Math.sin(rad(deg)), -rho * Math.cos(rad(deg))];
+  const f = n => n.toFixed(2);
+  const MID = { 1: [.5, 1], 2: [1, .5], 4: [.5, 0], 8: [0, .5] };
+  const CORNER = { 3: [1, 1], 6: [1, 0], 12: [0, 0], 9: [0, 1] };
+
+  function geom() {
+    const T = TIERS[S.tier];
+    return { R: T.rings, C: T.sectors, w: (ROUT - RIN) / T.rings, da: 360 / T.sectors };
+  }
+  function uvxy(g, k, u, v) {
+    const r = (k / g.C) | 0, s = k % g.C;
+    return pt((s + u) * g.da, RIN + (r + v) * g.w);
+  }
+  function linePts(a, b) { const A = MID[a], B = MID[b], out = []; for (let i = 0; i <= 10; i++) { const t = i / 10; out.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); } return out; }
+  function arcPts(mask, a, b) {
+    const c = CORNER[mask], A = MID[a], B = MID[b];
+    let a0 = Math.atan2(A[1] - c[1], A[0] - c[0]), a1 = Math.atan2(B[1] - c[1], B[0] - c[0]);
+    let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const out = []; for (let i = 0; i <= 12; i++) { const t = a0 + d * i / 12; out.push([c[0] + .5 * Math.cos(t), c[1] + .5 * Math.sin(t)]); } return out;
+  }
+  function piecesFor(m) {
+    if (m === 15) return [linePts(N, S_), linePts(E, W)];
+    const bits = BITS.filter(b => m & b);
+    if (m === 5 || m === 10) return [linePts(bits[0], bits[1])];
+    return [arcPts(m, bits[0], bits[1])];
+  }
+  const toPath = (g, k, uv) => uv.map(([u, v], i) => { const [x, y] = uvxy(g, k, u, v); return (i ? "L" : "M") + f(x) + " " + f(y); }).join("");
+  function tileOutline(g, k) {
+    const r = (k / g.C) | 0, s = k % g.C, ri = RIN + r * g.w, ro = ri + g.w, a0 = s * g.da, a1 = a0 + g.da;
+    const p = [pt(a0, ri), pt(a0, ro), pt(a1, ro), pt(a1, ri)];
+    return `M${f(p[0][0])} ${f(p[0][1])}L${f(p[1][0])} ${f(p[1][1])}A${ro} ${ro} 0 0 1 ${f(p[2][0])} ${f(p[2][1])}L${f(p[3][0])} ${f(p[3][1])}A${ri} ${ri} 0 0 0 ${f(p[0][0])} ${f(p[0][1])}Z`;
+  }
+  const norm = d => { d %= 360; if (d > 180) d -= 360; if (d < -180) d += 360; return d; };
+  function visible(g, k) { const s = k % g.C; return Math.abs(norm((s + .5) * g.da + S.phi - WC)) < WIN - 2; }
 
   /* ---------- Drawing ---------- */
-  const COLOR = ["", "var(--gold)", "var(--verdigris)", "var(--garnet)"];
-  const END = { n: [50, 0], e: [100, 50], s: [50, 100], w: [0, 50] };
-  const RINGPT = { n: [50, 33], e: [67, 50], s: [50, 67], w: [33, 50] };
-  function strandPath(d) {
-    const [x1, y1] = END[d], [x2, y2] = RINGPT[d];
-    return `M${x1} ${y1} L${x2} ${y2}`;
-  }
-  const NOTCH = { n: "x=\"28\" y=\"0\" width=\"44\" height=\"7\"", s: "x=\"28\" y=\"93\" width=\"44\" height=\"7\"", w: "x=\"0\" y=\"28\" width=\"7\" height=\"44\"", e: "x=\"93\" y=\"28\" width=\"7\" height=\"44\"" };
-  function tileSvg(t, bad) {
-    let under = "", over = "";
-    for (const d of ["n", "e", "s", "w"]) {
-      const v = t[d]; if (!v) continue;
-      const p = strandPath(d);
-      under += `<path d="${p}" stroke="var(--strand-edge)" stroke-width="20" stroke-linecap="butt" fill="none"/>`;
-      over += `<path d="${p}" stroke="${COLOR[v]}" stroke-width="12" fill="none"/>`;
-      if (v === 2) over += `<path d="${p}" stroke="var(--strand-edge)" stroke-width="3" fill="none"/>`;
-      if (v === 3) over += `<path d="${p}" stroke="#f0c6a8" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.1 9" fill="none"/>`;
-    }
-    // Interlaced central knot: a ring with four loops, drawn as a carved boss
-    const boss = `
-      <circle cx="50" cy="50" r="18" fill="none" stroke="var(--strand-edge)" stroke-width="11"/>
-      <circle cx="50" cy="50" r="18" fill="none" stroke="#b7ab90" stroke-width="5"/>
-      <path d="M50 32 Q62 50 50 68 Q38 50 50 32 Z M32 50 Q50 38 68 50 Q50 62 32 50 Z" fill="none" stroke="var(--strand-edge)" stroke-width="6"/>
-      <path d="M50 32 Q62 50 50 68 Q38 50 50 32 Z M32 50 Q50 38 68 50 Q50 62 32 50 Z" fill="none" stroke="#cfc3a6" stroke-width="2.4"/>
-      <circle cx="50" cy="50" r="3.5" fill="#2a251f"/>`;
-    const grain = `<rect x="6" y="6" width="88" height="88" fill="none" stroke="rgb(0 0 0 / .14)" stroke-width="1.2"/>`;
-    const notches = bad ? bad.map(d => `<rect ${NOTCH[d]} fill="var(--garnet)" stroke="#fff3e6" stroke-width="1.5"/>`).join("") : "";
-    return `<svg viewBox="0 0 100 100" aria-hidden="true">${grain}${under}${boss}${over}${notches}</svg>`;
+  const svg = document.getElementById("lock");
+  const discEl = document.getElementById("disc");
+  const coverEl = document.getElementById("cover");
+
+  function ribbon(d, w) {
+    return `<path d="${d}" stroke="#120e0a" stroke-width="${f(w * 1.5)}" fill="none"/>` +
+           `<path d="${d}" stroke="#d6a640" stroke-width="${f(w)}" fill="none"/>` +
+           `<path d="${d}" stroke="#7a5a1c" stroke-width="1.3" fill="none"/>`;
   }
 
-  /* ---------- Cheat / training aids ---------- */
-  let cheat = false;
-  function brokenEdges(i) {
-    const t = S.tiles[S.arr[i]], out = [];
-    for (const [d, dr, dc, opp] of DIRS) {
-      const j = neighbor(i, dr, dc);
-      if (j < 0 ? t[d] !== 0 : t[d] !== S.tiles[S.arr[j]][opp]) out.push(d);
-    }
-    return out;
-  }
-  function misplaced() {
-    return CELLS.map((_, i) => i).filter(i => sig(S.tiles[S.arr[i]]) !== sig(S.tiles[i]));
-  }
-  // Swaps that put the right kind of stone into cell i. A swap that fixes both
-  // cells is best; otherwise pick the one that sets up the most of those.
-  function candidates(arr) {
-    const wrong = CELLS.map((_, i) => i).filter(i => sig(S.tiles[arr[i]]) !== sig(S.tiles[i]));
-    const out = [];
-    for (const i of wrong) for (const j of wrong) {
-      if (j > i && (sig(S.tiles[arr[j]]) === sig(S.tiles[i]) || sig(S.tiles[arr[i]]) === sig(S.tiles[j]))) {
-        const both = sig(S.tiles[arr[j]]) === sig(S.tiles[i]) && sig(S.tiles[arr[i]]) === sig(S.tiles[j]);
-        out.push({ i, j, both });
+  function drawDisc() {
+    const g = geom();
+    const rw = Math.min(g.w * .3, 2 * Math.PI * (RIN + g.w / 2) / g.C * .3);
+    let bg = "", plain = "", cross = "", caps = "", aids = "";
+    const ends = looseEnds(S.cur, g.R, g.C);
+    const showAids = cheat && !S.open;
+    for (let k = 0; k < S.cur.length; k++) {
+      const m = S.cur[k], r = (k / g.C) | 0, s = k % g.C;
+      const vis = visible(g, k);
+      const label = m === 15 ? "Fixed crossing" : `Stone, ring ${r + 1}`;
+      bg += `<path class="tile${vis ? "" : " hidden"}" data-k="${k}" d="${tileOutline(g, k)}" fill="url(#stoneGrad)" stroke="#2f2b25" stroke-width="1.6"${vis && m !== 15 ? ` tabindex="0" role="button" aria-label="${label}. Enter turns clockwise, Shift+Enter anticlockwise."` : ""}/>`;
+      if (m === 15) {
+        for (const [u, v] of [[.12, .12], [.88, .12], [.12, .88], [.88, .88]]) { const [x, y] = uvxy(g, k, u, v); bg += `<circle cx="${f(x)}" cy="${f(y)}" r="2.2" fill="#2f2b25" pointer-events="none"/>`; }
+        const [vert, horiz] = piecesFor(15).map(p => toPath(g, k, p));
+        const vOver = (r + s) % 2 === 0;
+        cross += ribbon(vOver ? horiz : vert, rw) + ribbon(vOver ? vert : horiz, rw);
+      } else {
+        plain += ribbon(toPath(g, k, piecesFor(m)[0]), rw);
+      }
+      if (showAids && m !== 15 && m !== S.sol[k]) {
+        const n = signedSteps(m, S.sol[k]);
+        const [x, y] = uvxy(g, k, .5, .5);
+        const lbl = n < 0 ? "↺" : n === 2 ? "2" : "↻";
+        aids += `<g pointer-events="none" transform="translate(${f(x)} ${f(y)}) rotate(${f(-S.phi)})"><circle r="9" fill="#d0584a" stroke="#fff3e6" stroke-width="1.2"/><text text-anchor="middle" dy="4" font-size="11" font-weight="700" fill="#fff" font-family="IBM Plex Mono, monospace">${lbl}</text></g>`;
       }
     }
-    return out;
-  }
-  function greedyStep(arr) {
-    const cs = candidates(arr);
-    if (!cs.length) return null;
-    const both = cs.find(c => c.both);
-    if (both) return [both.i, both.j];
-    let best = null, bestScore = -1;
-    for (const c of cs) {
-      const a = arr.slice(); [a[c.i], a[c.j]] = [a[c.j], a[c.i]];
-      const score = candidates(a).filter(x => x.both).length;
-      if (score > bestScore) { bestScore = score; best = c; }
+    for (const [k, b] of ends) {
+      const [u, v] = MID[b];
+      const [x, y] = uvxy(g, k, .5 + (u - .5) * .86, .5 + (v - .5) * .86);
+      caps += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rw * .55)}" fill="#e3b955" stroke="#120e0a" stroke-width="${f(rw * .3)}" pointer-events="none"/>`;
+      if (showAids) caps += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rw * 1.15)}" fill="none" stroke="#d0584a" stroke-width="2" pointer-events="none"/>`;
     }
-    return [best.i, best.j];
-  }
-  // Two strategies: match stones by pattern, or send each stone to its own home.
-  // Hint with whichever finishes in fewer swaps from here.
-  function nextSwap() {
-    if (!misplaced().length) return null;
-    let a = S.arr.slice(), first = null, n = 0, step;
-    while ((step = greedyStep(a)) && n < 40) { if (!first) first = step; [a[step[0]], a[step[1]]] = [a[step[1]], a[step[0]]]; n++; }
-    const homeLen = minSwaps(S.tiles, S.arr);
-    if (first && n <= homeLen) return first;
-    const i = S.arr.findIndex((t, k) => t !== k);
-    return i < 0 ? first : [i, S.arr.indexOf(i)];
-  }
-  function describe(t) {
-    const parts = ["n", "e", "s", "w"].filter(d => t[d]).map(d => `${KIND[t[d]]} ${DIR_WORD[d]}`);
-    return parts.length ? "strands " + parts.join(", ") : "no strands";
+    const hub = `<circle r="${RIN - 2}" fill="#2a241d" stroke="#0c0906" stroke-width="2"/>` +
+      `<path d="M0 -30 Q18 -18 0 0 Q-18 -18 0 -30Z M30 0 Q18 18 0 0 Q18 -18 30 0Z M0 30 Q-18 18 0 0 Q18 18 0 30Z M-30 0 Q-18 -18 0 0 Q-18 18 -30 0Z" fill="none" stroke="#d6a640" stroke-width="3"/>`;
+    discEl.innerHTML = `<g id="knot">${hub}${bg}<g pointer-events="none">${plain}${cross}</g>${caps}</g>${aids}`;
+    discEl.setAttribute("transform", `rotate(${f(S.phi)})`);
   }
 
-  /* ---------- Render ---------- */
-  const boardEl = document.getElementById("board");
+  function drawCover() {
+    const outer = "M-205 -205H205V205H-205Z";
+    const a = pt(WC - WIN, ROUT + 4), b = pt(WC + WIN, ROUT + 4), c = pt(WC + WIN, RIN - 2), d = pt(WC - WIN, RIN - 2);
+    const hole = `M${f(a[0])} ${f(a[1])}A${ROUT + 4} ${ROUT + 4} 0 0 1 ${f(b[0])} ${f(b[1])}L${f(c[0])} ${f(c[1])}A${RIN - 2} ${RIN - 2} 0 0 0 ${f(d[0])} ${f(d[1])}Z`;
+    document.getElementById("coverPlate").setAttribute("d", outer + hole);
+    document.getElementById("windowRim").setAttribute("d", hole);
+    // Triskele: three spirals, one for each third of the disc
+    let arms = "";
+    for (const rot of [0, 120, 240]) {
+      arms += `<path transform="rotate(${rot})" d="M0 0 C 4 -14, 22 -22, 30 -10 C 36 0, 26 12, 17 8 C 10 5, 13 -4, 19 -2" fill="none" stroke="#c49a4a" stroke-width="4" stroke-linecap="round"/>`;
+    }
+    document.getElementById("triskele").innerHTML = `<circle r="44" fill="#2b2117" stroke="#9c7a3c" stroke-width="2"/>${arms}<circle r="4" fill="#c49a4a"/>`;
+  }
+  function placeCover() {
+    coverEl.setAttribute("transform", `translate(${f(-S.cover)} 0)`);
+    coverEl.setAttribute("opacity", cheat && !S.open ? ".38" : "1");
+  }
+
+  function drawExamples() {
+    const rib = (d) => `<path d="${d}" stroke="#120e0a" stroke-width="13" fill="none"/><path d="${d}" stroke="#d6a640" stroke-width="8.5" fill="none"/><path d="${d}" stroke="#7a5a1c" stroke-width="1.3" fill="none"/>`;
+    const stones = `<rect x="2" y="2" width="56" height="56" fill="#6a6558" stroke="#2f2b25" stroke-width="1.6"/><rect x="62" y="2" width="56" height="56" fill="#6a6558" stroke="#2f2b25" stroke-width="1.6"/>`;
+    document.getElementById("exGood").innerHTML = stones + rib("M30 60 Q30 30 60 30") + rib("M60 30 Q90 30 90 60");
+    document.getElementById("exBad").innerHTML = stones + rib("M30 60 Q30 30 60 30") + rib("M90 2 L90 58") +
+      `<circle cx="55" cy="30" r="5.5" fill="#d6a640" stroke="#120e0a" stroke-width="2.6"/>`;
+  }
+
+  /* ---------- Ledger ---------- */
   const statusEl = document.getElementById("status");
-  const pipsEl = document.getElementById("pips");
-  const movesLine = document.getElementById("movesLine");
-  const tryBtn = document.getElementById("tryBtn");
-  const newBtn = document.getElementById("newBtn");
-
-  function render(flashCells) {
-    boardEl.querySelectorAll(".cell").forEach(el => el.remove());
-    const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.i : null;
-    const aid = cheat && !S.open;
-    const wrongSet = new Set(aid ? misplaced() : []);
-    const hint = aid ? nextSwap() : null;
-    const isDone = aid && solved(S.tiles, S.arr);
-    CELLS.forEach(([r, c], i) => {
-      const t = S.tiles[S.arr[i]];
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "cell"; b.dataset.i = i;
-      b.style.gridRow = r + 1; b.style.gridColumn = c + 1;
-      if (S.sel === i) b.classList.add("sel");
-      if (aid && wrongSet.has(i) && !isDone) b.classList.add("wrong");
-      if (hint && !isDone && hint.includes(i)) b.classList.add("hint");
-      if (flashCells && flashCells.includes(i)) b.classList.add("flash");
-      b.setAttribute("aria-label", `Stone ${i + 1}, ${describe(t)}${S.sel === i ? ", selected" : ""}`);
-      b.innerHTML = tileSvg(t, aid ? brokenEdges(i) : null);
-      boardEl.appendChild(b);
-    });
-    const hintBox = document.getElementById("hintBox");
-    if (!aid) hintBox.textContent = "";
-    else if (isDone) hintBox.textContent = "Every strand joins. Try the lock.";
-    else if (hint) {
-      const broken = CELLS.reduce((n, _, i) => n + brokenEdges(i).length, 0);
-      hintBox.textContent = `Swap the two glowing stones. ${broken} broken join${broken === 1 ? "" : "s"} left.`;
-    }
-    const cb = document.getElementById("cheatBtn");
-    cb.setAttribute("aria-pressed", String(cheat));
-    cb.textContent = cheat ? "Cheat on" : "Cheat";
-    if (focused != null) { const el = boardEl.querySelector(`[data-i="${focused}"]`); if (el) el.focus({ preventScroll: true }); }
-    boardEl.classList.toggle("open", S.open);
-
+  function drawLedger() {
     statusEl.textContent = S.msg;
     statusEl.className = "status " + S.msgKind;
-
-    pipsEl.innerHTML = Array.from({ length: S.budget }, (_, k) => `<span class="pip${k < S.movesLeft ? " on" : ""}"></span>`).join("");
-    movesLine.textContent = S.open ? `Opened with ${S.movesLeft} of ${S.budget} moves to spare`
-      : S.movesLeft === 0 ? `0 of ${S.budget} left. Try the lock.`
-      : `${S.movesLeft} of ${S.budget} moves left`;
-
+    document.getElementById("pips").innerHTML = S.budget <= 30
+      ? Array.from({ length: S.budget }, (_, k) => `<span class="pip${k < S.turnsLeft ? " on" : ""}"></span>`).join("")
+      : `<div class="meter" style="flex:1"><i style="width:${(100 * S.turnsLeft / S.budget).toFixed(1)}%"></i></div>`;
+    document.getElementById("movesLine").textContent = S.open ? `Opened with ${S.turnsLeft} of ${S.budget} turns to spare`
+      : S.turnsLeft === 0 ? `0 of ${S.budget} left. Pull the cover.` : `${S.turnsLeft} of ${S.budget} turns left`;
     document.getElementById("skillNum").innerHTML = `${P.skill}<small>${rank(P.skill)}</small>`;
     document.getElementById("skillBar").style.width = P.skill + "%";
     document.getElementById("stats").textContent = `${P.opened} lock${P.opened === 1 ? "" : "s"} opened · ${P.attempts} attempt${P.attempts === 1 ? "" : "s"}`;
     document.getElementById("tierDesc").textContent = TIERS[S.tier].desc;
     const tr = document.querySelector(`input[name="tier"][value="${S.tier}"]`); if (tr) tr.checked = true;
+    const pull = document.getElementById("pullBtn"), nb_ = document.getElementById("newBtn");
+    pull.disabled = S.open;
+    nb_.textContent = S.open ? "Next lock" : "New lock";
+    nb_.classList.toggle("primary", S.open); pull.classList.toggle("primary", !S.open);
+    const cb = document.getElementById("cheatBtn");
+    cb.setAttribute("aria-pressed", String(cheat)); cb.textContent = cheat ? "Cheat on" : "Cheat";
+    const g = geom(), hb = document.getElementById("hintBox");
+    if (!cheat || S.open) hb.textContent = "";
+    else {
+      const ends = looseEnds(S.cur, g.R, g.C).length;
+      hb.textContent = ends ? `Cover is see-through. Badges show which way each stone needs turning. ${ends} loose end${ends === 1 ? "" : "s"} left.` : "No loose ends. Pull the cover.";
+    }
+    svg.classList.toggle("open", S.open);
+  }
+  function drawAll() { drawDisc(); placeCover(); drawLedger(); }
 
-    tryBtn.disabled = S.open;
-    newBtn.textContent = S.open ? "Next lock" : "New lock";
-    newBtn.classList.toggle("primary", S.open);
-    tryBtn.classList.toggle("primary", !S.open);
+  /* ---------- Actions ---------- */
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tween(from, to, ms, set, done) {
+    if (reduce || ms <= 0) { set(to); done && done(); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - t, 3);
+      set(from + (to - from) * e);
+      if (t < 1) requestAnimationFrame(step); else done && done();
+    };
+    requestAnimationFrame(step);
+  }
+  let busy = false;
+  function spinTo(target) {
+    const from = S.phi;
+    tween(from, target, 280, v => { S.phi = v; discEl.setAttribute("transform", `rotate(${f(v)})`); }, () => drawDisc());
+  }
+  const snapPhi = () => { const g = geom(), q = S.phi - WC; return Math.round((q / g.da) - .5) * g.da + .5 * g.da + WC; };
+  function spinBy(dir) { if (busy || S.open) return; const g = geom(); spinTo(snapPhi() + dir * g.da); }
+
+  function turn(k, ccw) {
+    if (busy || S.open) return;
+    const g = geom();
+    if (S.cur[k] === 15 || !visible(g, k)) return;
+    if (S.turnsLeft <= 0) { S.msg = "No turns left. Pull the cover."; S.msgKind = "bad"; drawLedger(); return; }
+    S.cur[k] = ccw ? rotCCW(S.cur[k]) : rotCW(S.cur[k]); S.turnsLeft--;
+    S.msg = S.turnsLeft === 0 ? "That was your last turn. Pull the cover." : ""; S.msgKind = "";
+    drawDisc(); drawLedger();
+    const el = discEl.querySelector(`[data-k="${k}"]`); if (el) el.focus({ preventScroll: true });
   }
 
-  /* ---------- Moves ---------- */
-  function swap(a, b) {
-    if (S.open || a === b) return;
-    if (S.movesLeft <= 0) { S.msg = "No moves left. Try the lock."; S.msgKind = "bad"; S.sel = null; render(); return; }
-    [S.arr[a], S.arr[b]] = [S.arr[b], S.arr[a]];
-    S.movesLeft--; S.sel = null;
-    S.msg = S.movesLeft === 0 ? "That was your last move. Try the lock." : "";
-    S.msgKind = "";
-    render([a, b]);
-  }
-
-  function tryLock() {
-    if (S.open) return;
-    P.attempts++;
-    if (solved(S.tiles, S.arr)) {
-      const gain = S.cheated ? 0 : Math.min(100 - P.skill, Math.max(1, Math.round(S.tier * 2 + S.movesLeft * 0.5 - P.skill / 30)));
+  const PULL_AT = 120;
+  function tryOpen() {
+    if (busy || S.open) return;
+    busy = true; P.attempts++;
+    const g = geom();
+    if (solved(S.cur, g.R, g.C)) {
+      const gain = S.cheated ? 0 : Math.min(100 - P.skill, Math.max(1, Math.round(S.tier * 2 + S.turnsLeft * .5 - P.skill / 30)));
       P.skill += gain; if (!S.cheated) P.opened++;
-      S.open = true; S.sel = null;
+      S.open = true;
       S.msg = S.cheated ? "The box opens. Practice lock, so no skill gained." : gain > 0 ? `The box opens. Skill +${gain}.` : "The box opens.";
-      S.msgKind = "good";
-      saveProfile(); render();
+      S.msgKind = "good"; saveProfile();
+      tween(S.cover, 430, 700, v => { S.cover = v; placeCover(); }, () => {
+        drawAll();
+        const from = S.phi; tween(from, from + 360, 2400, v => { S.phi = v; discEl.setAttribute("transform", `rotate(${f(v)})`); }, () => { busy = false; });
+      });
     } else {
       saveProfile();
-      deal(S.tiles, S.tier, "The tumblers fall. The stones scramble again.", "bad");
-      render();
-      boardEl.classList.remove("shake"); void boardEl.offsetWidth; boardEl.classList.add("shake");
+      tween(S.cover, 0, 260, v => { S.cover = v; placeCover(); }, () => {
+        svg.classList.remove("shake"); void svg.getBoundingClientRect(); svg.classList.add("shake");
+        const tier = S.tier, sol = S.sol;
+        deal(tier, sol, "The knot was broken. The tumblers fall and the stones scramble.", "bad");
+        drawAll(); busy = false;
+      });
     }
   }
 
-  /* ---------- Drag, drop and tap ---------- */
+  /* ---------- Pointer: spin, tap and pull ---------- */
+  function svgPoint(e) { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; const q = p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x, q.y]; }
   let drag = null;
-  boardEl.addEventListener("pointerdown", e => {
-    const cell = e.target.closest(".cell");
-    if (!cell || S.open || e.button > 0) return;
-    drag = { from: +cell.dataset.i, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, ghost: null, over: null };
-    cell.setPointerCapture(e.pointerId);
+  svg.addEventListener("pointerdown", e => {
+    if (busy || S.open || e.button === 1) return;
+    const [x, y] = svgPoint(e);
+    if (e.target.closest("#cover")) {
+      if (e.button !== 0) return;
+      drag = { kind: "pull", x0: x, id: e.pointerId };
+      coverEl.classList.add("pulling");
+    } else if (e.target.closest("#disc")) {
+      const tile = e.target.closest("[data-k]");
+      drag = { kind: "spin", a0: Math.atan2(x, -y) * 180 / Math.PI, phi0: S.phi, x0: x, y0: y, moved: false, k: tile ? +tile.dataset.k : null, id: e.pointerId, long: false };
+      const dd = drag;
+      dd.timer = e.pointerType === "mouse" ? null : setTimeout(() => { if (drag === dd && !dd.moved && dd.k != null) { dd.long = true; turn(dd.k, true); } }, 450);
+    } else return;
+    svg.setPointerCapture(e.pointerId);
   });
-  boardEl.addEventListener("pointermove", e => {
+  svg.addEventListener("pointermove", e => {
     if (!drag || e.pointerId !== drag.id) return;
-    if (!drag.moving) {
-      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 7) return;
-      drag.moving = true;
-      const src = boardEl.querySelector(`[data-i="${drag.from}"]`);
-      src.classList.add("lifted");
-      const g = document.createElement("div");
-      g.className = "ghost"; g.innerHTML = src.innerHTML;
-      document.body.appendChild(g); drag.ghost = g;
-    }
-    drag.ghost.style.left = e.clientX + "px"; drag.ghost.style.top = e.clientY + "px";
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const tgt = under && under.closest && under.closest(".cell");
-    const ti = tgt ? +tgt.dataset.i : null;
-    if (ti !== drag.over) {
-      boardEl.querySelectorAll(".over").forEach(el => el.classList.remove("over"));
-      if (tgt && ti !== drag.from) tgt.classList.add("over");
-      drag.over = ti;
+    const [x, y] = svgPoint(e);
+    if (drag.kind === "pull") {
+      const dx = Math.max(0, drag.x0 - x);
+      S.cover = dx < PULL_AT ? dx : PULL_AT + (dx - PULL_AT) * .35;
+      placeCover();
+    } else {
+      if (!drag.moved && Math.hypot(x - drag.x0, y - drag.y0) < 6) return;
+      if (drag.long) return;
+      drag.moved = true; clearTimeout(drag.timer);
+      const a = Math.atan2(x, -y) * 180 / Math.PI;
+      S.phi = drag.phi0 + norm(a - drag.a0);
+      discEl.setAttribute("transform", `rotate(${f(S.phi)})`);
     }
   });
-  function endDrag(e, cancelled) {
+  function endDrag(e, cancel) {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
-    if (d.ghost) d.ghost.remove();
-    boardEl.querySelectorAll(".over,.lifted").forEach(el => el.classList.remove("over", "lifted"));
-    if (cancelled) return;
-    if (d.moving) {
-      if (d.over != null && d.over !== d.from) swap(d.from, d.over);
-    } else {
-      tap(d.from);
-    }
+    clearTimeout(d.timer);
+    coverEl.classList.remove("pulling");
+    if (d.kind === "pull") {
+      if (!cancel && S.cover >= PULL_AT) tryOpen();
+      else tween(S.cover, 0, 300, v => { S.cover = v; placeCover(); });
+    } else if (d.moved) spinTo(snapPhi());
+    else if (!cancel && d.k != null && !d.long) turn(d.k, e.button === 2);
   }
-  boardEl.addEventListener("pointerup", e => endDrag(e, false));
-  boardEl.addEventListener("pointercancel", e => endDrag(e, true));
-
-  function tap(i) {
-    if (S.open) return;
-    if (S.sel === null) { S.sel = i; render(); }
-    else if (S.sel === i) { S.sel = null; render(); }
-    else swap(S.sel, i);
-  }
-  boardEl.addEventListener("keydown", e => {
-    const cell = e.target.closest(".cell");
-    if (!cell) return;
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(+cell.dataset.i); }
-    if (e.key === "Escape" && S.sel !== null) { S.sel = null; render(); }
+  svg.addEventListener("pointerup", e => endDrag(e, false));
+  svg.addEventListener("pointercancel", e => endDrag(e, true));
+  svg.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); spinBy(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); spinBy(1); }
+    else if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.k) { e.preventDefault(); turn(+e.target.dataset.k, e.shiftKey); }
   });
+  svg.addEventListener("contextmenu", e => e.preventDefault());
 
-  tryBtn.addEventListener("click", tryLock);
-  document.getElementById("cheatBtn").addEventListener("click", () => {
-    cheat = !cheat;
-    if (cheat && !S.open) S.cheated = true;
-    render();
+  document.getElementById("spinL").addEventListener("click", () => spinBy(-1));
+  document.getElementById("spinR").addEventListener("click", () => spinBy(1));
+  document.getElementById("pullBtn").addEventListener("click", () => {
+    if (busy || S.open) return;
+    tween(0, PULL_AT + 10, 380, v => { S.cover = v; placeCover(); }, tryOpen);
   });
-  newBtn.addEventListener("click", () => newLock(S.tier));
-  document.querySelectorAll('input[name="tier"]').forEach(el => el.addEventListener("change", () => newLock(+el.value)));
+  document.getElementById("newBtn").addEventListener("click", () => { if (!busy) newLock(S.tier); });
+  document.getElementById("cheatBtn").addEventListener("click", () => { cheat = !cheat; if (cheat && !S.open) S.cheated = true; drawAll(); });
+  document.querySelectorAll('input[name="tier"]').forEach(el => el.addEventListener("change", () => { if (!busy) newLock(+el.value); }));
 
   /* ---------- Boot ---------- */
   function start(data) {
-    loadProfile();
-    if (data && data.S && data.S.tiles) { S = data.S; if (data.P) P = data.P; S.sel = null; render(); }
+    loadProfile(); drawCover(); drawExamples();
+    if (data && data.S && data.S.sol && TIERS[data.S.tier] && data.S.sol.length === TIERS[data.S.tier].rings * TIERS[data.S.tier].sectors) { S = data.S; if (data.P) P = data.P; S.cover = S.open ? 430 : 0; drawAll(); }
     else newLock(2);
   }
   window.claude?.hot?.snapshot?.(() => ({ S, P }));
