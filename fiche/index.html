@@ -54,6 +54,7 @@ h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.2rem
 .status.again { color: var(--again); }
 svg.wide { width: 100%; height: auto; display: block; }
 .disk-wrap { display: grid; gap: 4px; justify-items: center; }
+.disk-wrap[hidden] { display: none; }
 #pegs { width: 100%; max-width: 380px; height: auto; display: block; }
 .total { margin: 0; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); }
 .total b { font-size: 1.6rem; color: var(--bronze-hi); font-weight: 500; }
@@ -65,24 +66,33 @@ svg.wide { width: 100%; height: auto; display: block; }
 .hand-head .who.you { color: var(--you); }
 .hand-head .who.rival { color: var(--rival); }
 .hand-head .note { font-size: .88rem; color: var(--muted); font-style: italic; }
-.dice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.playfield { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) minmax(0, 150px); gap: 12px; align-items: start; }
+#tray { width: 100%; height: auto; display: block; }
+#dial { border-radius: 12px; }
+.dice { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.hand-head { min-height: 2.6em; align-content: start; }
+.hand.rival .hand-head { text-align: right; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .playfield { grid-template-columns: minmax(0, 1fr); }
+  .playfield .dice { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #youHand { order: 3; } #tray { order: 2; } #rivalHand { order: 1; }
+  .hand-head { min-height: 0; }
+}
 .die-btn {
   font: inherit; color: var(--ink); cursor: pointer;
   border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(160deg, var(--oak-3), var(--oak-2));
   padding: 8px 6px 9px; display: grid; justify-items: center; gap: 2px; min-width: 0;
   transition: transform .15s ease, border-color .15s ease, opacity .2s;
 }
-.die-btn svg { width: 100%; max-width: 120px; height: auto; aspect-ratio: 1.3; }
-.die-btn .nm { font-weight: 600; font-size: .92rem; }
-.die-btn .rg { font-family: var(--font-mono); font-size: .74rem; color: var(--muted); }
+.die-btn svg { width: 100%; max-width: 92px; height: auto; aspect-ratio: 1.3; }
+.die-btn .nm { font-weight: 600; font-size: .95rem; line-height: 1.2; }
+.die-btn .rg { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 500; color: var(--bronze-hi); line-height: 1.2; }
 .die-btn .odds { font-family: var(--font-mono); font-size: .8rem; color: var(--bronze-hi); min-height: 1.2em; }
 .die-btn:enabled:hover { border-color: var(--bronze); transform: translateY(-2px); }
 .die-btn:focus-visible { outline: 2px solid var(--bronze-hi); outline-offset: 2px; }
 .die-btn:disabled { cursor: default; }
 .die-btn.spent { opacity: .22; }
 .die-btn.best { border-color: var(--bronze-hi); box-shadow: 0 0 0 1px var(--bronze-hi) inset; }
-.rival .die-btn { padding: 4px 4px 6px; }
-.rival .die-btn svg { max-width: 84px; }
 
 aside { display: grid; gap: 22px; min-width: 0; }
 .panel { display: grid; gap: 9px; }
@@ -151,22 +161,25 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
   <div class="game">
     <section class="table" aria-label="The table">
       <div class="status" id="status" role="status" aria-live="polite"></div>
-      <div class="disk-wrap">
+      <!-- The spiral board is kept but hidden for now; the dial shows the total. -->
+      <div class="disk-wrap" hidden>
         <svg id="pegs" viewBox="0 0 260 260" aria-label="Scoring spiral"></svg>
         <p class="total" id="totalLine">Total <b>0</b></p>
       </div>
-      <div class="hand rival" id="rivalHand">
-        <div class="hand-head"><span class="who rival" id="rivalName">Rival</span><span class="note" id="rivalNote"></span></div>
-        <div class="dice" id="rivalDice"></div>
-      </div>
+      <svg id="dial" class="wide" viewBox="0 0 640 118" role="img" aria-label="Total"></svg>
 
-      <svg id="tray" class="wide" viewBox="0 0 640 258" aria-label="Rolling tray"></svg>
+      <div class="playfield">
+        <div class="hand you" id="youHand">
+          <div class="hand-head"><span class="who you" id="youName">You</span><span class="note" id="youNote"></span></div>
+          <div class="dice" id="youDice"></div>
+        </div>
+        <svg id="tray" viewBox="0 0 420 300" aria-label="Rolling tray, your half on the left and your rival's on the right"></svg>
+        <div class="hand rival" id="rivalHand">
+          <div class="hand-head"><span class="who rival" id="rivalName">Rival</span><span class="note" id="rivalNote"></span></div>
+          <div class="dice" id="rivalDice"></div>
+        </div>
+      </div>
       <div class="card" id="card" hidden></div>
-
-      <div class="hand you" id="youHand">
-        <div class="hand-head"><span class="who you" id="youName">You</span><span class="note" id="youNote"></span></div>
-        <div class="dice" id="youDice"></div>
-      </div>
     </section>
 
     <aside>
@@ -440,9 +453,62 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
     h += `<g id="pegMark" style="transition: transform .12s ease-out"><circle cx="0" cy="0" r="7.5" fill="url(#peg)" stroke="#2a1a0a"/><circle cx="-2.2" cy="-2.6" r="1.8" fill="#fff" opacity=".55"/></g>`;
     pegsEl.innerHTML = h;
   }
+  // The dial: a bronze drum turning on a vertical axis behind a window, with the
+  // numbers embossed around it. The total sits under the pointer at the centre.
+  const dialEl = document.getElementById("dial");
+  const DIAL = { pos: 0, raf: 0 }, DSTEP = 21, DR = 300;
+  const DMARK = { 7: ["again", "#a9d6a2"], 9: ["loses", "#f08c80"], 12: ["draw", "#d8cdb6"], 20: ["wins", "#ffe2a6"] };
+  function drawDial(pos) {
+    let h = `<defs>
+      <linearGradient id="drum" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#140e08"/><stop offset=".22" stop-color="#5a4223"/><stop offset=".5" stop-color="#9c7a45"/><stop offset=".78" stop-color="#5a4223"/><stop offset="1" stop-color="#140e08"/></linearGradient>
+      <linearGradient id="drumV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".25" stop-color="#000" stop-opacity="0"/><stop offset=".75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></linearGradient>
+      <linearGradient id="num" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe9c2"/><stop offset=".55" stop-color="#d0aa68"/><stop offset="1" stop-color="#7c5a2c"/></linearGradient>
+      <clipPath id="win"><rect x="34" y="20" width="572" height="78" rx="10"/></clipPath></defs>
+      <rect x="2" y="2" width="636" height="114" rx="14" fill="#2a1d12" stroke="#120b06" stroke-width="2"/>
+      <rect x="10" y="9" width="620" height="100" rx="12" fill="none" stroke="rgb(255 220 170 / .1)"/>
+      <g clip-path="url(#win)"><rect x="34" y="20" width="572" height="78" fill="url(#drum)"/>`;
+    // the drum's ribs, turning with it
+    for (let k = Math.floor(pos) - 6; k <= Math.ceil(pos) + 6; k++) {
+      const a = (k + 0.5 - pos) * DSTEP * Math.PI / 180; if (Math.abs(a) > 1.5) continue;
+      const x = 320 + DR * Math.sin(a);
+      h += `<line x1="${f(x)}" y1="20" x2="${f(x)}" y2="98" stroke="#1a1109" stroke-width="${f(1.6 * Math.cos(a))}" opacity="${f(.7 * Math.cos(a))}"/>`;
+    }
+    for (let n = 0; n <= 30; n++) {
+      const a = (n - pos) * DSTEP * Math.PI / 180; if (Math.abs(a) > 1.45) continue;
+      const c = Math.cos(a), x = 320 + DR * Math.sin(a), m = DMARK[n];
+      const fill = n > 20 ? "#c97a6e" : m ? m[1] : "url(#num)";
+      h += `<g transform="translate(${f(x)} 0) scale(${f(Math.max(.05, c))} 1)" opacity="${f(.25 + .75 * c)}">
+        <text x="1.6" y="${m ? 70 : 76}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="600" font-size="40" fill="#0d0805" opacity=".8">${n}</text>
+        <text x="-1" y="${m ? 67 : 73}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="600" font-size="40" fill="#fff4dc" opacity=".35">${n}</text>
+        <text x="0" y="${m ? 68 : 74}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="600" font-size="40" fill="${fill}">${n}</text>
+        ${m ? `<text x="0" y="88" text-anchor="middle" font-family="Spectral, Georgia, serif" font-style="italic" font-size="12" fill="${m[1]}">${m[0]}</text>` : ""}</g>`;
+    }
+    h += `<rect x="34" y="20" width="572" height="78" fill="url(#drumV)"/></g>
+      <rect x="34" y="20" width="572" height="78" rx="10" fill="none" stroke="#0c0704" stroke-width="2.5"/>
+      <rect x="282" y="20" width="76" height="78" rx="4" fill="rgb(255 240 210 / .06)" stroke="rgb(255 225 170 / .35)" stroke-width="1.2"/>
+      <path d="M312 9 L328 9 L320 21 Z" fill="#d9b77d" stroke="#2a1a0a"/>
+      <path d="M312 109 L328 109 L320 97 Z" fill="#d9b77d" stroke="#2a1a0a"/>`;
+    dialEl.innerHTML = h;
+  }
+  function setDial(t) {
+    if (DIAL.target === t) return;
+    DIAL.target = t;
+    dialEl.setAttribute("aria-label", `Total ${t}`);
+    cancelAnimationFrame(DIAL.raf);
+    const from = DIAL.pos, t0 = performance.now(), dur = reduce ? 1 : 380 + Math.min(700, Math.abs(t - from) * 70);
+    const back = k => { const c = 1.4; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      DIAL.pos = from + (t - from) * back(k); drawDial(DIAL.pos);
+      if (k < 1) DIAL.raf = requestAnimationFrame(step); else { DIAL.pos = t; drawDial(t); }
+    };
+    DIAL.raf = requestAnimationFrame(step);
+  }
+
   // Walk the peg along the groove one hole at a time.
   let pegAt = 0, pegTimer = null;
   function placePeg(t, instant) {
+    setDial(t);
     const m = document.getElementById("pegMark"); if (!m) return;
     const target = Math.min(20, t);
     const set = k => { const [x, y] = SPIRAL.holes[k]; m.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; };
@@ -454,26 +520,37 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
     if (tl) tl.innerHTML = t > 20 ? `Total <b>${t}</b> · over` : `Total <b>${t}</b>`;
   }
 
-  // Tray slots: two rows of five
-  const slot = i => [92 + (i % 4) * 152, 84 + Math.floor(i / 4) * 128];
-  const trayH = () => Math.max(2, Math.ceil((R.rolls.length + 1) / 4)) * 128 + 40;
+  // The tray is split down the middle: your dice land on the left half, your rival's on the right.
+  const TW = 420, HALF = TW / 2;
+  const nthOf = i => R.rolls.slice(0, i).filter(r => r.p === R.rolls[i].p).length;
+  const slotFor = (p, k) => [(p === 1 ? 0 : HALF) + 57 + (k % 2) * 96, 72 + Math.floor(k / 2) * 106];
+  const slot = i => slotFor(R.rolls[i].p, nthOf(i));
+  const trayH = () => { const n = Math.max(R.rolls.filter(r => r.p === 1).length, R.rolls.filter(r => r.p === 2).length) + 1; return Math.max(3, Math.ceil(n / 2)) * 106 + 30; };
   function drawTrayBase() {
     const H = trayH();
-    trayEl.setAttribute("viewBox", `0 0 640 ${H}`);
+    trayEl.setAttribute("viewBox", `0 0 ${TW} ${H}`);
+    const you = M.mode === "pvp" ? "PLAYER 1" : "YOUR SIDE", them = M.mode === "pvp" ? "PLAYER 2" : "RIVAL'S SIDE";
     return `<defs><radialGradient id="felt" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#3a2a1c"/><stop offset="1" stop-color="#1f160f"/></radialGradient></defs>
-      <rect x="2" y="2" width="636" height="${H - 4}" rx="16" fill="url(#felt)" stroke="#3d3328" stroke-width="2"/>
-      <rect x="12" y="12" width="616" height="${H - 24}" rx="10" fill="none" stroke="rgb(255 220 170 / .07)" stroke-dasharray="3 6"/>`;
+      <rect x="2" y="2" width="${TW - 4}" height="${H - 4}" rx="14" fill="url(#felt)" stroke="#3d3328" stroke-width="2"/>
+      <rect x="${HALF - 3}" y="10" width="6" height="${H - 20}" rx="3" fill="#120c07" stroke="rgb(255 220 170 / .12)"/>
+      <rect x="2" y="2" width="${HALF - 4}" height="${H - 4}" rx="14" fill="rgb(217 164 65 / .035)"/>
+      <rect x="${HALF + 2}" y="2" width="${HALF - 4}" height="${H - 4}" rx="14" fill="rgb(159 180 196 / .035)"/>
+      <text x="${HALF / 2}" y="24" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="2" fill="#d9a441" opacity=".55">${you}</text>
+      <text x="${HALF + HALF / 2}" y="24" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="2" fill="#9fb4c4" opacity=".55">${them}</text>`;
   }
   function drawTray(anim) {
     let h = drawTrayBase();
     R.rolls.forEach((r, i) => {
       if (anim && anim.index === i) return;
       const [x, y] = slot(i);
-      h += `<g transform="translate(${x} ${y}) scale(1.05)">${dieArt(r.d, r.v, r.seed)}</g>`;
-      h += `<text x="${x}" y="${y + 66}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" font-weight="500" fill="${r.p === 1 ? "#d9a441" : "#9fb4c4"}">${r.v}${r.v === 3 ? " ↻" : ""}</text>`;
+      h += `<g transform="translate(${x} ${y}) scale(.78)">${dieArt(r.d, r.v, r.seed)}</g>`;
+      h += `<text x="${x}" y="${y + 50}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" font-weight="500" fill="${r.p === 1 ? "#d9a441" : "#9fb4c4"}">${r.v}${r.v === 3 ? " ↻" : ""}</text>`;
     });
-    if (anim) h += `<g transform="translate(${f(anim.x)} ${f(anim.y)}) rotate(${f(anim.rot)}) scale(1.05)">${dieArt(anim.d, anim.face, anim.seed)}</g>`;
-    if (!R.rolls.length && !anim) h += `<text x="320" y="${trayH() / 2 + 6}" text-anchor="middle" font-family="Spectral, Georgia, serif" font-style="italic" font-size="16" fill="#a99c84">${M.over ? "" : "The tray is empty. " + nameOf(R.turn) + " roll first."}</text>`;
+    if (anim) h += `<g transform="translate(${f(anim.x)} ${f(anim.y)}) rotate(${f(anim.rot)}) scale(.78)">${dieArt(anim.d, anim.face, anim.seed)}</g>`;
+    if (!R.rolls.length && !anim && !M.over) {
+      const cx = R.turn === 1 ? HALF / 2 : HALF + HALF / 2;
+      h += `<text x="${cx}" y="${trayH() / 2}" text-anchor="middle" font-family="Spectral, Georgia, serif" font-style="italic" font-size="14" fill="#a99c84">${nameOf(R.turn)}</text><text x="${cx}" y="${trayH() / 2 + 18}" text-anchor="middle" font-family="Spectral, Georgia, serif" font-style="italic" font-size="14" fill="#a99c84">${verb(R.turn, "roll", "rolls")} first</text>`;
+    }
     trayEl.innerHTML = h;
   }
 
@@ -508,7 +585,7 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
     const v = sample(d), seed = Math.random();
     if (R.forced < 0) R.hands[p] &= ~bit(d);
     const index = R.rolls.length;
-    const [tx, ty] = slot(index), sx = 320, sy = p === 1 ? trayH() + 60 : -60;
+    const [tx, ty] = slotFor(p, R.rolls.filter(r => r.p === p).length), sx = p === 1 ? -70 : TW + 70, sy = ty - 30;
     const t0 = performance.now(), dur = reduce ? 1 : 750;
     render();
     const tick = now => {
@@ -644,7 +721,7 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
 
   function start(data) {
     try { coach = localStorage.getItem("fiche-coach") === "1"; } catch (e) {}
-    drawPegs();
+    drawPegs(); drawDial(0);
     const saved = (data && data.M && data.R) ? data : load();
     if (saved && !saved.M.over && !saved.R.over) {
       M = saved.M; R = saved.R; busy = false;
