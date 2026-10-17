@@ -144,7 +144,9 @@ A day is eight pans. Each pan ends with a summary of gold kept, washed out and l
 
 Every piece takes by moving onto an enemy piece. A move that steps *up* a tier stops there; going downhill is free.
 
-**Setup.** Starting with the Host, the players take turns setting one piece at a time: Host pieces on the low ground, Sí pieces on the slope or summit. When the Sí run out, the Host set their last three. The Host move first. In the *Set your rival's* option, each side sets the other side's pieces instead.
+**Setup.** Starting with the Host, the players take turns setting one piece at a time: Host pieces on the low ground, Sí pieces on the slope or summit. When the Sí run out, the Host set their last three. The Host move first. In the *Set your rival's* option, the Host first set their Lord and the Sí set their Chariot on the summit. Then the sides take turns setting each other's pieces, Host first (a Sí rider, then a Host spearman, and so on), and the Sí set the last three spearmen. In this setup the hold is five turns (six for the easier option).
+
+Without those adjustments, setting the rival's pieces is lopsided: whoever moves first plants the rival's pieces where they can be taken at once. In 200 computer games each, the Host won 86% when moving first and the Sí won 94% when the Sí moved first. With the Lord and Chariot set by their owners, the Chariot starting on the summit, and a five-turn hold, the Host won 35% (5 moves of search) and 46% (6 moves), about the same as the standard setup.
 
 **Winning**
 

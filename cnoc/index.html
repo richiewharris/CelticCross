@@ -255,7 +255,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
           <li><svg viewBox="0 0 100 100"><path d="M10 80 H30 V60 H50 V40 H90" fill="none" stroke="currentColor" stroke-width="6"/></svg><span><b>The climb.</b> A move that steps up a tier stops there. Downhill is free. Take a piece by moving onto it.</span></li>
           <li><svg viewBox="0 0 100 100"><rect x="38" y="20" width="24" height="64" rx="10" fill="var(--silver)" stroke="var(--silver-ink)" stroke-width="3"/></svg><span><b>The hold.</b> The Sí win if, after seven of their turns in a row, they have a piece on the summit and the Host have none. Any Host piece on the summit resets the count.</span></li>
         </ul>
-        <p class="note">Setup: the Host set their pieces on the outer ring, the Sí anywhere higher, one at a time, Host first. With “Set your rival's”, each side sets the other side's pieces instead, in the same order. Then the Host move first. Taking every Sí piece also wins for the Host; a player with no move loses. If a position comes round a third time, the side with fewer pieces wins. Rules tested over 4,000 computer games; Brandub, the Irish game of five against eight, inspired the pieces and board.</p>
+        <p class="note">Setup: the Host set their pieces on the outer ring, the Sí anywhere higher, one at a time, Host first. With “Set your rival's”, the Host set their Lord and the Sí set their Chariot on the summit; then each side sets the other side's pieces in turn, Host first, and the hold is two turns shorter. Then the Host move first. Taking every Sí piece also wins for the Host; a player with no move loses. If a position comes round a third time, the side with fewer pieces wins. Rules tested over 4,000 computer games; Brandub, the Irish game of five against eight, inspired the pieces and board.</p>
       </div>
     </aside>
   </div>
@@ -399,9 +399,9 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   }
   const LEVELS = { 1: { depth: 1, ms: 200, noise: 160 }, 2: { depth: 3, ms: 500, noise: 40 }, 3: { depth: 5, ms: 1200, noise: 6 }, 4: { depth: 8, ms: 2600, noise: 0 } };
   // side = the piece's owner; spite = true when setting the rival's piece (put it where it does worst)
-  function cpuPlace(s, side, piece, lvl, spite) {
+  function cpuPlace(s, side, piece, lvl, spite, zone) {
     const cand = [];
-    for (let i = 0; i < 49; i++) if (!s.b[i] && zoneOk(side, i)) cand.push(i);
+    for (let i = 0; i < 49; i++) if (!s.b[i] && zone(i)) cand.push(i);
     if (lvl === 1) return cand[(Math.random() * cand.length) | 0];
     let best = cand[0], bv = -Infinity;
     for (const i of cand) {
@@ -431,14 +431,29 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   let G; // { s, phase, placed, trays, history, mode, side, lvl, holdN, sel, pick, winner, why, seen }
   let thinking = false, cpuTimer = null, tab = "play", GAME = null, PZ = null;
 
+  function holdLabels() {
+    const swap = val("setup") === "swap";
+    document.querySelector('label[for="hold-7"]').textContent = `Hold ${swap ? 5 : 7} turns`;
+    document.querySelector('label[for="hold-8"]').textContent = `Hold ${swap ? 6 : 8} (easier Host)`;
+  }
   function newGame() {
+    holdLabels();
     clearTimeout(cpuTimer); thinking = false; closeModal();
     G = { s: { b: Array(49).fill(0), turn: 0, hold: 0 }, phase: "place", placed: 0, trays: freshTrays(), history: [], mode: val("mode"), side: +val("side"), lvl: +val("lvl"), holdN: +val("hold"), sel: null, pick: null, winner: null, why: null, last: null, swap: val("setup") === "swap" };
-    HOLDN = G.holdN;
+    HOLDN = effHold();
     render(); save(); maybeCpu();
   }
-  const owner = () => ORDER[G.placed];               // whose piece goes down next
-  const placer = () => (G.swap ? owner() ^ 1 : owner()); // who sets it
+  // Setup order. Standard: each side sets its own pieces, Host first, in any order.
+  // Rival's setup: the Host set their Lord, the Sí set their Chariot on the summit, then each side
+  // sets the other's pieces in turn (Host first), and the Sí set the last three spearmen.
+  const SWAP_SLOTS = [{ o: 0, p: 0, k: LO }, { o: 1, p: 1, k: CH, top: true }]
+    .concat([0, 1, 2, 3].flatMap(() => [{ o: 1, p: 0, k: RI }, { o: 0, p: 1, k: SP }]))
+    .concat([{ o: 0, p: 1, k: SP }, { o: 0, p: 1, k: SP }, { o: 0, p: 1, k: SP }]);
+  const slot = () => (G.swap ? SWAP_SLOTS[G.placed] : { o: ORDER[G.placed], p: ORDER[G.placed], k: null });
+  const owner = () => slot().o;   // whose piece goes down next
+  const placer = () => slot().p;  // who sets it
+  const slotZone = i => (slot().top ? SUMMIT[i] : zoneOk(owner(), i));
+  const effHold = () => (G.swap ? G.holdN - 2 : G.holdN);
   const isHuman = side => G.mode === "pvp" || G.mode === "puzzle" ? true : side === G.side;
   const actor = () => (G.phase === "place" ? placer() : G.s.turn);
   const humanTurn = () => !G.winner && !thinking && isHuman(actor()) && (G.mode !== "puzzle" || (PZ && PZ.phase === "solve"));
@@ -488,11 +503,11 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     cpuTimer = setTimeout(() => {
       thinking = false;
       if (G.phase === "place") {
-        const side = owner(), tr = G.trays[side];
+        const side = owner(), tr = G.trays[side], sl = slot();
         const special = side === 0 ? LO : CH, plain = side === 0 ? SP : RI;
         const left = tr[special] + tr[plain];
-        const piece = tr[special] && (Math.random() < 1 / left || !tr[plain]) ? special : plain;
-        doPlace(cpuPlace(G.s, side, piece, G.lvl, G.swap), piece);
+        const piece = sl.k || (tr[special] && (Math.random() < 1 / left || !tr[plain]) ? special : plain);
+        doPlace(cpuPlace(G.s, side, piece, G.lvl, sl.o !== sl.p, slotZone), piece);
       } else {
         const m = search(G.s, LEVELS[G.lvl], seenMap());
         if (m != null) doMove(m); else render();
@@ -513,9 +528,9 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     if (!humanTurn()) return;
     if (G.phase === "place") {
       const side = owner();
-      if (G.s.b[i] || !zoneOk(side, i)) return;
+      if (G.s.b[i] || !slotZone(i)) return;
       const tr = G.trays[side];
-      const piece = G.pick && tr[G.pick] ? G.pick : (side === 0 ? (tr[SP] ? SP : LO) : (tr[RI] ? RI : CH));
+      const piece = slot().k || (G.pick && tr[G.pick] ? G.pick : (side === 0 ? (tr[SP] ? SP : LO) : (tr[RI] ? RI : CH)));
       return doPlace(i, piece);
     }
     const s = G.s, p = s.b[i];
@@ -570,7 +585,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       html += `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${sqName(i)}, ${tierName}, ${desc}${t ? (t === "cap" ? ", take" : ", move here") : ""}">`;
       if (p) html += pieceSvg(p, animate && G.last && G.last.to === i);
       if (t) html += `<span class="mk ${t}"></span>`;
-      if (placing && !p && zoneOk(owner(), i)) html += `<span class="mk place"></span>`;
+      if (placing && !p && slotZone(i)) html += `<span class="mk place"></span>`;
       html += `</button>`;
     }
     const prevFocus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.i : null;
@@ -600,7 +615,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
 
     // hint line
     if (G.mode === "puzzle") hintEl.textContent = PZ && PZ.phase === "solve" ? (G.sel !== null ? selHint() : "Tap a piece to see where it can go.") : "";
-    else if (G.phase === "place") hintEl.textContent = (owner() === 0 ? "Host pieces go on the outer ring." : "Sí pieces go on the slope or the summit.") + (G.swap ? " Each side sets the other's pieces." : "");
+    else if (G.phase === "place") hintEl.textContent = slot().top ? "The Sí Chariot starts on the summit." : (owner() === 0 ? "Host pieces go on the outer ring." : "Sí pieces go on the slope or the summit.") + (G.swap && slot().o !== slot().p ? " You're setting your rival's piece: put it where it does least." : "");
     else hintEl.textContent = G.sel !== null ? selHint() : (G.winner != null ? "" : "Tap a piece to see where it can go.");
 
     // tray
@@ -610,7 +625,8 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       const side = owner(), tr = G.trays[side];
       const kinds = side === 0 ? [SP, LO] : [RI, CH];
       els("trayLabel").textContent = humanTurn() ? `${sideName(placer())}: choose a ${sideName(side)} piece, then a marked hole` : `${sideName(side)} pieces still to set`;
-      els("tray").innerHTML = kinds.map(k => `<button type="button" data-k="${k}" aria-pressed="${(G.pick || (tr[kinds[0]] ? kinds[0] : kinds[1])) === k}" aria-label="${NAMES[k]}, ${tr[k]} left" ${tr[k] && humanTurn() ? "" : "disabled"}>${pieceSvg(k)}<span class="n">${tr[k]}</span></button>`).join("");
+      const fixed = slot().k;
+      els("tray").innerHTML = kinds.map(k => `<button type="button" data-k="${k}" aria-pressed="${(fixed || G.pick || (tr[kinds[0]] ? kinds[0] : kinds[1])) === k}" aria-label="${NAMES[k]}, ${tr[k]} left" ${tr[k] && humanTurn() && (!fixed || fixed === k) ? "" : "disabled"}>${pieceSvg(k)}<span class="n">${tr[k]}</span></button>`).join("");
     }
 
     // log
@@ -803,7 +819,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       else nextPuzzle();
     } else {
       if (PZ) { clearTimeout(PZ.timer); PZ.g = G; if (PZ.phase === "wait") PZ.phase = "solve"; if (PZ.phase === "show") PZ.phase = "shown"; }
-      G = GAME || G; HOLDN = G.holdN || 7; render(); maybeCpu();
+      G = GAME || G; HOLDN = effHold(); render(); maybeCpu();
     }
   }
 
@@ -830,7 +846,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     if (saved && saved.s && saved.s.b && saved.mode !== "puzzle") {
       G = saved; G.sel = null; G.pick = null;
       setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl); setVal("hold", G.holdN || 7); setVal("setup", G.swap ? "swap" : "own");
-      HOLDN = G.holdN || 7;
+      G.holdN = G.holdN || 7; HOLDN = effHold(); holdLabels();
       render(); maybeCpu();
     } else newGame();
     let t = "play";
