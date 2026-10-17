@@ -10,9 +10,10 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | [`fidchell-cups/index.html`](fidchell-cups/index.html) |
 | **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
 | **Fiche**: a dice race to twenty | [`fiche/index.html`](fiche/index.html) |
+| **Cnoc**: a battle for a fairy mound | [`cnoc/index.html`](cnoc/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, and Fiche at `/fiche/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, and Cnoc at `/cnoc/`.
 
 ---
 
@@ -127,6 +128,33 @@ A day is eight pans. Each pan ends with a summary of gold kept, washed out and l
 **Coach** shows your exact chance of taking the round with each die. The Shrewd computer plays those exact odds.
 
 ---
+
+## Cnoc
+
+*Cnoc* is Irish for hill. Two uneven armies fight over a fairy mound: a 7×7 pegged board, as at Ballinderry, built in three tiers. The outer ring is the low ground (24 holes), the next ring is the slope (20), and a cross of five holes is the summit. Brandub, the Irish game of five pieces against eight, inspired the 8-against-5 armies and the board.
+
+**The pieces**
+
+| Piece | Side | Count | Moves |
+|---|---|---|---|
+| Lord | Host | 1 | 1 or 2 holes in a straight line, any direction |
+| Spearman | Host | 7 | 1 hole forward, back or sideways |
+| Chariot | Sí | 1 | Any distance along a row or column |
+| Rider | Sí | 4 | 1 hole diagonally |
+
+Every piece takes by moving onto an enemy piece. A move that steps *up* a tier stops there; going downhill is free.
+
+**Setup.** Starting with the Host, the players take turns setting one piece at a time: Host pieces on the low ground, Sí pieces on the slope or summit. When the Sí run out, the Host set their last three. The Host move first. In the *Set your rival's* option, each side sets the other side's pieces instead.
+
+**Winning**
+
+- **The Host** win by moving the Lord onto the summit while no Sí piece stands there, or by taking every Sí piece.
+- **The Sí** win by taking the Lord, or by holding the summit: after seven of their turns in a row, they have a piece on the summit and the Host have none. A Host piece on the summit at the end of either side's turn resets the count. (*Hold 8* makes it easier for the Host.)
+- A player with no legal move loses. If a position comes round a third time, the side with fewer pieces wins; with equal pieces it is a draw.
+
+Play the computer (Novice, Warrior, Champion or High King) or a friend. **Puzzles**: 90 positions, 48 for the Host and 42 for the Sí, each a forced win in 2 to 5 moves against the computer's best defence. Every puzzle was found and checked by an exhaustive solver; where more than one move wins, any winning move counts.
+
+**Balance.** The rules were tuned over about 4,000 computer games. With the standard setup, the Host win about 40–48% of games. The two rules that make it work are that the Lord can only climb onto a clear summit, and that the hold lasts seven turns.
 
 ## Monsiv
 
