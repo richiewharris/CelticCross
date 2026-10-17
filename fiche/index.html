@@ -138,13 +138,36 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
 .log li { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 8px; }
 .log .y { color: var(--you); } .log .r { color: var(--rival); } .log .e { color: var(--muted); font-style: italic; grid-column: 1 / -1; font-family: var(--font-body); }
 .log .empty { display: block; color: var(--muted); font-style: italic; font-family: var(--font-body); }
-.card {
-  background: rgb(23 19 15 / .94); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px;
-  display: grid; gap: 10px; text-align: center; justify-items: center;
+/* Round and match results: a modal over the whole page that has to be dismissed. */
+.modal {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgb(8 6 4 / .72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: fadeIn .25s ease-out;
 }
-.card[hidden] { display: none; }
-.card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--bronze-hi); font-size: 1.6rem; }
-.card p { margin: 0; color: var(--muted); }
+.modal[hidden] { display: none; }
+.dialog {
+  --tone: var(--bronze-hi);
+  width: min(100%, 440px); display: grid; gap: 14px; justify-items: center; text-align: center;
+  padding: 28px 26px 24px; border-radius: 16px; border: 1px solid var(--tone);
+  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--tone) 16%, var(--oak-3)), var(--oak-2) 70%);
+  box-shadow: 0 0 0 6px rgb(0 0 0 / .25), 0 24px 60px rgb(0 0 0 / .65);
+  animation: popIn .32s cubic-bezier(.2, 1.3, .4, 1);
+}
+.dialog.win { --tone: #e6c27a; }
+.dialog.lose { --tone: #d0584a; }
+.dialog.draw { --tone: #a99c84; }
+.dialog .badge { font-family: var(--font-mono); font-size: .76rem; letter-spacing: .2em; text-transform: uppercase; color: var(--tone); }
+.dialog h2 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--tone); font-size: clamp(1.8rem, 6vw, 2.4rem); line-height: 1.1; text-wrap: balance; }
+.dialog .big { font-family: var(--font-mono); font-size: 3rem; line-height: 1; color: var(--tone); font-weight: 500; }
+.dialog p { margin: 0; color: var(--ink); max-width: 34ch; text-wrap: balance; }
+.dialog .sub { color: var(--muted); font-size: .92rem; }
+.dialog .score { display: flex; gap: 18px; justify-content: center; font-family: var(--font-mono); font-size: .9rem; }
+.dialog .score .y { color: var(--you); } .dialog .score .r { color: var(--rival); }
+.dialog button.btn { padding: 11px 30px; font-size: 1.05rem; }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes popIn { from { opacity: 0; transform: scale(.88) translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .modal, .dialog { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .die-btn { transition: none; } }
 </style>
 </head>
@@ -179,7 +202,7 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
           <div class="dice" id="rivalDice"></div>
         </div>
       </div>
-      <div class="card" id="card" hidden></div>
+
     </section>
 
     <aside>
@@ -633,22 +656,44 @@ button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(-
     if (winner) M.wins[winner]++; else M.draws++;
     M.log.push({ e: true, text });
     const champ = M.wins[1] >= need() ? 1 : M.wins[2] >= need() ? 2 : 0;
+    if (champ) M.over = champ;
+    // Let the last die and the dial settle, then stop play with a result the player must dismiss.
+    later(900, () => showResult(winner, text, champ));
+  }
+  function showResult(winner, text, champ) {
+    const tone = w => w === 0 ? "draw" : M.mode === "pvp" ? "win" : w === 1 ? "win" : "lose";
+    const score = `<div class="score"><span class="y">${nameOf(1)} ${M.wins[1]}</span><span class="r">${nameOf(2)} ${M.wins[2]}</span>${M.draws ? `<span>Drawn ${M.draws}</span>` : ""}</div>`;
     if (champ) {
-      M.over = champ;
-      showCard(`<h2>${M.mode === "cpu" ? (champ === 1 ? "You win the match" : "The rival wins the match") : `Player ${champ} wins the match`}</h2>
-        <p>${M.wins[1]}–${M.wins[2]}${M.draws ? `, with ${M.draws} drawn round${M.draws > 1 ? "s" : ""}` : ""}.</p>
+      const title = M.mode === "cpu" ? (champ === 1 ? "You win the match!" : "The rival wins the match") : `Player ${champ} wins the match!`;
+      showCard(tone(champ), `<span class="badge">Match over</span><h2 id="cardTitle">${title}</h2>
+        <p>${text}</p>${score}
         <button class="btn primary" type="button" id="againBtn">Play again</button>`);
-      document.getElementById("againBtn").addEventListener("click", newMatch);
+      document.getElementById("againBtn").addEventListener("click", () => { hideCard(); newMatch(); });
     } else {
-      showCard(`<h2>${winner ? `${nameOf(winner)} ${verb(winner, "take", "takes")} round ${M.round}` : `Round ${M.round} is drawn`}</h2>
-        <p>${text} ${nameOf(R.last)} rolled last, so ${nameOf(R.last).toLowerCase() === "you" ? "you start" : nameOf(R.last) + " starts"} the next round.</p>
+      const title = winner ? (M.mode === "cpu" ? (winner === 1 ? "You take the round!" : "You lose the round") : `Player ${winner} takes the round!`) : "The round is drawn";
+      const starts = nameOf(R.last).toLowerCase() === "you" ? "You start the next round." : `${nameOf(R.last)} starts the next round.`;
+      showCard(tone(winner), `<span class="badge">Round ${M.round}</span><h2 id="cardTitle">${title}</h2>
+        <div class="big">${R.total}</div>
+        <p>${text}</p>${score}
+        <p class="sub">${starts}</p>
         <button class="btn primary" type="button" id="nextBtn">Next round</button>`);
-      document.getElementById("nextBtn").addEventListener("click", () => { M.round++; const s = R.last; newRound(s); hideCard(); render(); save(); kick(); });
+      document.getElementById("nextBtn").addEventListener("click", () => { hideCard(); M.round++; const s = R.last; newRound(s); render(); save(); kick(); });
     }
   }
-  const card = document.getElementById("card");
-  function showCard(html) { card.innerHTML = html; card.hidden = false; const b = card.querySelector("button"); if (b) setTimeout(() => b.focus({ preventScroll: true }), 50); }
-  function hideCard() { card.hidden = true; card.innerHTML = ""; }
+  // The modal sits outside the page so the rest of the page can be made inert behind it.
+  const card = document.createElement("div");
+  card.className = "modal"; card.id = "card"; card.hidden = true;
+  card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "cardTitle");
+  document.body.appendChild(card);
+  const pageWrap = document.querySelector(".wrap");
+  function showCard(tone, html) {
+    card.innerHTML = `<div class="dialog ${tone}">${html}</div>`;
+    card.hidden = false; pageWrap.inert = true;
+    const b = card.querySelector("button"); if (b) setTimeout(() => b.focus({ preventScroll: true }), 60);
+  }
+  function hideCard() { card.hidden = true; card.innerHTML = ""; pageWrap.inert = false; }
+  // Keep keyboard focus on the dialog's button while it is open.
+  card.addEventListener("keydown", e => { if (e.key === "Tab") { e.preventDefault(); const b = card.querySelector("button"); if (b) b.focus(); } });
 
   /* ----- computer ----- */
   function aiChoice() {
