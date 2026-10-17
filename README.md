@@ -140,6 +140,15 @@ To host it free, turn on **GitHub Pages** for this repo (Settings → Pages → 
 
 You can play against the computer (Casual, Steady or Strong) or against a friend on the same screen. The game in progress is saved in your browser.
 
+### Puzzles
+
+Switch to **Puzzles** for an endless run of training puzzles: find the move that wins by force in 1, 2 or 3 moves, while the computer defends as well as it can.
+
+- **Built from seeds.** Puzzle `L·i` (level L, number i) is generated from a fixed seed, so it is the same puzzle for everyone. Each one is checked by a solver to have exactly one winning first move and no quicker win.
+- **Rating.** You start at 600. Each puzzle has its own rating, and yours moves Elo-style: solving gains more against a harder puzzle, missing loses more against an easier one. A solve after a hint counts as half; viewing the solution counts as a miss. *Try again* replays a puzzle for practice without changing your rating.
+- **Difficulty.** "Match my rating" picks the level that fits you; you can also pick any of 12 levels (300 to 1950+). Lower levels are wins in 1, middle levels wins in 2, higher levels wins in 3. Swaps, quiet moves, sacrifices and "no moves left" wins rate higher.
+- **Solution.** *Show solution* plays the winning line against the best defence at slow, normal or fast speed, with pause and step, and tags the idea (swap, quiet move, sacrifice, far row, throne hunt, no moves left).
+
 ### Rules
 
 The board is 5×5. Each side starts with five pieces on its back row, the Throne in the middle:
