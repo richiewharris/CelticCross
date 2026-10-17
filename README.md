@@ -131,7 +131,7 @@ A day is eight pans. Each pan ends with a summary of gold kept, washed out and l
 
 ## Cnoc
 
-*Cnoc* is Irish for hill. Two uneven armies fight over a fairy mound: a 7×7 pegged board, as at Ballinderry, built in three tiers. The outer ring is the low ground (24 holes), the next ring is the slope (20), and a cross of five holes is the summit. Brandub, the Irish game of five pieces against eight, inspired the 8-against-5 armies and the board.
+*Cnoc* (pronounced *k'nuk*, with the k sounded) is Irish for hill. Two uneven armies fight over a fairy mound: a 7×7 pegged board, as at Ballinderry, built in three tiers. The outer ring is the low ground (24 holes), the next ring is the slope (20), and a cross of five holes is the summit. Brandub, the Irish game of five pieces against eight, inspired the 8-against-5 armies and the board.
 
 **The pieces**
 
@@ -154,7 +154,7 @@ Without those adjustments, setting the rival's pieces is lopsided: whoever moves
 - **The Sí** win by taking the Lord, or by holding the summit: after seven of their turns in a row, they have a piece on the summit and the Host have none. A Host piece on the summit at the end of either side's turn resets the count. (*Hold 8* makes it easier for the Host.)
 - A player with no legal move loses. If a position comes round a third time, the side with fewer pieces wins; with equal pieces it is a draw.
 
-Play the computer (Novice, Warrior, Champion or High King) or a friend. **Puzzles**: 90 positions, 48 for the Host and 42 for the Sí, each a forced win in 2 to 5 moves against the computer's best defence. Every puzzle was found and checked by an exhaustive solver; where more than one move wins, any winning move counts.
+Play the computer (Novice, Warrior, Champion or High King) or a friend. **Game review**: after a game, every placement and move is scored against the best choice the computer finds there (searching 4 moves ahead for moves; a placement heuristic for setup) and marked Best, Excellent, Good, Miss or Blunder. You can step or play through the game, and the better choice is ringed on the board. Each player gets an accuracy (setup counts for a quarter, play for three quarters) and a performance rating, with a rank from Novice to High King. **Puzzles**: 90 positions, 48 for the Host and 42 for the Sí, each a forced win in 2 to 5 moves against the computer's best defence. Every puzzle was found and checked by an exhaustive solver; where more than one move wins, any winning move counts.
 
 **Balance.** The rules were tuned over about 4,000 computer games. With the standard setup, the Host win about 40–48% of games. The two rules that make it work are that the Lord can only climb onto a clear summit, and that the hold lasts seven turns.
 

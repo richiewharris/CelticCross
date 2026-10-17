@@ -56,6 +56,7 @@ body {
 header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
 h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.4rem, 7vw, 3.4rem); line-height: 1; margin: 0; }
 .tag { margin: 0; color: var(--muted); font-style: italic; }
+h1 .say { font-family: var(--font-body); font-size: .42em; font-style: italic; font-weight: 400; color: var(--muted); letter-spacing: .02em; vertical-align: .35em; }
 .game { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 36px; align-items: start; }
 @media (max-width: 820px) { .game { grid-template-columns: minmax(0, 1fr); } }
 
@@ -139,6 +140,32 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
 .chips button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .pzmsg { margin: 0; }
 
+/* Game review */
+:root { --c-best: #2f6b3a; --c-exc: #4f8a6a; --c-good: #8a8f78; --c-miss: #c08a2a; --c-blun: #b13c2a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c-best: #8fd08a; --c-exc: #7fc2a8; --c-good: #a7aa94; --c-miss: #e6b55a; --c-blun: #f08a72; } }
+:root[data-theme="dark"] { --c-best: #8fd08a; --c-exc: #7fc2a8; --c-good: #a7aa94; --c-miss: #e6b55a; --c-blun: #f08a72; }
+.revprog { margin: 0; font-size: .92rem; color: var(--muted); font-style: italic; min-height: 1.4em; }
+.revsum { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.who { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.who h3 { margin: 0; font-size: 1rem; }
+.who .perf { font-family: var(--font-display); font-size: 2rem; line-height: 1.1; }
+.who .rank { font-size: .9rem; color: var(--muted); font-style: italic; }
+.who dl { margin: 4px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.who dt { display: flex; align-items: center; gap: 6px; } .who dd { margin: 0; text-align: right; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.q-best { background: var(--c-best); } .q-exc { background: var(--c-exc); } .q-good { background: var(--c-good); } .q-miss { background: var(--c-miss); } .q-blun { background: var(--c-blun); }
+.revnav { display: flex; gap: 6px; flex-wrap: wrap; }
+.revnav .btn { padding: 6px 12px; }
+.revnote { margin: 0; font-size: .95rem; min-height: 3em; }
+.revlist { margin: 0; padding: 0; list-style: none; max-height: 300px; overflow-y: auto; display: grid; gap: 2px; font-size: .9rem; font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); padding-top: 6px; }
+.revlist button { font: inherit; width: 100%; text-align: left; display: grid; grid-template-columns: 2.6em 3.4em minmax(0, 1fr) auto; gap: 6px; align-items: center; background: transparent; border: 0; color: var(--fg); padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+.revlist button[aria-current="true"] { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.revlist button:focus-visible { outline: 2px solid var(--gold); }
+.revlist .who2 { color: var(--muted); font-size: .82rem; }
+.revlist .tagq { font-size: .78rem; padding: 0 8px; border-radius: 999px; color: #fff; }
+.revlist .sep { font-size: .85rem; color: var(--muted); font-style: italic; padding: 6px 6px 2px; }
+.sq.bestfrom::before, .sq.bestto::before { content: ""; position: absolute; inset: 10%; border-radius: 50%; border: 3px dashed var(--c-best); }
+
 /* Result dialog */
 .modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgb(10 12 6 / .55); padding: 16px; z-index: 10; }
 .dialog { background: var(--surface); color: var(--fg); border-radius: 12px; padding: 26px 28px; max-width: 380px; width: 100%; display: grid; gap: 12px; text-align: center; box-shadow: 0 20px 50px rgb(0 0 0 / .4); border-top: 6px solid var(--line); }
@@ -163,7 +190,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
 
 <div class="wrap">
   <header>
-    <h1>Cnoc</h1>
+    <h1>Cnoc <span class="say">(k’nuk)</span></h1>
     <p class="tag">Take the fairy mound, or hold it.</p>
   </header>
 
@@ -221,7 +248,24 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
         <div class="row">
           <button class="btn primary" id="newBtn" type="button">New game</button>
           <button class="btn" id="undoBtn" type="button">Undo</button>
+          <button class="btn" id="reviewBtn" type="button" hidden>Review the game</button>
         </div>
+      </div>
+
+      <div id="revPanel" class="panel" hidden>
+        <p class="label">Game review</p>
+        <p class="revprog" id="revProg" aria-live="polite"></p>
+        <div class="revsum" id="revSum"></div>
+        <div class="revnav" role="group" aria-label="Play the game back">
+          <button class="btn" id="rvStart" type="button" aria-label="Back to the start">⏮</button>
+          <button class="btn" id="rvBack" type="button" aria-label="Back one move">◀</button>
+          <button class="btn" id="rvPlay" type="button">Play</button>
+          <button class="btn" id="rvFwd" type="button" aria-label="Forward one move">▶</button>
+          <button class="btn" id="rvEnd" type="button" aria-label="To the end">⏭</button>
+        </div>
+        <p class="revnote" id="revNote"></p>
+        <ol class="revlist" id="revList"></ol>
+        <div class="row"><button class="btn" id="rvClose" type="button">Close review</button></div>
       </div>
 
       <div id="puzPanel" class="panel" hidden>
@@ -240,7 +284,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="movesPanel">
         <p class="label">Moves</p>
         <ol class="log" id="log"></ol>
       </div>
@@ -255,7 +299,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
           <li><svg viewBox="0 0 100 100"><path d="M10 80 H30 V60 H50 V40 H90" fill="none" stroke="currentColor" stroke-width="6"/></svg><span><b>The climb.</b> A move that steps up a tier stops there. Downhill is free. Take a piece by moving onto it.</span></li>
           <li><svg viewBox="0 0 100 100"><rect x="38" y="20" width="24" height="64" rx="10" fill="var(--silver)" stroke="var(--silver-ink)" stroke-width="3"/></svg><span><b>The hold.</b> The Sí win if, after seven of their turns in a row, they have a piece on the summit and the Host have none. Any Host piece on the summit resets the count.</span></li>
         </ul>
-        <p class="note">Setup: the Host set their pieces on the outer ring, the Sí anywhere higher, one at a time, Host first. With “Set your rival's”, the Host set their Lord and the Sí set their Chariot on the summit; then each side sets the other side's pieces in turn, Host first, and the hold is two turns shorter. Then the Host move first. Taking every Sí piece also wins for the Host; a player with no move loses. If a position comes round a third time, the side with fewer pieces wins. Rules tested over 4,000 computer games; Brandub, the Irish game of five against eight, inspired the pieces and board.</p>
+        <p class="note">Setup: the Host set their pieces on the outer ring, the Sí anywhere higher, one at a time, Host first. With “Set your rival's”, the Host set their Lord and the Sí set their Chariot on the summit; then each side sets the other side's pieces in turn, Host first, and the hold is two turns shorter. Then the Host move first. Taking every Sí piece also wins for the Host; a player with no move loses. If a position comes round a third time, the side with fewer pieces wins. After a game, “Review the game” scores every placement and move against the computer's best choice, from Best to Blunder, and rates each player. Rules tested over 4,000 computer games; Brandub, the Irish game of five against eight, inspired the pieces and board.</p>
       </div>
     </aside>
   </div>
@@ -398,6 +442,16 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     return bestMove;
   }
   const LEVELS = { 1: { depth: 1, ms: 200, noise: 160 }, 2: { depth: 3, ms: 500, noise: 40 }, 3: { depth: 5, ms: 1200, noise: 6 }, 4: { depth: 8, ms: 2600, noise: 0 } };
+  // How good a hole is for a piece, from its owner's point of view (no randomness).
+  function placeScore(s, side, piece, i) {
+    const b = s.b.slice(); b[i] = piece;
+    let v = evalHost({ b, turn: 0, hold: 0 }); if (side === 1) v = -v;
+    const enemy = gen({ b, turn: side ^ 1, hold: 0 });
+    if (enemy.some(m => (m & 63) === i)) v -= PV[piece] / 2 + (piece === LO ? 400 : 0);
+    const mine = gen({ b, turn: side, hold: 0 });
+    for (const m of mine) if ((m >> 6) === i && b[m & 63]) v += 20;
+    return v;
+  }
   // side = the piece's owner; spite = true when setting the rival's piece (put it where it does worst)
   function cpuPlace(s, side, piece, lvl, spite, zone) {
     const cand = [];
@@ -405,12 +459,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     if (lvl === 1) return cand[(Math.random() * cand.length) | 0];
     let best = cand[0], bv = -Infinity;
     for (const i of cand) {
-      const b = s.b.slice(); b[i] = piece;
-      let v = evalHost({ b, turn: 0, hold: 0 }); if (side === 1) v = -v;
-      const enemy = gen({ b, turn: side ^ 1, hold: 0 });
-      if (enemy.some(m => (m & 63) === i)) v -= PV[piece] / 2 + (piece === LO ? 400 : 0);
-      const mine = gen({ b, turn: side, hold: 0 });
-      for (const m of mine) if ((m >> 6) === i && b[m & 63]) v += 20;
+      let v = placeScore(s, side, piece, i);
       if (spite) v = -v;
       v += Math.random() * (lvl === 2 ? 90 : 40);
       if (v > bv) { bv = v; best = i; }
@@ -437,6 +486,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     document.querySelector('label[for="hold-8"]').textContent = `Hold ${swap ? 6 : 8} (easier Host)`;
   }
   function newGame() {
+    if (G && G.review) { clearTimeout(G.review.timer); G.review = null; showReviewPanel(false); }
     holdLabels();
     clearTimeout(cpuTimer); thinking = false; closeModal();
     G = { s: { b: Array(49).fill(0), turn: 0, hold: 0 }, phase: "place", placed: 0, trays: freshTrays(), history: [], mode: val("mode"), side: +val("side"), lvl: +val("lvl"), holdN: +val("hold"), sel: null, pick: null, winner: null, why: null, last: null, swap: val("setup") === "swap" };
@@ -517,6 +567,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
 
   function undo() {
     if (!G.history.length) return;
+    if (G.review) closeReview();
     clearTimeout(cpuTimer); thinking = false; closeModal();
     let h = G.history.pop();
     if (G.mode === "cpu") while (h.by !== G.side && G.history.length) h = G.history.pop();
@@ -525,7 +576,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   }
 
   function click(i) {
-    if (!humanTurn()) return;
+    if (G.review || !humanTurn()) return;
     if (G.phase === "place") {
       const side = owner();
       if (G.s.b[i] || !slotZone(i)) return;
@@ -566,7 +617,10 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   const WHY = { crown: "The Lord stands on the summit.", wipe: "Every Sí piece is taken.", lord: "The Lord is taken.", hold: "The Sí held the summit.", nomove: "The other side has no move left.", repeat: "The position came round a third time." };
 
   function render(animate) {
-    const s = G.s, legal = humanTurn() && G.phase === "play" ? gen(s) : [];
+    const rv = G.review ? reviewView() : null;
+    const s = rv ? rv.s : G.s, legal = !rv && humanTurn() && G.phase === "play" ? gen(s) : [];
+    const lastMv = rv ? rv.last : G.last;
+    const bestMark = rv && rv.e && rv.e.best ? rv.e.best : null;
     const targets = new Map();
     if (G.sel !== null) for (const m of legal) if ((m >> 6) === G.sel) targets.set(m & 63, s.b[m & 63] ? "cap" : (s.b[G.sel] === LO && SUMMIT[m & 63] ? "win" : "go"));
     const placing = G.phase === "place" && humanTurn();
@@ -577,20 +631,22 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       if (p) cls.push("has");
       if (G.sel === i) cls.push("sel");
       else if (flash && flash.sqs.includes(i)) cls.push(flash.kind);
-      else if (G.last && (G.last.from === i || G.last.to === i)) cls.push("last");
+      else if (lastMv && (lastMv.from === i || lastMv.to === i)) cls.push("last");
+      if (bestMark && bestMark.from === i) cls.push("bestfrom");
+      else if (bestMark && bestMark.to === i) cls.push("bestto");
       if (PZ && G.mode === "puzzle" && PZ.hintSq === i) cls.push("hintsq");
       const t = targets.get(i);
       const tierName = ["", "low ground", "slope", "summit"][TIER[i]];
       const desc = p ? `${sideName(sideOf(p))} ${NAMES[p]}` : "empty";
       html += `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${sqName(i)}, ${tierName}, ${desc}${t ? (t === "cap" ? ", take" : ", move here") : ""}">`;
-      if (p) html += pieceSvg(p, animate && G.last && G.last.to === i);
+      if (p) html += pieceSvg(p, animate && lastMv && lastMv.to === i);
       if (t) html += `<span class="mk ${t}"></span>`;
       if (placing && !p && slotZone(i)) html += `<span class="mk place"></span>`;
       html += `</button>`;
     }
     const prevFocus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.i : null;
     boardEl.innerHTML = html;
-    boardEl.classList.toggle("locked", !humanTurn());
+    boardEl.classList.toggle("locked", !!rv || !humanTurn());
     if (prevFocus != null) { const el = boardEl.querySelector(`[data-i="${prevFocus}"]`); if (el) el.focus({ preventScroll: true }); }
 
     // standing stones
@@ -605,6 +661,8 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       statusEl.textContent = PZ.status;
       if (PZ.phase === "solved") statusEl.classList.add("win");
       if (PZ.phase === "failed") statusEl.classList.add("lose");
+    } else if (rv) {
+      statusEl.textContent = rv.e ? `Review · ${G.review.v} of ${G.review.list.length}` : "Review · the empty board";
     } else if (G.winner != null) {
       const res = G.winner === -1 ? "A draw." : `The ${sideName(G.winner)} win.`;
       statusEl.textContent = `${res} ${WHY[G.why] || ""}`;
@@ -616,11 +674,12 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     // hint line
     if (G.mode === "puzzle") hintEl.textContent = PZ && PZ.phase === "solve" ? (G.sel !== null ? selHint() : "Tap a piece to see where it can go.") : "";
     else if (G.phase === "place") hintEl.textContent = slot().top ? "The Sí Chariot starts on the summit." : (owner() === 0 ? "Host pieces go on the outer ring." : "Sí pieces go on the slope or the summit.") + (G.swap && slot().o !== slot().p ? " You're setting your rival's piece: put it where it does least." : "");
+    else if (rv) hintEl.textContent = rv.e && rv.e.best ? "Dashed green rings: the better choice." : "";
     else hintEl.textContent = G.sel !== null ? selHint() : (G.winner != null ? "" : "Tap a piece to see where it can go.");
 
     // tray
     const tp = els("trayPanel");
-    tp.hidden = !(G.phase === "place" && G.mode !== "puzzle");
+    tp.hidden = !(G.phase === "place" && G.mode !== "puzzle") || !!rv;
     if (!tp.hidden) {
       const side = owner(), tr = G.trays[side];
       const kinds = side === 0 ? [SP, LO] : [RI, CH];
@@ -642,11 +701,207 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     undoBtn.disabled = !G.history.length || (G.mode === "cpu" && !G.history.some(x => x.by === G.side));
     cpuOpts.hidden = val("mode") !== "cpu";
     if (tab === "puzzles") renderPuzzlePanel();
+    els("reviewBtn").hidden = !(G.winner != null && G.mode !== "puzzle" && !G.review);
+    if (G.review) renderReview();
   }
   function selHint() {
     const p = G.s.b[G.sel];
     if (p === LO && presence(G.s.b, 1)) return "The Lord can't climb onto the summit while a Sí piece stands on it.";
     return "Tap a dot to move, a red ring to take. Tap the piece again to let go.";
+  }
+
+
+  /* ---------- Post-game review ---------- */
+  // Every placement and move is scored against the best choice the engine finds there.
+  const Q = { best: "Best", exc: "Excellent", good: "Good", miss: "Miss", blun: "Blunder" };
+  const QORDER = ["best", "exc", "good", "miss", "blun"];
+  const clampV = v => (v >= MATE / 2 ? 2000 : v <= -MATE / 2 ? -2000 : Math.max(-2000, Math.min(2000, v)));
+  // Score every legal move at the root (full window), deepening while time allows.
+  function scoreMoves(root, maxDepth, ms, seen) {
+    const deadline = performance.now() + ms;
+    let nodes = 0; const path = [];
+    const repTimes = k => (seen.get(k) || 0) + path.filter(x => x === k).length;
+    const repVal = t => { const mine = count(t.b, t.turn), theirs = count(t.b, t.turn ^ 1); return mine < theirs ? MATE / 2 : mine > theirs ? -MATE / 2 : 0; };
+    function nm(t, d, a, bb, ply) {
+      if ((++nodes & 511) === 0 && performance.now() > deadline) throw new TimeUp();
+      if (d === 0) { const v = evalHost(t); return t.turn === 0 ? v : -v; }
+      const list = gen(t);
+      if (!list.length) return -MATE + ply;
+      list.sort((x, y) => orderScore(t, y) - orderScore(t, x));
+      let best = -Infinity;
+      for (const m of list) {
+        const u = apply(t, m); let v;
+        if (u.res) v = MATE - ply - 1;
+        else { const k = key(u); if (repTimes(k) >= 2) v = -repVal(u); else { path.push(k); v = -nm(u, d - 1, -bb, -a, ply + 1); path.pop(); } }
+        if (v > best) best = v; if (v > a) a = v; if (a >= bb) break;
+      }
+      return best;
+    }
+    const moves = gen(root); let scores = null;
+    for (let d = 1; d <= maxDepth; d++) {
+      try {
+        const sc = new Map();
+        for (const m of moves) {
+          const u = apply(root, m); let v;
+          if (u.res) v = MATE;
+          else if (!gen(u).length) v = MATE - 1;
+          else { const k = key(u); if (repTimes(k) >= 2) v = -repVal(u); else { path.push(k); v = -nm(u, d - 1, -Infinity, Infinity, 1); path.pop(); } }
+          sc.set(m, v);
+        }
+        scores = sc;
+        if ([...sc.values()].some(v => v >= MATE / 2) && d >= 2) break;
+      } catch (e) { if (e instanceof TimeUp) break; throw e; }
+    }
+    return scores;
+  }
+  function classify(loss, bestV, playedV, only) {
+    if (only) return "best";
+    if (playedV <= -MATE / 2 && bestV > -MATE / 2) return "blun";
+    if (bestV >= MATE / 2 && playedV < MATE / 2) return loss > 700 ? "blun" : "miss";
+    if (loss <= 8) return "best";
+    if (loss <= 40) return "exc";
+    if (loss <= 110) return "good";
+    if (loss <= 300) return "miss";
+    return "blun";
+  }
+  function buildEntries() {
+    const H = G.history, out = [];
+    for (let k = 0; k < H.length; k++) {
+      const h = H[k], next = k + 1 < H.length ? H[k + 1] : { s: G.s, last: G.last };
+      const last = next.last;
+      if (!last) continue;
+      if (h.phase === "place") out.push({ kind: "place", s: h.s, to: last.to, piece: next.s.b[last.to], by: h.by, placed: h.placed, note: h.note, after: next.s });
+      else out.push({ kind: "move", s: h.s, m: last.from * 64 + last.to, by: h.by, note: h.note, after: next.s });
+    }
+    return out;
+  }
+  function assessPlacement(e) {
+    const owner = sideOf(e.piece), spite = e.by !== owner;
+    const topOnly = G.swap && e.placed === 1;
+    const cells = [];
+    for (let i = 0; i < 49; i++) if (!e.s.b[i] && (topOnly ? SUMMIT[i] : zoneOk(owner, i))) cells.push(i);
+    let bestI = e.to, bestV = -Infinity, playedV = 0;
+    for (const i of cells) {
+      let v = placeScore(e.s, owner, e.piece, i); if (spite) v = -v;
+      if (v > bestV) { bestV = v; bestI = i; }
+      if (i === e.to) playedV = v;
+    }
+    const loss = Math.max(0, bestV - playedV);
+    e.loss = loss; e.q = classify(loss, 0, 0, cells.length <= 1); e.best = bestI === e.to ? null : { to: bestI };
+  }
+  function assessMove(e, seen) {
+    const sc = scoreMoves(e.s, 4, 450, seen);
+    const moves = sc ? [...sc.entries()] : [];
+    if (!moves.length) { e.q = "best"; e.loss = 0; return; }
+    let bm = moves[0][0], bv = -Infinity;
+    for (const [m, v] of moves) if (v > bv) { bv = v; bm = m; }
+    const pv = sc.has(e.m) ? sc.get(e.m) : bv;
+    const loss = Math.max(0, clampV(bv) - clampV(pv));
+    e.loss = loss; e.q = classify(loss, bv, pv, moves.length === 1);
+    e.best = bm === e.m ? null : { from: bm >> 6, to: bm & 63, note: `${LETTER[e.s.b[bm >> 6]]} ${sqName(bm >> 6)}${e.s.b[bm & 63] ? "×" : "–"}${sqName(bm & 63)}` };
+    e.adv = clampV(e.s.turn === 0 ? bv : -bv); // Host's view of the position before the move
+  }
+  function summarize(list) {
+    const rank = r => (r < 900 ? "Novice" : r < 1400 ? "Warrior" : r < 1900 ? "Champion" : "High King");
+    return [0, 1].map(side => {
+      const mine = list.filter(e => e.q && e.by === side);
+      const counts = Object.fromEntries(QORDER.map(q => [q, mine.filter(e => e.q === q).length]));
+      const pl = mine.filter(e => e.kind === "place"), mv = mine.filter(e => e.kind === "move");
+      const sub = arr => arr.length ? arr.reduce((t, e) => t + 100 * Math.exp(-e.loss / 300), 0) / arr.length : null;
+      // Setup counts for a quarter of the rating, play for three quarters.
+      const sp = sub(pl), sm = sub(mv);
+      const acc = sp == null ? (sm || 0) : sm == null ? sp : 0.25 * sp + 0.75 * sm;
+      const perf = Math.round((400 + 18 * acc) / 10) * 10;
+      return { side, counts, acc: Math.round(acc), perf, rank: rank(perf), place: sp == null ? null : Math.round(sp), moves: sm == null ? null : Math.round(sm), n: mine.length };
+    });
+  }
+  function startReview() {
+    if (G.winner == null || G.mode === "puzzle") return;
+    clearTimeout(cpuTimer); thinking = false;
+    const list = buildEntries();
+    G.review = { list, v: list.length, playing: false, timer: null, done: 0 };
+    showReviewPanel(true);
+    render();
+    const seen = new Map();
+    let k = 0;
+    const R = G.review;
+    const step = () => {
+      if (G.review !== R) return;
+      const t0 = performance.now();
+      while (k < list.length && performance.now() - t0 < 60) {
+        const e = list[k];
+        if (e.kind === "place") assessPlacement(e);
+        else { const k0 = key(e.s); seen.set(k0, (seen.get(k0) || 0) + 1); assessMove(e, seen); }
+        k++; R.done = k;
+        if (e.kind === "move") break; // one search per slice keeps the page responsive
+      }
+      renderReview();
+      if (k < list.length) setTimeout(step, 0);
+    };
+    setTimeout(step, 30);
+  }
+  function showReviewPanel(on) {
+    els("revPanel").hidden = !on;
+    els("playPanel").hidden = on || tab !== "play";
+    els("movesPanel").hidden = on;
+  }
+  function closeReview() {
+    if (!G.review) return;
+    clearTimeout(G.review.timer); G.review = null;
+    showReviewPanel(false); render();
+  }
+  const reviewView = () => {
+    const R = G.review; if (!R) return null;
+    const e = R.v > 0 ? R.list[R.v - 1] : null;
+    const s = R.v === 0 ? R.list[0].s : R.list[R.v - 1].after;
+    const last = e ? (e.kind === "place" ? { to: e.to } : { from: e.m >> 6, to: e.m & 63 }) : null;
+    return { s, last, e };
+  };
+  function goReview(v) { const R = G.review; if (!R) return; R.v = Math.max(0, Math.min(R.list.length, v)); render(); }
+  function togglePlay() {
+    const R = G.review; if (!R) return;
+    R.playing = !R.playing;
+    clearTimeout(R.timer);
+    if (R.playing) { if (R.v >= R.list.length) R.v = 0; const tick = () => { if (!R.playing || G.review !== R) return; if (R.v >= R.list.length) { R.playing = false; renderReview(); return; } goReview(R.v + 1); R.timer = setTimeout(tick, 900); }; tick(); }
+    renderReview();
+  }
+  function renderReview() {
+    const R = G.review; if (!R) return;
+    const total = R.list.length;
+    els("revProg").textContent = R.done < total ? `Assessing ${R.done} of ${total}…` : `Every placement and move is scored against the best the computer finds there.`;
+    const sums = summarize(R.list);
+    els("revSum").innerHTML = sums.map(x => `<div class="who"><h3>${sideName(x.side)}${G.mode === "cpu" ? (x.side === G.side ? " (you)" : " (computer)") : ""}</h3>
+      <div class="perf">${x.n ? x.perf : "…"}</div><div class="rank">${x.n ? `${x.rank} · ${x.acc}% accuracy` : ""}</div>
+      <div class="rank">${x.place != null ? `Setup ${x.place}%` : ""}${x.moves != null ? ` · Moves ${x.moves}%` : ""}</div>
+      <dl>${QORDER.map(q => `<dt><span class="dot q-${q}"></span>${Q[q]}</dt><dd>${x.counts[q]}</dd>`).join("")}</dl></div>`).join("");
+    // list
+    let html = "", phase = null, moveNo = 0;
+    R.list.forEach((e, i) => {
+      if (e.kind !== phase) { phase = e.kind; html += `<li class="sep">${e.kind === "place" ? "Setup" : "Play"}</li>`; }
+      const label = e.kind === "place" ? `${i + 1}.` : `${++moveNo}.`;
+      const tag = e.q ? `<span class="tagq q-${e.q}">${Q[e.q]}</span>` : `<span class="who2">…</span>`;
+      html += `<li><button type="button" data-v="${i + 1}" aria-current="${R.v === i + 1}"><span class="who2">${label}</span><span class="who2">${sideName(e.by)}</span><span>${e.note}</span>${tag}</button></li>`;
+    });
+    const listEl = els("revList"), keepScroll = listEl.scrollTop;
+    listEl.innerHTML = html; listEl.scrollTop = keepScroll;
+    const cur = listEl.querySelector('[aria-current="true"]'); if (cur && R.playing) cur.scrollIntoView({ block: "nearest" });
+    // note
+    const vw = reviewView();
+    let note = "The starting board. Step through the game, or tap any move.";
+    if (vw.e) {
+      const e = vw.e, who = sideName(e.by);
+      const what = e.kind === "place" ? `${who} set ${e.by === sideOf(e.piece) ? "their" : "the rival's"} ${NAMES[e.piece]} on ${sqName(e.to)}` : `${who}: ${e.note}`;
+      if (!e.q) note = `${what}. Assessing…`;
+      else {
+        const better = e.best ? (e.kind === "place" ? ` Better: ${sqName(e.best.to)}.` : ` Better: ${e.best.note}.`) : "";
+        note = `${what}. ${Q[e.q]}.${e.q === "best" ? "" : better}`;
+      }
+      if (R.v === R.list.length && G.winner != null) note += ` ${G.winner === -1 ? "A draw." : `The ${sideName(G.winner)} win: ${WHY[G.why] || ""}`}`;
+    }
+    els("revNote").textContent = note;
+    els("rvPlay").textContent = R.playing ? "Pause" : "Play";
+    els("rvStart").disabled = els("rvBack").disabled = R.v === 0;
+    els("rvEnd").disabled = els("rvFwd").disabled = R.v >= R.list.length;
   }
 
   /* ---------- Result dialog ---------- */
@@ -656,7 +911,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     const draw = G.winner === -1;
     const you = G.mode === "cpu" ? (draw ? "draw" : G.winner === G.side ? "win" : "lose") : "draw";
     const title = draw ? "A draw" : G.mode === "cpu" ? (G.winner === G.side ? "You win" : "You lose") : `The ${sideName(G.winner)} win`;
-    openModal(you, `<h2>${title}</h2><p>${WHY[G.why] || ""}</p><div class="row" style="justify-content:center"><button class="btn primary" type="button" data-act="new">New game</button><button class="btn" type="button" data-act="close">Look at the board</button></div>`);
+    openModal(you, `<h2>${title}</h2><p>${WHY[G.why] || ""}</p><div class="row" style="justify-content:center"><button class="btn primary" type="button" data-act="review">Review the game</button><button class="btn" type="button" data-act="new">New game</button><button class="btn" type="button" data-act="close">Close</button></div>`);
   }
   function openModal(tone, html) {
     closeModal();
@@ -665,7 +920,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     modalEl.innerHTML = `<div class="dialog ${tone}" role="dialog" aria-modal="true" aria-label="Result">${html}</div>`;
     document.body.appendChild(modalEl);
     document.querySelector(".wrap").inert = true;
-    modalEl.addEventListener("click", e => { const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "new") newGame(); else closeModal(); });
+    modalEl.addEventListener("click", e => { const a = e.target.closest("[data-act]"); if (!a) return; if (a.dataset.act === "new") newGame(); else if (a.dataset.act === "review") { closeModal(); startReview(); } else closeModal(); });
     modalEl.addEventListener("keydown", e => {
       if (e.key !== "Tab") return;
       const f = [...modalEl.querySelectorAll("button")]; const i = f.indexOf(document.activeElement);
@@ -810,7 +1065,10 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     els("playPanel").hidden = t !== "play";
     els("puzPanel").hidden = t !== "puzzles";
     closeModal();
+    els("revPanel").hidden = true;
+    els("movesPanel").hidden = false;
     if (t === "puzzles") {
+      if (G.review) { clearTimeout(G.review.timer); G.review = null; }
       clearTimeout(cpuTimer); thinking = false;
       GAME = G; save();
       setVal("pside", PS.side);
@@ -824,11 +1082,20 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   }
 
   /* ---------- Wiring ---------- */
-  function save() { if (G.mode === "puzzle") return; try { localStorage.setItem("cnoc-game", JSON.stringify(G)); } catch (e) {} }
+  function save() { if (G.mode === "puzzle") return; try { localStorage.setItem("cnoc-game", JSON.stringify(Object.assign({}, G, { review: null }))); } catch (e) {} }
   function load() { try { const raw = localStorage.getItem("cnoc-game"); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
   boardEl.addEventListener("click", e => { const b = e.target.closest(".sq"); if (b) click(+b.dataset.i); });
   els("tray").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (!b || b.disabled) return; G.pick = +b.dataset.k; render(); });
   els("newBtn").addEventListener("click", newGame);
+  els("reviewBtn").addEventListener("click", startReview);
+  els("rvClose").addEventListener("click", closeReview);
+  els("rvStart").addEventListener("click", () => goReview(0));
+  els("rvBack").addEventListener("click", () => goReview(G.review.v - 1));
+  els("rvFwd").addEventListener("click", () => goReview(G.review.v + 1));
+  els("rvEnd").addEventListener("click", () => goReview(G.review.list.length));
+  els("rvPlay").addEventListener("click", togglePlay);
+  els("revList").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (b) goReview(+b.dataset.v); });
+  document.addEventListener("keydown", e => { if (!G.review || modalEl || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return; if (e.key === "ArrowLeft") { goReview(G.review.v - 1); e.preventDefault(); } if (e.key === "ArrowRight") { goReview(G.review.v + 1); e.preventDefault(); } });
   undoBtn.addEventListener("click", undo);
   document.querySelectorAll('input[name="mode"],input[name="side"],input[name="hold"],input[name="setup"]').forEach(el => el.addEventListener("change", () => { cpuOpts.hidden = val("mode") !== "cpu"; newGame(); }));
   document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { G.lvl = +val("lvl"); save(); }));
@@ -844,7 +1111,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     drawTerrain();
     const saved = (data && data.G) || load();
     if (saved && saved.s && saved.s.b && saved.mode !== "puzzle") {
-      G = saved; G.sel = null; G.pick = null;
+      G = saved; G.sel = null; G.pick = null; G.review = null;
       setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl); setVal("hold", G.holdN || 7); setVal("setup", G.swap ? "swap" : "own");
       G.holdN = G.holdN || 7; HOLDN = effHold(); holdLabels();
       render(); maybeCpu();
