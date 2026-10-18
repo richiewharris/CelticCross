@@ -787,7 +787,79 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       if (i === e.to) playedV = v;
     }
     const loss = Math.max(0, bestV - playedV);
-    e.loss = loss; e.q = classify(loss, 0, 0, cells.length <= 1); e.best = bestI === e.to ? null : { to: bestI };
+    e.loss = loss;
+    // Setup is judged with a heuristic, and many holes are near-equal, so the bands are wider than for moves.
+    e.q = cells.length <= 1 || loss <= 25 ? "best" : loss <= 70 ? "exc" : loss <= 160 ? "good" : loss <= 350 ? "miss" : "blun";
+    e.best = e.q === "best" || bestI === e.to ? null : { to: bestI };
+  }
+  // Deep value of a position for the side to move (alpha-beta, deepening while time allows).
+  function analyse(root, maxDepth, ms, seen) {
+    const deadline = performance.now() + ms;
+    let nodes = 0; const path = [];
+    const repTimes = k => (seen.get(k) || 0) + path.filter(x => x === k).length;
+    const repVal = t => { const mine = count(t.b, t.turn), theirs = count(t.b, t.turn ^ 1); return mine < theirs ? MATE / 2 : mine > theirs ? -MATE / 2 : 0; };
+    function nm(t, d, a, bb, ply) {
+      if ((++nodes & 511) === 0 && performance.now() > deadline) throw new TimeUp();
+      if (d === 0) { const v = evalHost(t); return t.turn === 0 ? v : -v; }
+      const list = gen(t);
+      if (!list.length) return -MATE + ply;
+      list.sort((x, y) => orderScore(t, y) - orderScore(t, x));
+      let best = -Infinity;
+      for (const m of list) {
+        const u = apply(t, m); let v;
+        if (u.res) v = MATE - ply - 1;
+        else { const k = key(u); if (repTimes(k) >= 2) v = -repVal(u); else { path.push(k); v = -nm(u, d - 1, -bb, -a, ply + 1); path.pop(); } }
+        if (v > best) best = v; if (v > a) a = v; if (a >= bb) break;
+      }
+      return best;
+    }
+    let moves = gen(root);
+    if (!moves.length) return { m: null, v: -MATE, depth: 0 };
+    moves.sort((x, y) => orderScore(root, y) - orderScore(root, x));
+    let out = null;
+    for (let d = 1; d <= maxDepth; d++) {
+      try {
+        let a = -Infinity, bestV = -Infinity, bm = moves[0]; const sc = [];
+        for (const m of moves) {
+          const u = apply(root, m); let v;
+          if (u.res) v = MATE;
+          else { const k = key(u); if (repTimes(k) >= 2) v = -repVal(u); else { path.push(k); v = -nm(u, d - 1, -Infinity, -a + 1, 1); path.pop(); } }
+          sc.push([v, m]);
+          if (v > bestV) { bestV = v; bm = m; } if (v > a) a = v;
+        }
+        moves = sc.sort((x, y) => y[0] - x[0]).map(x => x[1]);
+        out = { m: bm, v: bestV, depth: d };
+        if (Math.abs(bestV) >= MATE / 2) break;
+      } catch (e) { if (e instanceof TimeUp) break; throw e; }
+    }
+    return out || { m: moves[0], v: 0, depth: 0 };
+  }
+  const moveNote = (s, m) => `${LETTER[s.b[m >> 6]]} ${sqName(m >> 6)}${s.b[m & 63] ? "×" : "–"}${sqName(m & 63)}`;
+  // Grade a move from the deep values before it and after it (played value = minus the opponent's value next).
+  function gradeMove(e, playedV) {
+    const bv = e.ev.v, loss = Math.max(0, clampV(bv) - clampV(playedV));
+    e.loss = loss; e.q = classify(loss, bv, playedV, e.only);
+    e.best = e.ev.m == null || e.ev.m === e.m || e.q === "best" ? null : { from: e.ev.m >> 6, to: e.ev.m & 63, note: moveNote(e.s, e.ev.m) };
+  }
+  function finishReview(list) {
+    const moves = list.filter(e => e.kind === "move");
+    moves.forEach((e, i) => {
+      const next = moves[i + 1];
+      const playedV = next ? -next.ev.v : (G.winner === e.by ? MATE : G.winner === -1 ? 0 : -MATE);
+      gradeMove(e, playedV);
+    });
+    // The decisive mistake: the loser's last turn where the analysis still saw a way to hold.
+    if (G.winner === 0 || G.winner === 1) {
+      const loser = G.winner ^ 1;
+      const mine = moves.filter(e => e.by === loser);
+      for (let i = mine.length - 1; i >= 0; i--) {
+        const e = mine[i];
+        if (e.ev.v > -MATE / 2) {
+          if (e.q !== "blun" && e.q !== "miss" && !e.only) { e.q = "blun"; e.loss = Math.max(e.loss, 600); e.decisive = true; if (e.ev.m != null && e.ev.m !== e.m) e.best = { from: e.ev.m >> 6, to: e.ev.m & 63, note: moveNote(e.s, e.ev.m) }; }
+          break;
+        }
+      }
+    }
   }
   function assessMove(e, seen) {
     const sc = scoreMoves(e.s, 4, 450, seen);
@@ -805,14 +877,15 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
     const rank = r => (r < 900 ? "Novice" : r < 1400 ? "Warrior" : r < 1900 ? "Champion" : "High King");
     return [0, 1].map(side => {
       const mine = list.filter(e => e.q && e.by === side);
-      const counts = Object.fromEntries(QORDER.map(q => [q, mine.filter(e => e.q === q).length]));
+      const played = mine.filter(e => e.kind === "move");
+      const counts = Object.fromEntries(QORDER.map(q => [q, played.filter(e => e.q === q).length]));
       const pl = mine.filter(e => e.kind === "place"), mv = mine.filter(e => e.kind === "move");
       const sub = arr => arr.length ? arr.reduce((t, e) => t + 100 * Math.exp(-e.loss / 300), 0) / arr.length : null;
       // Setup counts for a quarter of the rating, play for three quarters.
       const sp = sub(pl), sm = sub(mv);
       const acc = sp == null ? (sm || 0) : sm == null ? sp : 0.25 * sp + 0.75 * sm;
       const perf = Math.round((400 + 18 * acc) / 10) * 10;
-      return { side, counts, acc: Math.round(acc), perf, rank: rank(perf), place: sp == null ? null : Math.round(sp), moves: sm == null ? null : Math.round(sm), n: mine.length };
+      return { side, counts, acc: Math.round(acc), perf, rank: rank(perf), place: sp == null ? null : Math.round(sp), moves: sm == null ? null : Math.round(sm), n: mine.length, nPlace: pl.length, nMoves: mv.length };
     });
   }
   function startReview() {
@@ -831,10 +904,16 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       while (k < list.length && performance.now() - t0 < 60) {
         const e = list[k];
         if (e.kind === "place") assessPlacement(e);
-        else { const k0 = key(e.s); seen.set(k0, (seen.get(k0) || 0) + 1); assessMove(e, seen); }
+        else {
+          const k0 = key(e.s); seen.set(k0, (seen.get(k0) || 0) + 1);
+          e.only = gen(e.s).length === 1;
+          e.ev = analyse(e.s, 8, 900, seen);
+          e.adv = clampV(e.s.turn === 0 ? e.ev.v : -e.ev.v);
+        }
         k++; R.done = k;
         if (e.kind === "move") break; // one search per slice keeps the page responsive
       }
+      if (k >= list.length) finishReview(list);
       renderReview();
       if (k < list.length) setTimeout(step, 0);
     };
@@ -868,11 +947,12 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
   function renderReview() {
     const R = G.review; if (!R) return;
     const total = R.list.length;
-    els("revProg").textContent = R.done < total ? `Assessing ${R.done} of ${total}…` : `Every placement and move is scored against the best the computer finds there.`;
+    els("revProg").textContent = R.done < total ? `Assessing ${R.done} of ${total}…` : `Each move is judged by a deep search of where it led; the counts below are for moves in play.`;
     const sums = summarize(R.list);
     els("revSum").innerHTML = sums.map(x => `<div class="who"><h3>${sideName(x.side)}${G.mode === "cpu" ? (x.side === G.side ? " (you)" : " (computer)") : ""}</h3>
       <div class="perf">${x.n ? x.perf : "…"}</div><div class="rank">${x.n ? `${x.rank} · ${x.acc}% accuracy` : ""}</div>
-      <div class="rank">${x.place != null ? `Setup ${x.place}%` : ""}${x.moves != null ? ` · Moves ${x.moves}%` : ""}</div>
+      <div class="rank">${x.place != null ? `Setup ${x.place}% (${x.nPlace} pieces)` : ""}</div>
+      <div class="rank">${x.moves != null ? `Play ${x.moves}% (${x.nMoves} moves)` : ""}</div>
       <dl>${QORDER.map(q => `<dt><span class="dot q-${q}"></span>${Q[q]}</dt><dd>${x.counts[q]}</dd>`).join("")}</dl></div>`).join("");
     // list
     let html = "", phase = null, moveNo = 0;
@@ -894,7 +974,7 @@ aside { display: grid; gap: 26px; min-width: 0; align-content: start; }
       if (!e.q) note = `${what}. Assessing…`;
       else {
         const better = e.best ? (e.kind === "place" ? ` Better: ${sqName(e.best.to)}.` : ` Better: ${e.best.note}.`) : "";
-        note = `${what}. ${Q[e.q]}.${e.q === "best" ? "" : better}`;
+        note = `${what}. ${Q[e.q]}${e.decisive ? ": the turning point, the last move where a defence still held" : ""}.${e.q === "best" ? "" : better}`;
       }
       if (R.v === R.list.length && G.winner != null) note += ` ${G.winner === -1 ? "A draw." : `The ${sideName(G.winner)} win: ${WHY[G.why] || ""}`}`;
     }
