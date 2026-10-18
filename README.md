@@ -11,9 +11,10 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
 | **Fiche**: a dice race to twenty | [`fiche/index.html`](fiche/index.html) |
 | **Cnoc**: a battle for a fairy mound | [`cnoc/index.html`](cnoc/index.html) |
+| **Cnoc Mór**: the big hill, a longer Cnoc | [`cnoc-mor/index.html`](cnoc-mor/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, and Cnoc at `/cnoc/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, Cnoc at `/cnoc/`, and Cnoc Mór at `/cnoc-mor/`.
 
 ---
 
@@ -157,6 +158,19 @@ Without those adjustments, setting the rival's pieces is lopsided: whoever moves
 Play the computer (Novice, Warrior, Champion or High King) or a friend. **Game review**: after a game, every move is judged by a deep search (up to 8 moves ahead) of the position before it and the position it led to, anchored to the actual result, so the move where a defence stopped holding is marked as the turning point. Setup placements are scored with a placement heuristic, with wider bands because many holes are near-equal. Each is marked Best, Excellent, Good, Miss or Blunder; the counts cover moves in play, and setup gets its own accuracy. You can step or play through the game, and the better choice is ringed on the board. Each player gets an accuracy (setup counts for a quarter, play for three quarters) and a performance rating, with a rank from Novice to High King. **Puzzles**: 90 positions, 48 for the Host and 42 for the Sí, each a forced win in 2 to 5 moves against the computer's best defence. Every puzzle was found and checked by an exhaustive solver; where more than one move wins, any winning move counts.
 
 **Balance.** The rules were tuned over about 4,000 computer games. With the standard setup, the Host win about 40–48% of games. The two rules that make it work are that the Lord can only climb onto a clear summit, and that the hold lasts seven turns.
+
+## Cnoc Mór
+
+*Cnoc Mór* (pronounced *k'nuk mor*, "the big hill") is a longer Cnoc: speed and reach against numbers and a steady advance. There is no hold; the Sí simply have to keep the Lord off the cairn.
+
+- **The hill:** 9×9 in four tiers: the outer ring (32 holes), lower slope (24), upper slope (20) and a summit cross (5). The cairn is the centre hole. A move that steps up a tier ends there; downhill is free.
+- **Host:** the Lord steps one hole any way, and is safe from Riders while he is on the outer ring. 4 spearmen step one hole any way but climb only straight; 3 more wait in reserve.
+- **Sí:** the Chariot runs any distance along rows and columns, and 4 Riders run any distance diagonally; 1 more Rider waits in reserve. Instead of moving, a Sí piece may jump to any empty summit hole while no Host piece is on the summit.
+- **Reserves:** bringing one in is your move. Host spearmen enter on the outer ring; the Sí Rider on the upper slope or summit.
+- **Setup:** Host first, the sides alternate: the Host set the Lord and 4 spearmen on the outer ring, the Sí the Chariot and 4 Riders on the upper slope or summit. The Host move first.
+- **Winning:** the Host win by standing the Lord on the cairn (he can't take a piece standing there) or by taking every Sí piece. The Sí win by taking the Lord. No legal move loses; a third repetition goes to the side with fewer pieces; 150 moves each is a draw.
+
+Tuned over several thousand computer games with full-depth search: the Host win about 55% when both sides look 4 moves ahead and about 47% at 6, with games of 80–100 moves. Play the computer at four levels or a friend, and review any finished game.
 
 ## Monsiv
 
