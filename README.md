@@ -8,6 +8,9 @@ this repo (`index.html` and `assets/`) is the built app; its source is in [`reac
 | **Monsiv**: a 5×5 chess-like strategy game | `#/monsiv` |
 | **Fidchell**: the early Irish board game | `#/fidchell` |
 | **Celtic Cross Lock**: a lock-picking puzzle | `#/lock` |
+| Celtic Cross Lock, earned turns: start with 3–5 turns, earn one per join | `#/lock/earn` |
+| Celtic Cross Lock, stacked discs: open dial after dial on one purse of turns | `#/lock/stack` |
+| Celtic Cross Lock, the cube: a knot over six faces; turn the cube to see each side | `#/lock/cube` |
 | Celtic Cross Lock, classic (the first stone-swapping version) | `#/lock/v1` |
 | **Fiche**: a dice race to twenty | `#/fiche` |
 | **Cnoc**: a battle for a fairy mound | `#/cnoc` |

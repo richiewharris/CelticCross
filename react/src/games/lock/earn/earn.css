@@ -1,0 +1,29 @@
+/* Celtic Cross Lock, "Earned turns": the purse under the dial and the glow on joins just made.
+   Scoped under body.gm-lock like lock.css; nothing here changes the dial's own look. */
+body.gm-lock .earn-purse {
+  position: relative; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px;
+  min-height: 28px; max-width: 100%;
+}
+body.gm-lock .earn-purse-label { font-family: var(--font-mono); font-size: .74rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+body.gm-lock .earn-purse .pips { gap: 6px; max-width: 290px; justify-content: center; }
+body.gm-lock .earn-count { position: relative; font-family: var(--font-display); font-size: 1.5rem; line-height: 1; color: var(--gold); min-width: 1.2ch; text-align: center; font-variant-numeric: tabular-nums; }
+body.gm-lock .earn-count.empty { color: var(--garnet); }
+body.gm-lock .pip.earn-new { background: var(--glow); border-color: var(--glow); animation: earn-pip-in .6s ease-out; }
+body.gm-lock .earn-pop {
+  position: absolute; left: calc(100% + 8px); top: 50%; margin-top: -.7em; pointer-events: none; white-space: nowrap;
+  font-family: var(--font-mono); font-weight: 700; font-size: 1rem; line-height: 1.4; color: var(--glow);
+  text-shadow: 0 0 8px rgb(243 207 106 / .6);
+  animation: earn-pop-up 1.4s ease-out forwards;
+}
+body.gm-lock .earn-glow { animation: earn-glow-fade 1.5s ease-out forwards; }
+body.gm-lock .earn-glow-label { animation: earn-label-rise 1.5s ease-out forwards; }
+@keyframes earn-pip-in { 0% { transform: rotate(45deg) scale(.2); box-shadow: 0 0 0 0 rgb(243 207 106 / .9); } 60% { transform: rotate(45deg) scale(1.35); box-shadow: 0 0 10px 3px rgb(243 207 106 / .7); } 100% { transform: rotate(45deg) scale(1); box-shadow: none; } }
+@keyframes earn-pop-up { 0% { opacity: 0; transform: translateY(8px); } 15% { opacity: 1; transform: translateY(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
+@keyframes earn-glow-fade { 0% { opacity: 0; } 12% { opacity: 1; } 65% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes earn-label-rise { 0% { transform: translateY(4px); } 100% { transform: translateY(-12px); } }
+body.gm-lock .earn-stats { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: .86rem; color: var(--muted); margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  body.gm-lock .earn-glow, body.gm-lock .earn-glow-label, body.gm-lock .earn-pop, body.gm-lock .pip.earn-new { animation: none; }
+}
+/* The playground shows the glow and the "+N" held still. */
+body.gm-lock .earn-still .earn-glow, body.gm-lock .earn-still .earn-glow-label, body.gm-lock .earn-still .earn-pop, body.gm-lock .earn-still .pip.earn-new { animation: none; }

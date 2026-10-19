@@ -80,6 +80,8 @@ export interface DialProps {
   /** The loose stones are hidden once the pins have dropped home. */
   svgOpen: boolean;
   cheat: boolean;
+  /** Extra marks drawn on the spinning disc above the pins, in disc coordinates (variants use it). */
+  overlay?: ReactNode;
   domRef?: MutableRefObject<DialDom>;
   onPointerDown?: (e: PointerEvent<SVGSVGElement>) => void;
   onPointerMove?: (e: PointerEvent<SVGSVGElement>) => void;
@@ -226,6 +228,7 @@ export function Dial(p: DialProps) {
             </g>
           </g>
           {aids}
+          {p.overlay}
         </g>
       </g>
       <g id="cover" ref={set("cover")} transform={`translate(${f(-a.cover)} 0)`} opacity={p.cheat && !p.open ? ".38" : "1"}>

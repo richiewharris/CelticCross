@@ -8,7 +8,7 @@ live site: the build is published to the repo root, which GitHub Pages serves.
 ```sh
 npm install
 npm run dev           # live-reloading dev server: #/, #/<game>, #/playground
-npm test              # 424 engine tests across the games (rules, AI, generators, puzzles, odds)
+npm test              # 490 engine tests across the games (rules, AI, generators, puzzles, odds)
 npm run sim -- --games 50 --host 3 --si 3        # Cnoc self-play on the same engine
 npx tsx sim/<game>-sim.ts --help                  # the other games' simulators
 npx tsx sim/finished-game.ts > game.json          # a finished game, for testing the review

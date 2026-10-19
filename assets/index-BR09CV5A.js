@@ -1,0 +1,1 @@
+import{j as s,G as a}from"./index--OlmSqUZ.js";import{M as o,l as t}from"./MonsivGame--Q-B--My.js";import"./rpc-D27kvFeQ.js";t("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap");function m(){return s.jsx(a,{id:"monsiv",children:s.jsx(o,{})})}export{m as default};
