@@ -12,9 +12,10 @@ Small browser games with a Celtic theme. None needs installing or building: open
 | **Fiche**: a dice race to twenty | [`fiche/index.html`](fiche/index.html) |
 | **Cnoc**: a battle for a fairy mound | [`cnoc/index.html`](cnoc/index.html) |
 | **Cnoc Mór**: the big hill, a longer Cnoc | [`cnoc-mor/index.html`](cnoc-mor/index.html) |
+| **Cnoc, React edition**: built from shared components (source in [`react/`](react/)) | [`next/index.html`](next/index.html) |
 | **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, Cnoc at `/cnoc/`, and Cnoc Mór at `/cnoc-mor/`.
+To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, Cnoc at `/cnoc/`, Cnoc Mór at `/cnoc-mor/`, and the React edition at `/next/`.
 
 ---
 
@@ -243,3 +244,11 @@ These details couldn't be confirmed from surviving sources and are best guesses:
 ### Credits
 
 Monsiv was designed by Harley Bailey. This is an unofficial fan rebuild with original artwork and code.
+
+## The React edition
+
+[`react/`](react/) holds a Vite + React + TypeScript rebuild, starting with Cnoc. Its rules engine is
+plain TypeScript with tests (including a check of all 90 puzzle solutions); the same engine drives the
+game, the computer in a Web Worker, and a command-line simulator. A playground page shows every component
+with fixed data. Run `npm run publish-site` in `react/` to rebuild into [`next/`](next/). See
+[`react/README.md`](react/README.md).
