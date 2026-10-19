@@ -1,4 +1,7 @@
-// Placeholder until this game is ported.
+import "./fiche.css";
+import { GameScope } from "../../kit/GameScope";
+import { FicheGame } from "./FicheGame";
+
 export default function Page() {
-  return <div className="wrap"><header><h1>Coming soon</h1></header><p><a href="../fiche/">Play the original</a>.</p></div>;
+  return <GameScope id="fiche"><FicheGame /></GameScope>;
 }
