@@ -1,7 +1,7 @@
 # The games, in React
 
-A React + TypeScript rebuild of the whole collection: Monsiv, Fidchell, Celtic Cross Lock (current and classic), Fiche, Cnoc, Cnoc Mór, Fidchell of Cups and Goldmines River, plus the front page and a component playground. The built site is
-committed to [`/next/`](../next/) so GitHub Pages serves it next to the original pages.
+A React + TypeScript rebuild of the whole collection: Monsiv, Fidchell, Celtic Cross Lock (current and classic), Fiche, Cnoc, Cnoc Mór, Fidchell of Cups and Goldmines River, plus the front page and a component playground. This is the
+live site: the build is published to the repo root, which GitHub Pages serves.
 
 ## Commands
 
@@ -12,7 +12,7 @@ npm test              # 424 engine tests across the games (rules, AI, generators
 npm run sim -- --games 50 --host 3 --si 3        # Cnoc self-play on the same engine
 npx tsx sim/<game>-sim.ts --help                  # the other games' simulators
 npx tsx sim/finished-game.ts > game.json          # a finished game, for testing the review
-npm run publish-site  # type-check, build, and copy into ../next/
+npm run publish-site  # type-check, build, and publish to the repo root (index.html, assets/)
 ```
 
 ## Layout

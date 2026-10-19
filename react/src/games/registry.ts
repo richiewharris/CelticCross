@@ -10,7 +10,7 @@ export interface GameEntry {
   say?: string;
   kicker: string;
   blurb: string;
-  image: string; // file in the site's /images/ folder
+  image: string; // file in the site's images/ folder
   alt?: string;
   facts?: string[];
   /** Shown as a large card on the home page; the rest go under "Also in the collection". */

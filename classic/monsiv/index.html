@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monsiv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single stone tabletop — the board is the hero on the left, a slim ledger of controls, rules and moves on the right; stacks on phones. */
+:root {
+  --bg: #e2dccd;
+  --surface: #ece7da;
+  --fg: #26231e;
+  --muted: #6b6455;
+  --line: #b9ae94;
+  --sq-light: #ddd3bc;
+  --sq-dark: #c2b496;
+  --frame: #5b5141;
+  --gilt: #a87a22;
+  --oxblood: #8e2f28;
+  --good: #3d7536;
+  --piece-white: #faf7ef;
+  --piece-black: #1e1c19;
+  --piece-white-line: #2a2620;
+  --font-display: "Cinzel", "Trajan Pro", "Times New Roman", serif;
+  --font-body: "Alegreya Sans", "Gill Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1a17; --surface: #25221e; --fg: #ece5d5; --muted: #a59c89; --line: #4a4337;
+    --sq-light: #b4a88d; --sq-dark: #958870; --frame: #0f0e0c;
+    --gilt: #e0b04f; --oxblood: #e0786d; --good: #8fcf86;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1a17; --surface: #25221e; --fg: #ece5d5; --muted: #a59c89; --line: #4a4337;
+  --sq-light: #b4a88d; --sq-dark: #958870; --frame: #0f0e0c;
+  --gilt: #e0b04f; --oxblood: #e0786d; --good: #8fcf86;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 6vw, 2.9rem); letter-spacing: .18em; margin: 0; line-height: 1; }
+.tag { color: var(--muted); font-style: italic; margin: 0; }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
+@media (max-width: 780px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+/* Board */
+.stage { display: grid; gap: 14px; justify-items: center; min-width: 0; }
+.status {
+  font-family: var(--font-display); font-weight: 500; letter-spacing: .08em; font-size: 1.05rem;
+  min-height: 1.6em; text-align: center; text-wrap: balance;
+}
+.status.win { color: var(--gilt); font-weight: 700; }
+.boardbox { width: min(100%, 540px); display: grid; grid-template-columns: 18px minmax(0,1fr); grid-template-rows: minmax(0,1fr) 18px; gap: 6px; }
+.ranks, .files { display: grid; font-family: var(--font-mono); font-size: .72rem; color: var(--muted); }
+.ranks { grid-template-rows: repeat(5, 1fr); align-items: center; justify-items: center; }
+.files { grid-template-columns: repeat(5, 1fr); justify-items: center; grid-column: 2; }
+.board {
+  aspect-ratio: 1; max-width: 100%; width: 100%;
+  display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);
+  border: 3px solid var(--frame); box-shadow: 0 10px 28px rgb(0 0 0 / .18);
+}
+.sq {
+  position: relative; border: 0; padding: 0; margin: 0; cursor: pointer;
+  background: var(--sq-light); outline-offset: -4px;
+  display: grid; place-items: center;
+  box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .18);
+}
+.sq.dk { background: var(--sq-dark); }
+.sq:focus-visible { outline: 3px solid var(--gilt); }
+.sq.last::before { content: ""; position: absolute; inset: 0; background: var(--gilt); opacity: .22; }
+.sq.sel::before { content: ""; position: absolute; inset: 0; background: var(--gilt); opacity: .42; }
+.sq svg { width: 72%; height: 72%; position: relative; z-index: 1; pointer-events: none; }
+.sq .pop { animation: pop .22s ease-out; }
+@keyframes pop { from { transform: scale(.82); } to { transform: scale(1); } }
+.mark { position: absolute; z-index: 2; pointer-events: none; }
+.mark.go { width: 24%; height: 24%; border-radius: 50%; background: var(--frame); opacity: .45; }
+.mark.cap { inset: 7%; border: 4px solid var(--oxblood); border-radius: 50%; opacity: .85; }
+.mark.swap {
+  top: 5%; right: 5%; width: 32%; height: 32%; border-radius: 50%;
+  background: var(--gilt); color: #1e1c19; display: grid; place-items: center;
+  font-size: clamp(.8rem, 3.2vw, 1.15rem); font-weight: 700; line-height: 1;
+}
+.board.locked .sq { cursor: default; }
+.hint { color: var(--muted); font-size: .92rem; margin: 0; text-align: center; max-width: 46ch; }
+
+/* Ledger */
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 10px; }
+.label { font-family: var(--font-display); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 7px 6px; cursor: pointer; font-size: .93rem; border-left: 1px solid var(--line); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--fg); color: var(--bg); font-weight: 500; }
+.seg input:focus-visible + label { outline: 2px solid var(--gilt); outline-offset: -3px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button.btn {
+  font: inherit; font-weight: 500; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--fg); background: transparent; color: var(--fg);
+}
+button.btn.primary { background: var(--fg); color: var(--bg); }
+button.btn:disabled { opacity: .4; cursor: not-allowed; }
+button.btn:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+#cpuOpts[hidden] { display: none !important; }
+
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; font-size: .95rem; }
+.rules li { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 10px; align-items: start; }
+.rules svg { width: 30px; height: 30px; }
+.rules b { font-weight: 700; }
+.note { font-size: .86rem; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
+
+.log {
+  font-family: var(--font-mono); font-size: .82rem; font-variant-numeric: tabular-nums;
+  margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto;
+  display: grid; grid-template-columns: 2.4em 1fr 1fr; gap: 3px 8px; align-content: start;
+}
+.log .n { color: var(--muted); }
+.log .empty { grid-column: 1 / -1; color: var(--muted); font-family: var(--font-body); font-style: italic; font-size: .9rem; }
+
+/* Puzzles */
+.tabs label { font-family: var(--font-display); letter-spacing: .12em; font-size: .9rem; padding: 9px 6px; }
+#playPanel[hidden], #puzPanel[hidden], .pz-only[hidden] { display: none !important; }
+.rating { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.rating b { font-family: var(--font-display); font-weight: 700; font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.delta { font-family: var(--font-mono); font-size: .9rem; }
+.delta.up { color: var(--good); } .delta.down { color: var(--oxblood); }
+.stats { font-size: .88rem; color: var(--muted); margin: 0; }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; min-height: 10px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.dots i.w { background: var(--good); } .dots i.l { background: var(--oxblood); } .dots i.h { background: var(--gilt); }
+.pzcard { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; background: var(--surface); }
+.pzmeta { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); margin: 0; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pzmsg { margin: 0; font-size: .95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { font-family: var(--font-mono); font-size: .74rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--muted); }
+select.pick { font: inherit; font-size: .93rem; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); width: 100%; }
+select.pick:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+.sq.hintsq::after { content: ""; position: absolute; inset: 6%; border: 3px dashed var(--gilt); border-radius: 50%; z-index: 2; pointer-events: none; animation: breathe 1.4s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(.9); } }
+.sq.good::before { content: ""; position: absolute; inset: 0; background: var(--good); opacity: .4; }
+.sq.bad::before { content: ""; position: absolute; inset: 0; background: var(--oxblood); opacity: .38; }
+.status.fail { color: var(--oxblood); }
+@media (prefers-reduced-motion: reduce) { .sq.hintsq::after { animation: none; } }
+
+@media (prefers-reduced-motion: reduce) { .sq .pop { animation: none; } }
+</style>
+</head>
+<body>
+<div style="max-width:1040px;margin:0 auto"><a href="../" style="display:inline-block;margin:0 0 6px;font:500 .8rem 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.08em;color:#a99c84;text-decoration:none">&larr; All games</a>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="p-T" viewBox="0 0 100 100">
+      <path d="M28 62 V38 A22 22 0 0 1 72 38 V62 H62 V40 A12 12 0 0 0 38 40 V62 Z"/>
+      <rect x="20" y="63" width="60" height="9" rx="2"/>
+      <rect x="25" y="75" width="50" height="7" rx="1"/>
+      <rect x="19" y="85" width="62" height="7" rx="1.5"/>
+    </symbol>
+    <symbol id="p-C" viewBox="0 0 100 100">
+      <rect x="45" y="22" width="10" height="56"/>
+      <rect x="22" y="45" width="56" height="10"/>
+      <polygon points="50,10 39,27 61,27"/>
+      <polygon points="50,90 39,73 61,73"/>
+      <polygon points="10,50 27,39 27,61"/>
+      <polygon points="90,50 73,39 73,61"/>
+      <polygon points="50,36 64,50 50,64 36,50"/>
+    </symbol>
+    <symbol id="p-A" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="20" rx="15" ry="4.5" fill="none" stroke-width="3.5" class="halo"/>
+      <path d="M47 70 C36 62 20 62 9 74 C22 73 32 79 47 79 Z"/>
+      <path d="M53 70 C64 62 80 62 91 74 C78 73 68 79 53 79 Z"/>
+      <path d="M36 82 Q50 64 64 82 Z"/>
+      <circle cx="50" cy="47" r="18"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>MONSIV</h1>
+    <p class="tag">Five pieces, one throne, and the swap.</p>
+  </header>
+
+  <div class="game">
+    <section class="stage" aria-label="Game board">
+      <div class="status" id="status" role="status" aria-live="polite">White to move</div>
+      <div class="boardbox">
+        <div class="ranks" id="ranks" aria-hidden="true"><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+        <div class="board" id="board"></div>
+        <div class="files" id="files" aria-hidden="true"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span></div>
+      </div>
+      <p class="hint" id="hint">Tap one of your pieces. Dots show where it can step; a gold ⇄ marks a neighbour it can swap with.</p>
+    </section>
+
+    <aside>
+      <div class="seg tabs" role="radiogroup" aria-label="Mode">
+        <input type="radio" name="tab" id="tab-play" value="play" checked><label for="tab-play">Play</label>
+        <input type="radio" name="tab" id="tab-puz" value="puzzles"><label for="tab-puz">Puzzles</label>
+      </div>
+
+      <div class="panel" id="puzPanel" hidden>
+        <div class="rating"><b id="pzRating">600</b><span class="delta" id="pzDelta"></span></div>
+        <p class="stats" id="pzStats">Puzzle rating</p>
+        <div class="dots" id="pzDots" aria-hidden="true"></div>
+        <div class="pzcard">
+          <p class="pzmeta"><span id="pzId">Puzzle</span><span id="pzRated"></span></p>
+          <p class="pzmsg" id="pzMsg" aria-live="polite"></p>
+          <div class="chips" id="pzChips"></div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="pzNext" type="button">Next puzzle</button>
+          <button class="btn" id="pzHint" type="button">Hint</button>
+          <button class="btn" id="pzSolve" type="button">Show solution</button>
+          <button class="btn" id="pzRetry" type="button">Try again</button>
+          <button class="btn" id="pzPause" type="button" hidden>Pause</button>
+          <button class="btn" id="pzStep" type="button" hidden>Step ▸</button>
+        </div>
+        <p class="label">Solution speed</p>
+        <div class="seg">
+          <input type="radio" name="speed" id="sp-1" value="1"><label for="sp-1">Slow</label>
+          <input type="radio" name="speed" id="sp-2" value="2" checked><label for="sp-2">Normal</label>
+          <input type="radio" name="speed" id="sp-3" value="3"><label for="sp-3">Fast</label>
+        </div>
+        <label class="label" for="pzPick">Difficulty</label>
+        <select class="pick" id="pzPick"></select>
+      </div>
+
+      <div class="panel" id="playPanel">
+        <p class="label">Opponent</p>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-cpu" value="cpu" checked><label for="mode-cpu">Computer</label>
+          <input type="radio" name="mode" id="mode-pvp" value="pvp"><label for="mode-pvp">Friend, same screen</label>
+        </div>
+        <div id="cpuOpts" class="panel">
+          <div class="seg">
+            <input type="radio" name="side" id="side-w" value="w" checked><label for="side-w">Play white</label>
+            <input type="radio" name="side" id="side-b" value="b"><label for="side-b">Play black</label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="lvl" id="lvl-1" value="1"><label for="lvl-1">Casual</label>
+            <input type="radio" name="lvl" id="lvl-2" value="2" checked><label for="lvl-2">Steady</label>
+            <input type="radio" name="lvl" id="lvl-3" value="3"><label for="lvl-3">Strong</label>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="newBtn" type="button">New game</button>
+          <button class="btn" id="undoBtn" type="button">Undo</button>
+        </div>
+      </div>
+      <p class="note pz-only" id="pzAbout" hidden>Every puzzle is built by the computer from a numbered seed, so puzzle 7·12 is the same for everyone, and each one is checked to have exactly one winning first move. Wins can come by taking the Throne, reaching the far row, or leaving the other side with no move. Solving raises your rating and missing lowers it, chess-style; a hint makes it count half.</p>
+
+      <div class="panel">
+        <p class="label">Moves</p>
+        <ol class="log" id="log"></ol>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to play</p>
+        <ul class="rules">
+          <li><svg><use href="#p-T" fill="currentColor"/></svg><span><b>Throne</b> steps one square in any direction. Lose it and you lose the game. It may never move or swap onto a square where an enemy piece could take it, so it can't capture a guarded piece.</span></li>
+          <li><svg><use href="#p-A" fill="currentColor" stroke="currentColor"/></svg><span><b>Angel</b> steps one square diagonally.</span></li>
+          <li><svg><use href="#p-C" fill="currentColor"/></svg><span><b>Cross</b> steps one square straight: forward, back or sideways.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">⇄</span><span><b>Swap</b> two of your own different pieces that touch, including diagonally. A swap is your whole turn, and you can't swap the same pair twice in a row.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">✕</span><span><b>Capture</b> by stepping onto an enemy piece.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">↺</span><span><b>No repeats.</b> You can't make a move that recreates a position already seen this game, unless it wins.</span></li>
+          <li><span class="label" style="text-align:center;padding-top:2px">♛</span><span><b>Win</b> by capturing the enemy Throne or by landing any piece on the far row. A player with no legal move loses, so there are no draws.</span></li>
+        </ul>
+        <p class="note">Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses. The Throne and no-repeat rules were added to balance the game: in deep computer testing they took it from 72% second-player wins to roughly even.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* Puzzle engine: a standalone copy of the rules, fast enough to prove forced wins.
+   It is also run in a background worker built from this function's source. */
+function puzzleCore() {
+  // Pieces: 0 empty. Type in low bits (T=1, A=2, C=3); black adds 8. turn: 0 white, 8 black.
+  const T = 1, A = 2, C = 3, BL = 8;
+  const DIRS = {
+    1: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+    2: [[-1,-1],[-1,1],[1,-1],[1,1]],
+    3: [[-1,0],[1,0],[0,-1],[0,1]],
+  };
+  const STEP = { 1: [], 2: [], 3: [] }, ADJ = [];
+  for (let i = 0; i < 25; i++) {
+    const r = (i / 5) | 0, c = i % 5;
+    for (const t of [1, 2, 3]) STEP[t][i] = DIRS[t].filter(([dr, dc]) => r + dr >= 0 && r + dr < 5 && c + dc >= 0 && c + dc < 5).map(([dr, dc]) => (r + dr) * 5 + c + dc);
+    ADJ[i] = STEP[1][i];
+  }
+  const col = p => p & BL;
+  const farRow = turn => (turn === 0 ? 0 : 4);
+
+  function attacked(b, sq, by) {
+    for (const j of ADJ[sq]) {
+      const p = b[j];
+      if (!p || col(p) !== by) continue;
+      const t = p & 7;
+      if (t === T) return true;
+      const diag = ((j / 5) | 0) !== ((sq / 5) | 0) && j % 5 !== sq % 5;
+      if ((t === A) === diag) return true;
+    }
+    return false;
+  }
+  const same = (x, y) => { if (x.turn !== y.turn) return false; for (let i = 0; i < 25; i++) if (x.b[i] !== y.b[i]) return false; return true; };
+  const seen = (path, b, turn) => { for (let k = 0; k < path.length; k++) { const p = path[k]; if (p.turn === turn) { let ok = true; for (let i = 0; i < 25; i++) if (p.b[i] !== b[i]) { ok = false; break; } if (ok) return true; } } return false; };
+
+  // A move: [kind, x, y]; kind 0 = step from x to y, kind 1 = swap x<y.
+  function winsNow(s, m) { // captures the Throne or reaches the far row
+    if (m[0] !== 0) return false;
+    const q = s.b[m[2]];
+    return (q && (q & 7) === T) || ((m[2] / 5) | 0) === farRow(s.turn);
+  }
+  function legal(s, m, path) {
+    if (winsNow(s, m)) return true;
+    const b = s.b.slice(), me = s.turn, opp = me ^ BL;
+    let to = -1;
+    if (m[0] === 0) { if ((b[m[1]] & 7) === T) to = m[2]; b[m[2]] = b[m[1]]; b[m[1]] = 0; }
+    else { const ta = (b[m[1]] & 7) === T, tb = (b[m[2]] & 7) === T; if (ta) to = m[2]; if (tb) to = m[1]; const t = b[m[1]]; b[m[1]] = b[m[2]]; b[m[2]] = t; }
+    if (to >= 0 && attacked(b, to, opp)) return false;
+    return !seen(path, b, opp);
+  }
+  function gen(s, path, firstOnly) {
+    const out = [], b = s.b, me = s.turn;
+    for (let i = 0; i < 25; i++) {
+      const p = b[i];
+      if (!p || col(p) !== me) continue;
+      for (const j of STEP[p & 7][i]) {
+        const q = b[j];
+        if (q && col(q) === me) continue;
+        const m = [0, i, j];
+        if (legal(s, m, path)) { out.push(m); if (firstOnly) return out; }
+      }
+      for (const j of ADJ[i]) {
+        const q = b[j];
+        if (j > i && q && col(q) === me && (q & 7) !== (p & 7) && s.ls[me ? 1 : 0] !== i * 25 + j) {
+          const m = [1, i, j];
+          if (legal(s, m, path)) { out.push(m); if (firstOnly) return out; }
+        }
+      }
+    }
+    return out;
+  }
+  function apply(s, m) {
+    const b = s.b.slice(), ls = s.ls.slice();
+    if (m[0] === 0) { b[m[2]] = b[m[1]]; b[m[1]] = 0; ls[s.turn ? 1 : 0] = -1; }
+    else { const t = b[m[1]]; b[m[1]] = b[m[2]]; b[m[2]] = t; ls[s.turn ? 1 : 0] = m[1] * 25 + m[2]; }
+    return { b, turn: s.turn ^ BL, ls };
+  }
+  // Does m win on the spot, including leaving the opponent with no move?
+  function immediate(s, m, path) {
+    if (winsNow(s, m)) return true;
+    const t = apply(s, m);
+    path.push(t);
+    const none = gen(t, path, true).length === 0;
+    path.pop();
+    return none;
+  }
+  let nodes = 0;
+  // Can the side to move force a win within n of its own moves?
+  function win(s, n, path) {
+    nodes++;
+    const ms = gen(s, path);
+    for (const m of ms) if (immediate(s, m, path)) return true;
+    if (n <= 1) return false;
+    for (const m of ms) if (forces(s, m, n, path)) return true;
+    return false;
+  }
+  // After my move m, does every reply still lose within n-1 more of my moves?
+  function forces(s, m, n, path) {
+    if (immediate(s, m, path)) return true;
+    if (n <= 1) return false;
+    const t = apply(s, m);
+    path.push(t);
+    const rs = gen(t, path);
+    let ok = true;
+    for (const r of rs) if (winsNow(t, r)) { ok = false; break; }
+    if (ok) for (const r of rs) {
+      const u = apply(t, r);
+      path.push(u);
+      const w = win(u, n - 1, path);
+      path.pop();
+      if (!w) { ok = false; break; }
+    }
+    path.pop();
+    return ok;
+  }
+  // Fewest of my moves needed to win after m (0 if m wins now), up to max; Infinity if none.
+  function depthAfter(s, m, max, path) {
+    for (let n = 1; n <= max; n++) if (forces(s, m, n, path)) return n === 1 && immediate(s, m, path) ? 0 : n - 1;
+    return Infinity;
+  }
+  // Defender's best reply: the one that holds out longest (ties: captures first, then first found).
+  function bestReply(t, max, path) {
+    const rs = gen(t, path);
+    let best = null, bestD = -1, bestCap = false;
+    for (const r of rs) {
+      if (winsNow(t, r)) return { m: r, d: Infinity };
+      const u = apply(t, r);
+      path.push(u);
+      let d = Infinity;
+      for (let n = 1; n <= max; n++) if (win(u, n, path)) { d = n; break; }
+      path.pop();
+      const cap = r[0] === 0 && t.b[r[2]] !== 0;
+      if (d > bestD || (d === bestD && cap && !bestCap)) { best = r; bestD = d; bestCap = cap; }
+    }
+    return { m: best, d: bestD };
+  }
+  // Main line: key move, best defence, ... until the win.
+  function mainLine(s, n, path) {
+    const line = [];
+    path = path.slice();
+    let cur = s;
+    for (let k = n; k >= 1; k--) {
+      const ms = gen(cur, path);
+      let pick = null;
+      for (const m of ms) if (immediate(cur, m, path)) { pick = m; break; }
+      if (!pick) for (const m of ms) if (forces(cur, m, k, path)) { pick = m; break; }
+      if (!pick) return null;
+      line.push(pick);
+      const t = apply(cur, pick);
+      if (immediate(cur, pick, path)) return line;
+      path.push(t);
+      const r = bestReply(t, k - 1, path).m;
+      if (!r) return line;
+      line.push(r);
+      cur = apply(t, r);
+      path.push(cur);
+    }
+    return line;
+  }
+
+  /* ---------- Generator ---------- */
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function hash(...xs) { let h = 2166136261; for (const x of xs) { h ^= x >>> 0; h = Math.imul(h, 16777619); h ^= h >>> 13; } return h >>> 0; }
+
+  function randomPosition(R, n) {
+    const b = Array(25).fill(0);
+    const turn = R() < 0.5 ? 0 : BL;
+    const place = (p, ok) => { for (let tries = 0; tries < 60; tries++) { const i = (R() * 25) | 0; if (!b[i] && ok(i)) { b[i] = p; return true; } } return false; };
+    for (const side of [0, BL]) {
+      const homeOk = i => ((i / 5) | 0) !== farRow(side); // not already on its winning row
+      const all = [A, A, C, C];
+      const k = 1 + ((R() * (n >= 3 ? 4 : 4)) | 0);
+      for (let x = 0; x < 4; x++) { const y = x + ((R() * (4 - x)) | 0); [all[x], all[y]] = [all[y], all[x]]; }
+      place(T | side, homeOk);
+      for (let x = 0; x < k; x++) place(all[x] | side, homeOk);
+    }
+    return { b, turn, ls: [-1, -1] };
+  }
+
+  function rate(s, n, key, line, rootMoves, path) {
+    let r = [0, 520, 1000, 1450][n];
+    const notes = [];
+    r += (rootMoves.length - 10) * 10;
+    const cap = key[0] === 0 && s.b[key[2]] !== 0;
+    if (key[0] === 1) { r += 190; notes.push("swap"); }
+    else if (!cap) { r += 90; notes.push("quiet"); }
+    else r -= 60;
+    const after = apply(s, key);
+    const moved = key[0] === 0 ? key[2] : -1;
+    if (moved >= 0 && !winsNow(s, key) && attacked(after.b, moved, s.turn ^ BL)) { r += 120; notes.push("sacrifice"); }
+    // Tempting captures that don't win.
+    let decoys = 0;
+    for (const m of rootMoves) if (m !== key && m[0] === 0 && s.b[m[2]] !== 0) decoys++;
+    r += Math.min(decoys, 4) * 30;
+    // How many replies the defender has to the key move.
+    if (n > 1) { const rs = gen(after, path.concat([after])); r += Math.min(rs.length, 20) * 4; }
+    // How the line ends.
+    let end = s, last = null;
+    for (let k = 0; k < line.length; k++) { last = line[k]; if (k < line.length - 1) end = apply(end, line[k]); }
+    let how = "row";
+    if (last[0] === 0 && end.b[last[2]] && (end.b[last[2]] & 7) === T) how = "throne";
+    else if (last[0] === 0 && ((last[2] / 5) | 0) === farRow(end.turn)) how = "row";
+    else how = "blocked";
+    if (how === "blocked") r += 140;
+    return { rating: Math.round(Math.max(300, Math.min(2400, r)) / 10) * 10, notes, how };
+  }
+
+  // Try to build a puzzle with a forced win in exactly n moves and one key move.
+  function tryPuzzle(seed, n) {
+    const R = rng(seed);
+    const s = randomPosition(R, n);
+    const path = [s];
+    const opp = s.turn ^ BL;
+    const myT = s.b.findIndex(p => p === (T | s.turn)), oT = s.b.findIndex(p => p === (T | opp));
+    if (myT < 0 || oT < 0) return null;
+    if (attacked(s.b, myT, opp) && n > 1) return null;
+    if (n > 1 && attacked(s.b, oT, s.turn)) return null;
+    const ms = gen(s, path);
+    if (ms.length < 3) return null;
+    // Opponent must have had a move to get here, and no win in fewer moves.
+    if (n > 1 && win(s, n - 1, path)) return null;
+    let key = null;
+    for (const m of ms) {
+      if (forces(s, m, n, path)) { if (key) return null; key = m; }
+    }
+    if (!key) return null;
+    if (n === 1 && ms.filter(m => immediate(s, m, path)).length !== 1) return null;
+    const line = mainLine(s, n, path);
+    if (!line || line.length !== 2 * n - 1) return null;
+    const rt = rate(s, n, key, line, ms, path);
+    return { b: s.b, turn: s.turn, n, key, line, ...rt };
+  }
+
+  // Puzzle number i of level L (levels 1..12). Deterministic: same L and i, same puzzle.
+  const LEVEL_LO = L => 300 + (L - 1) * 150;
+  function puzzleFor(L, i) {
+    const lo = LEVEL_LO(L), hi = lo + 150;
+    const mid = lo + 75;
+    const ns = mid < 800 ? [1, 2] : mid < 1250 ? [2, 1, 3] : mid < 1600 ? [3, 2] : [3];
+    let best = null, bestGap = Infinity;
+    for (let a = 0; a < 40000; a++) {
+      const n = ns[a % ns.length];
+      const p = tryPuzzle(hash(L, i, a, 7919), n);
+      if (!p) continue;
+      const gap = p.rating < lo ? lo - p.rating : p.rating >= hi ? p.rating - hi + 1 : 0;
+      if (gap === 0) return { ...p, L, i, tries: a + 1 };
+      if (gap < bestGap) { best = { ...p, L, i, tries: a + 1 }; bestGap = gap; }
+      if (a > 3000 && best && bestGap < 120) return best;
+    }
+    return best;
+  }
+
+  return { T, A, C, BL, gen, apply, win, forces, immediate, winsNow, bestReply, mainLine, depthAfter, tryPuzzle, puzzleFor, attacked, LEVEL_LO, nodes: () => nodes };
+}
+</script>
+<script>
+(() => {
+  const NAMES = { T: "Throne", A: "Angel", C: "Cross" };
+  const DIRS = {
+    T: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+    A: [[-1,-1],[-1,1],[1,-1],[1,1]],
+    C: [[-1,0],[1,0],[0,-1],[0,1]],
+  };
+  const ADJ = DIRS.T;
+  const sq = i => "abcde"[i % 5] + (5 - ((i / 5) | 0));
+  const other = c => (c === "w" ? "b" : "w");
+
+  function initial() {
+    const b = Array(25).fill(null);
+    const top = "ACTAC", bot = "CATCA";
+    for (let c = 0; c < 5; c++) { b[c] = { c: "b", t: top[c] }; b[20 + c] = { c: "w", t: bot[c] }; }
+    return { b, turn: "w", lastSwap: { w: null, b: null }, winner: null, reason: null, last: null };
+  }
+
+  function genMoves(s) {
+    const ms = [];
+    for (let i = 0; i < 25; i++) {
+      const p = s.b[i];
+      if (!p || p.c !== s.turn) continue;
+      const r = (i / 5) | 0, c = i % 5;
+      for (const [dr, dc] of DIRS[p.t]) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const j = rr * 5 + cc, q = s.b[j];
+        if (!q || q.c !== p.c) ms.push({ k: "m", from: i, to: j, cap: q ? q.t : null, t: p.t });
+      }
+      for (const [dr, dc] of ADJ) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const j = rr * 5 + cc, q = s.b[j];
+        if (j > i && q && q.c === p.c && q.t !== p.t) {
+          const key = i + "-" + j;
+          if (s.lastSwap[s.turn] !== key) ms.push({ k: "s", a: i, b: j, key });
+        }
+      }
+    }
+    return ms.filter(m => (!THRONE_SAFE || throneMoveOk(s, m)) && !repeats(s, m));
+  }
+
+  // No repeats: a move may not recreate a position (board and player to move) that has
+  // already occurred this game, unless it wins on the spot. This stops endless
+  // shuffling, so every game ends.
+  let SEEN = new Set();
+  const posKey = (b, turn) => b.map(p => p ? p.c + p.t : ".").join("") + turn;
+  function repeats(s, m) {
+    const me = s.turn, b = s.b.slice();
+    if (m.k === "m") {
+      if (m.cap === "T" || ((m.to / 5) | 0) === (me === "w" ? 0 : 4)) return false;
+      b[m.to] = b[m.from]; b[m.from] = null;
+    } else { const t = b[m.a]; b[m.a] = b[m.b]; b[m.b] = t; }
+    return SEEN.has(posKey(b, other(me)));
+  }
+  function rebuildSeen() {
+    SEEN = new Set(G.history.map(h => posKey(h.state.b, h.state.turn)));
+    SEEN.add(posKey(G.state.b, G.state.turn));
+  }
+
+  // The Throne may not end its move on a square an enemy piece could take it on,
+  // like a king that can't move into check. A move that wins outright (taking the
+  // enemy Throne or reaching the far row) is always allowed, since the game ends.
+  let THRONE_SAFE = true;
+  function attacked(b, sq, by) {
+    const r = (sq / 5) | 0, c = sq % 5;
+    for (let i = 0; i < 25; i++) {
+      const p = b[i];
+      if (!p || p.c !== by) continue;
+      const pr = (i / 5) | 0, pc = i % 5;
+      for (const [dr, dc] of DIRS[p.t]) if (pr + dr === r && pc + dc === c) return true;
+    }
+    return false;
+  }
+  function throneMoveOk(s, m) {
+    const me = s.turn, b = s.b.slice();
+    let to;
+    if (m.k === "m") {
+      if (m.t !== "T") return true;
+      if (m.cap === "T" || ((m.to / 5) | 0) === (me === "w" ? 0 : 4)) return true;
+      b[m.to] = b[m.from]; b[m.from] = null; to = m.to;
+    } else {
+      const ta = s.b[m.a].t === "T", tb = s.b[m.b].t === "T";
+      if (!ta && !tb) return true;
+      const t = b[m.a]; b[m.a] = b[m.b]; b[m.b] = t; to = ta ? m.b : m.a;
+    }
+    return !attacked(b, to, other(me));
+  }
+
+  function apply(s, m) {
+    const me = s.turn;
+    const n = { b: s.b.slice(), turn: other(me), lastSwap: { ...s.lastSwap }, winner: null, reason: null, last: m };
+    if (m.k === "m") {
+      const captured = n.b[m.to];
+      n.b[m.to] = n.b[m.from]; n.b[m.from] = null;
+      n.lastSwap[me] = null;
+      if (captured && captured.t === "T") { n.winner = me; n.reason = "throne"; }
+      else if (((m.to / 5) | 0) === (me === "w" ? 0 : 4)) { n.winner = me; n.reason = "row"; }
+    } else {
+      const t = n.b[m.a]; n.b[m.a] = n.b[m.b]; n.b[m.b] = t;
+      n.lastSwap[me] = m.key;
+    }
+    if (!n.winner && genMoves(n).length === 0) { n.winner = me; n.reason = "blocked"; }
+    return n;
+  }
+
+  function notation(s, m) {
+    if (m.k === "m") {
+      const p = s.b[m.from];
+      return p.t + " " + sq(m.from) + (m.cap ? "×" : "–") + sq(m.to);
+    }
+    return s.b[m.a].t + sq(m.a) + "⇄" + s.b[m.b].t + sq(m.b);
+  }
+
+  /* ---------- Computer opponent ---------- */
+  function evalWhite(s) {
+    let v = 0;
+    for (let i = 0; i < 25; i++) {
+      const p = s.b[i]; if (!p) continue;
+      const r = (i / 5) | 0, sign = p.c === "w" ? 1 : -1;
+      const adv = p.c === "w" ? 4 - r : r;
+      let pv = 0;
+      if (p.t !== "T") pv = 10 + adv * adv * 1.2;
+      else pv = -adv * 0.8;
+      let friends = 0;
+      for (const [dr, dc] of ADJ) {
+        const rr = r + dr, cc = (i % 5) + dc;
+        if (rr < 0 || rr > 4 || cc < 0 || cc > 4) continue;
+        const q = s.b[rr * 5 + cc];
+        if (q && q.c === p.c) friends++;
+      }
+      if (p.t === "T") pv += friends * 1.2; else pv += friends * 0.4;
+      v += sign * pv;
+    }
+    return v;
+  }
+  function order(ms) {
+    const score = m => m.k === "m" ? (m.cap === "T" ? 1000 : m.cap ? 100 : 0) : -1;
+    return ms.sort((x, y) => score(y) - score(x));
+  }
+  class TimeUp extends Error {}
+  function search(root, maxDepth, budgetMs, noise) {
+    const deadline = performance.now() + budgetMs;
+    let nodes = 0;
+    function negamax(s, d, a, b, ply) {
+      if (s.winner) return -(10000 - ply);
+      if (d === 0) return (s.turn === "w" ? 1 : -1) * evalWhite(s);
+      if ((++nodes & 1023) === 0 && performance.now() > deadline) throw new TimeUp();
+      let best = -Infinity;
+      for (const m of order(genMoves(s))) {
+        const v = -negamax(apply(s, m), d - 1, -b, -a, ply + 1);
+        if (v > best) best = v;
+        if (v > a) a = v;
+        if (a >= b) break;
+      }
+      return best;
+    }
+    let moves = genMoves(root);
+    for (let i = moves.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [moves[i], moves[j]] = [moves[j], moves[i]]; }
+    moves = order(moves);
+    let bestMove = moves[0];
+    for (let d = 1; d <= maxDepth; d++) {
+      try {
+        let a = -Infinity, best = null, bestV = -Infinity;
+        const scored = [];
+        for (const m of moves) {
+          const v = -negamax(apply(root, m), d - 1, -Infinity, -a, 1) + (noise ? (Math.random() - .5) * noise : 0);
+          scored.push([v, m]);
+          if (v > bestV) { bestV = v; best = m; }
+          if (v > a) a = v;
+        }
+        bestMove = best;
+        moves = scored.sort((x, y) => y[0] - x[0]).map(x => x[1]);
+        if (bestV > 9000) break;
+      } catch (e) { if (e instanceof TimeUp) break; throw e; }
+    }
+    return bestMove;
+  }
+  const LEVELS = { 1: { depth: 2, ms: 300, noise: 14 }, 2: { depth: 4, ms: 700, noise: 2 }, 3: { depth: 9, ms: 1600, noise: 0 } };
+
+  /* ---------- UI ---------- */
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+  const logEl = document.getElementById("log");
+  const undoBtn = document.getElementById("undoBtn");
+  const cpuOpts = document.getElementById("cpuOpts");
+  const hintEl = document.getElementById("hint");
+  const ranksEl = document.getElementById("ranks");
+  const filesEl = document.getElementById("files");
+
+  let G; // { history: [{state, note}], state, mode, side, lvl, sel }
+  let thinking = false, cpuTimer = null;
+
+  const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
+  const setVal = (name, v) => { const el = document.querySelector(`input[name="${name}"][value="${v}"]`); if (el) el.checked = true; };
+
+  function newGame() {
+    clearTimeout(cpuTimer); thinking = false;
+    G = { history: [], state: initial(), mode: val("mode"), side: val("side"), lvl: val("lvl"), sel: null };
+    rebuildSeen(); render(); save(); maybeCpu();
+  }
+
+  const humanTurn = () => !G.state.winner && (G.mode === "pvp" || G.state.turn === G.side) && !thinking && (G.mode !== "puzzle" || (PZ && PZ.phase === "solve"));
+
+  function play(m) {
+    const note = notation(G.state, m);
+    G.history.push({ state: G.state, note, by: G.state.turn });
+    G.state = apply(G.state, m);
+    G.sel = null;
+    rebuildSeen(); render(true); save(); maybeCpu();
+  }
+
+  function maybeCpu() {
+    if (G.mode !== "cpu" || G.state.winner || G.state.turn === G.side) return;
+    thinking = true; render();
+    const lv = LEVELS[G.lvl];
+    cpuTimer = setTimeout(() => {
+      const m = search(G.state, lv.depth, lv.ms, lv.noise);
+      thinking = false;
+      if (m) play(m); else render();
+    }, 350);
+  }
+
+  function undo() {
+    if (!G.history.length) return;
+    clearTimeout(cpuTimer); thinking = false;
+    let h = G.history.pop();
+    if (G.mode === "cpu") {
+      while (h.by !== G.side && G.history.length) h = G.history.pop();
+    }
+    G.state = h.state; G.sel = null;
+    rebuildSeen(); render(); save(); maybeCpu();
+  }
+
+  function click(i) {
+    if (!humanTurn()) return;
+    const s = G.state, p = s.b[i];
+    const legal = genMoves(s);
+    const go = G.mode === "puzzle" ? puzzleMove : play;
+    if (G.sel !== null) {
+      const mv = legal.find(m => m.k === "m" && m.from === G.sel && m.to === i);
+      if (mv) return go(mv);
+      const sw = legal.find(m => m.k === "s" && ((m.a === G.sel && m.b === i) || (m.b === G.sel && m.a === i)));
+      if (sw) return go(sw);
+      if (i === G.sel) { G.sel = null; return render(); }
+    }
+    if (p && p.c === s.turn) { G.sel = i; render(); }
+    else { G.sel = null; render(); }
+  }
+
+  function pieceSvg(p, pop) {
+    const fill = p.c === "w" ? "var(--piece-white)" : "var(--piece-black)";
+    const line = p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)";
+    const face = p.c === "w" ? "var(--piece-white)" : "#e9e1cf";
+    const eye = p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)";
+    const extra = p.t === "A" ? ` style="--face:${face}"` : "";
+    return `<svg viewBox="0 0 100 100" class="${pop ? "pop" : ""}" aria-hidden="true"${extra}>
+      <use href="#p-${p.t}" fill="${fill}" stroke="${line}" stroke-width="${p.c === "w" ? 3 : 0}" stroke-linejoin="round"/>
+      ${p.t === "A" ? `<path d="M38 48 Q50 40 62 48 Q62 62 50 64 Q38 62 38 48 Z" fill="${face}"/><path d="M42 52 q3 2.5 6 0 M52 52 q3 2.5 6 0" fill="none" stroke="${eye}" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="50" cy="20" rx="15" ry="4.5" fill="none" stroke="${p.c === "w" ? "var(--piece-white-line)" : "var(--piece-black)"}" stroke-width="3.5"/>` : ""}
+    </svg>`;
+  }
+
+  function render(animate) {
+    const s = G.state;
+    const legal = humanTurn() ? genMoves(s) : [];
+    const targets = new Map();
+    if (G.sel !== null) {
+      for (const m of legal) {
+        if (m.k === "m" && m.from === G.sel) targets.set(m.to, m.cap ? "cap" : "go");
+        if (m.k === "s" && (m.a === G.sel || m.b === G.sel)) targets.set(m.a === G.sel ? m.b : m.a, "swap");
+      }
+    }
+    const lastSet = new Set();
+    const lm = s.last;
+    if (lm) { if (lm.k === "m") { lastSet.add(lm.from); lastSet.add(lm.to); } else { lastSet.add(lm.a); lastSet.add(lm.b); } }
+    const popSet = new Set();
+    if (animate && lm) { if (lm.k === "m") popSet.add(lm.to); else { popSet.add(lm.a); popSet.add(lm.b); } }
+
+    const prevFocus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.i : null;
+    const puz = G.mode === "puzzle";
+    const flip = puz && G.side === "b";
+    ranksEl.innerHTML = (flip ? "12345" : "54321").split("").map(x => `<span>${x}</span>`).join("");
+    filesEl.innerHTML = (flip ? "edcba" : "abcde").split("").map(x => `<span>${x}</span>`).join("");
+    const flash = puz && PZ && PZ.flash ? PZ.flash : null;
+    let html = "";
+    for (let d = 0; d < 25; d++) {
+      const i = flip ? 24 - d : d;
+      const r = (i / 5) | 0, c = i % 5, p = s.b[i];
+      const cls = ["sq"];
+      if ((r + c) % 2 === 1) cls.push("dk");
+      if (G.sel === i) cls.push("sel");
+      else if (flash && flash.sqs.includes(i)) cls.push(flash.kind);
+      else if (lastSet.has(i)) cls.push("last");
+      if (puz && PZ && PZ.hintSq === i) cls.push("hintsq");
+      const t = targets.get(i);
+      const desc = p ? `${p.c === "w" ? "White" : "Black"} ${NAMES[p.t]}` : "empty";
+      const act = t === "go" ? ", move here" : t === "cap" ? ", capture" : t === "swap" ? ", swap" : "";
+      html += `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${sq(i)} ${desc}${act}">`;
+      if (p) html += pieceSvg(p, popSet.has(i));
+      if (t === "go") html += `<span class="mark go"></span>`;
+      if (t === "cap") html += `<span class="mark cap"></span>`;
+      if (t === "swap") html += `<span class="mark swap">⇄</span>`;
+      html += `</button>`;
+    }
+    boardEl.innerHTML = html;
+    boardEl.classList.toggle("locked", !humanTurn());
+    if (prevFocus != null) { const el = boardEl.querySelector(`[data-i="${prevFocus}"]`); if (el) el.focus({ preventScroll: true }); }
+
+    const who = c => (c === "w" ? "White" : "Black");
+    statusEl.classList.toggle("win", !!s.winner);
+    if (s.winner) {
+      const why = s.reason === "throne" ? "took the Throne" : s.reason === "row" ? "reached the far row" : "left the opponent with no move";
+      const you = G.mode === "cpu" ? (s.winner === G.side ? " You win." : " The computer wins.") : "";
+      statusEl.textContent = `${who(s.winner)} ${why}.${you}`;
+    } else if (thinking) {
+      statusEl.textContent = "Computer is thinking…";
+    } else if (G.mode === "cpu") {
+      statusEl.textContent = `Your move (${who(G.side)})`;
+    } else {
+      statusEl.textContent = `${who(s.turn)} to move`;
+    }
+    hintEl.textContent = G.sel !== null
+      ? "Tap a dot to step, a red ring to capture, or a gold ⇄ to swap. Tap the piece again to cancel."
+      : "Tap one of your pieces. Dots show where it can step; a gold ⇄ marks a neighbour it can swap with.";
+
+    const h = G.history;
+    if (!h.length) logEl.innerHTML = `<li class="empty">No moves yet. White goes first.</li>`;
+    else {
+      let out = "";
+      for (let k = 0; k < h.length; k += 2) {
+        out += `<li class="n">${k / 2 + 1}.</li><li>${h[k].note}</li><li>${h[k + 1] ? h[k + 1].note : ""}</li>`;
+      }
+      logEl.innerHTML = out;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    undoBtn.disabled = !h.length || (G.mode === "cpu" && !h.some(x => x.by === G.side));
+    cpuOpts.hidden = val("mode") !== "cpu";
+    if (puz && PZ) {
+      statusEl.textContent = PZ.status;
+      statusEl.classList.toggle("win", PZ.phase === "solved");
+      statusEl.classList.toggle("fail", PZ.phase === "failed");
+      hintEl.textContent = PZ.phase !== "solve" ? "" : G.sel !== null
+        ? "Tap a dot to step, a red ring to capture, or a gold ⇄ to swap. Tap the piece again to cancel."
+        : "Tap one of your pieces to see its moves. A wrong move ends the puzzle.";
+      if (!h.length) logEl.innerHTML = `<li class="empty">${PZ.p ? "Your move. The computer defends as well as it can." : "Carving a puzzle…"}</li>`;
+    } else statusEl.classList.remove("fail");
+  }
+
+  function save() { if (G.mode === "puzzle") return; try { localStorage.setItem("monsiv-game", JSON.stringify(G)); } catch (e) {} }
+  function load() { try { const raw = localStorage.getItem("monsiv-game"); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+
+  boardEl.addEventListener("click", e => { const b = e.target.closest(".sq"); if (b) click(+b.dataset.i); });
+  document.getElementById("newBtn").addEventListener("click", newGame);
+  undoBtn.addEventListener("click", undo);
+  document.querySelectorAll('input[name="mode"],input[name="side"]').forEach(el => el.addEventListener("change", () => { cpuOpts.hidden = val("mode") !== "cpu"; newGame(); }));
+  document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { G.lvl = val("lvl"); save(); }));
+
+  /* ---------- Puzzles ---------- */
+  const CORE = puzzleCore();
+  const LEVELS_N = 12;
+  const levelOf = r => Math.max(1, Math.min(LEVELS_N, Math.floor((r - 300) / 150) + 1));
+  const levelRange = L => [CORE.LEVEL_LO(L), CORE.LEVEL_LO(L) + 149];
+  const SPEED_MS = { 1: 1700, 2: 950, 3: 420 };
+  const who = c => (c === "w" ? "White" : "Black");
+  const THEME = { swap: "Swap", quiet: "Quiet move", sacrifice: "Sacrifice", row: "Far row", throne: "Throne hunt", blocked: "No moves left" };
+  const pzEls = {}; ["puzPanel","playPanel","pzRating","pzDelta","pzStats","pzDots","pzId","pzRated","pzMsg","pzChips","pzNext","pzHint","pzSolve","pzRetry","pzPause","pzStep","pzPick","pzAbout"].forEach(id => pzEls[id] = document.getElementById(id));
+
+  const PSK = "monsiv-puzzles";
+  function loadPS() {
+    const d = { rating: 600, played: 0, solved: 0, streak: 0, best: 600, next: {}, recent: [], pick: "auto", cur: null, speed: "2" };
+    try { const raw = localStorage.getItem(PSK); if (raw) return Object.assign(d, JSON.parse(raw)); } catch (e) {}
+    return d;
+  }
+  const savePS = () => { try { localStorage.setItem(PSK, JSON.stringify(PS)); } catch (e) {} };
+  let PS = loadPS();
+  let PZ = null;   // the puzzle being shown
+  let GAME = null; // the real game, parked while puzzles are open
+  let tab = "play";
+
+  // Puzzles are generated in a background worker when the browser allows it.
+  const cache = new Map(), pending = new Map();
+  let worker = null, wid = 0;
+  try {
+    const src = puzzleCore.toString() + "\nconst core = puzzleCore();\nonmessage = e => postMessage({ id: e.data.id, p: core.puzzleFor(e.data.L, e.data.i) });";
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    worker.onmessage = e => { const job = pending.get(e.data.id); pending.delete(e.data.id); if (job) job.res(e.data.p); };
+    worker.onerror = () => { worker = null; for (const [id, job] of pending) { pending.delete(id); job.res(CORE.puzzleFor(job.L, job.i)); } };
+  } catch (e) { worker = null; }
+  function fetchPuzzle(L, i) {
+    const k = L + "-" + i;
+    if (!cache.has(k)) cache.set(k, new Promise(res => {
+      if (worker) { const id = ++wid; pending.set(id, { res, L, i }); worker.postMessage({ id, L, i }); }
+      else setTimeout(() => res(CORE.puzzleFor(L, i)), 40);
+    }));
+    return cache.get(k);
+  }
+
+  const code = p => p ? ({ T: 1, A: 2, C: 3 })[p.t] | (p.c === "b" ? 8 : 0) : 0;
+  const coreState = st => ({ b: st.b.map(code), turn: st.turn === "b" ? 8 : 0, ls: ["w", "b"].map(c => { const k = st.lastSwap[c]; if (!k) return -1; const [a, b] = k.split("-").map(Number); return a * 25 + b; }) });
+  const corePath = () => G.history.map(h => coreState(h.state)).concat([coreState(G.state)]);
+  const toCore = m => m.k === "m" ? [0, m.from, m.to] : [1, m.a, m.b];
+  const fromCore = cm => genMoves(G.state).find(m => cm[0] === 0 ? (m.k === "m" && m.from === cm[1] && m.to === cm[2]) : (m.k === "s" && m.a === cm[1] && m.b === cm[2]));
+  const squaresOf = m => m.k === "m" ? [m.from, m.to] : [m.a, m.b];
+  function puzzleState(p) {
+    return { b: p.b.map(v => v ? { c: v & 8 ? "b" : "w", t: "?TAC"[v & 7] } : null), turn: p.turn ? "b" : "w", lastSwap: { w: null, b: null }, winner: null, reason: null, last: null };
+  }
+  function pushMove(m) {
+    G.history.push({ state: G.state, note: notation(G.state, m), by: G.state.turn });
+    G.state = apply(G.state, m);
+    G.sel = null;
+    rebuildSeen();
+  }
+  const pickLevel = () => PS.pick === "auto" ? levelOf(PS.rating) : +PS.pick;
+  const nextIndex = L => PS.next[L] || 1;
+
+  function startPuzzle(L, i, retry) {
+    if (PZ) clearTimeout(PZ.timer);
+    PZ = { L, i, p: null, phase: "load", retry: !!retry, hint: false, moved: false, rated: false, status: "Carving a puzzle…", tip: "Each puzzle is checked so exactly one first move wins.", flash: null, hintSq: null, delta: null };
+    G = { history: [], state: { b: Array(25).fill(null), turn: "w", lastSwap: { w: null, b: null }, winner: null, reason: null, last: null }, mode: "puzzle", side: "w", sel: null };
+    if (!retry) { PS.cur = { L, i }; savePS(); }
+    rebuildSeen(); render(); renderPanel();
+    const mine = PZ;
+    fetchPuzzle(L, i).then(p => {
+      if (PZ !== mine || tab !== "puzzles") return;
+      if (!p) { PZ.status = "Couldn't build that puzzle"; PZ.tip = "Try the next one."; PZ.phase = "failed"; PZ.rated = true; render(); renderPanel(); return; }
+      PZ.p = p; PZ.left = p.n; PZ.phase = "solve";
+      G = { history: [], state: puzzleState(p), mode: "puzzle", side: p.turn ? "b" : "w", sel: null };
+      rebuildSeen(); solveText(); render(); renderPanel();
+      if (worker) { const nl = pickLevel(); fetchPuzzle(nl, nl === L ? Math.max(i + 1, nextIndex(nl)) : nextIndex(nl)); }
+    });
+  }
+  function solveText() {
+    const n = PZ.left, them = who(other(G.side));
+    PZ.status = `${who(G.side)} to move · win in ${n}`;
+    PZ.tip = n === 1 ? "Find the move that wins right now." : `Find a move that forces a win within ${n} moves, whatever ${them} does.`;
+  }
+
+  // Elo-style: the puzzle is the opponent. Score 1 for a solve, ½ with a hint, 0 for a miss.
+  function conclude(score) {
+    if (PZ.rated || PZ.retry || !PZ.p) return;
+    PZ.rated = true;
+    const R = PS.rating, E = 1 / (1 + Math.pow(10, (PZ.p.rating - R) / 400));
+    const K = PS.played < 20 ? 40 : 24;
+    const d = Math.round(K * (score - E));
+    PS.rating = Math.max(100, R + d);
+    PS.best = Math.max(PS.best, PS.rating);
+    PS.played++;
+    if (score === 1) { PS.solved++; PS.streak++; } else PS.streak = 0;
+    PS.recent = PS.recent.concat([score === 1 ? "w" : score > 0 ? "h" : "l"]).slice(-20);
+    PS.next[PZ.L] = Math.max(nextIndex(PZ.L), PZ.i + 1);
+    PZ.delta = d;
+    savePS();
+  }
+
+  function puzzleMove(m) {
+    if (!PZ || PZ.phase !== "solve") return;
+    PZ.moved = true; PZ.hintSq = null;
+    const ok = CORE.forces(coreState(G.state), toCore(m), PZ.left, corePath());
+    pushMove(m);
+    PZ.flash = { sqs: squaresOf(m), kind: ok ? "good" : "bad" };
+    if (G.state.winner === G.side) return solved();
+    const them = who(other(G.side));
+    PZ.phase = "wait";
+    if (ok) PZ.left--;
+    PZ.status = ok ? `Good. ${them} replies…` : `${them} has an answer…`;
+    render(); renderPanel();
+    PZ.timer = setTimeout(() => {
+      const r = CORE.bestReply(coreState(G.state), Math.max(1, PZ.left - (ok ? 0 : 1)), corePath()).m;
+      const um = r && fromCore(r);
+      if (um) { pushMove(um); PZ.flash = ok ? null : { sqs: squaresOf(um), kind: "bad" }; }
+      if (!ok || !um || G.state.winner) {
+        const note = um ? G.history[G.history.length - 1].note : "";
+        return failed(G.state.winner === other(G.side) ? `${them} wins with ${note}.` : um ? `After ${note}, there's no forced win left.` : "");
+      }
+      PZ.phase = "solve"; PZ.flash = null; solveText();
+      PZ.status = `Good. ${PZ.status}`;
+      render(); renderPanel();
+    }, 700);
+  }
+  function solved() {
+    PZ.phase = "solved"; conclude(PZ.hint ? 0.5 : 1);
+    PZ.status = "Solved!";
+    PZ.tip = PZ.retry ? "Solved again. Practice runs don't change your rating." : PZ.hint ? "Solved with a hint, which counts as half." : "Nicely found.";
+    render(); renderPanel();
+  }
+  function failed(why) {
+    PZ.phase = "failed"; conclude(0);
+    PZ.status = "Not this time";
+    PZ.tip = `${why} Show the solution to see the idea, or try again (for practice).`.trim();
+    render(); renderPanel();
+  }
+
+  function hint() {
+    if (!PZ || PZ.phase !== "solve") return;
+    const s = coreState(G.state), path = corePath();
+    const good = CORE.gen(s, path).find(m => CORE.forces(s, m, PZ.left, path));
+    if (!good) return;
+    PZ.hint = true; PZ.hintSq = good[1]; G.sel = null;
+    PZ.tip = "Hint: move this piece (or swap it). A solve with a hint counts as half.";
+    render(); renderPanel();
+  }
+
+  // Solution playback: reset to the start and play the main line at the chosen speed.
+  function showSolution() {
+    if (!PZ || !PZ.p) return;
+    clearTimeout(PZ.timer);
+    if (PZ.phase === "solve" || PZ.phase === "wait") conclude(0);
+    G = { history: [], state: puzzleState(PZ.p), mode: "puzzle", side: PZ.p.turn ? "b" : "w", sel: null };
+    rebuildSeen();
+    PZ.phase = "show"; PZ.k = 0; PZ.paused = false; PZ.flash = null; PZ.hintSq = null;
+    PZ.status = "Solution"; PZ.tip = "Watch the winning line. Your moves are the odd ones.";
+    render(); renderPanel();
+    PZ.timer = setTimeout(stepSolution, 500);
+  }
+  function stepSolution(manual) {
+    if (!PZ || PZ.phase !== "show") return;
+    clearTimeout(PZ.timer);
+    const line = PZ.p.line;
+    const m = fromCore(line[PZ.k]);
+    if (!m) { PZ.phase = "shown"; render(); renderPanel(); return; }
+    pushMove(m);
+    PZ.k++;
+    const mine = (PZ.k % 2) === 1;
+    PZ.flash = { sqs: squaresOf(m), kind: mine ? "good" : "last" };
+    PZ.status = `Solution · move ${PZ.k} of ${line.length}`;
+    if (PZ.k >= line.length) {
+      PZ.phase = "shown";
+      const how = PZ.p.how === "throne" ? "takes the Throne" : PZ.p.how === "row" ? "reaches the far row" : `leaves ${who(other(G.side))} with no move`;
+      PZ.status = `Solution: ${who(G.side)} ${how}`;
+      PZ.tip = "Try again to play it yourself, or go on to the next puzzle.";
+    }
+    render(); renderPanel();
+    if (PZ.phase === "show" && !PZ.paused && !manual) PZ.timer = setTimeout(() => stepSolution(), SPEED_MS[PS.speed] || 950);
+  }
+  function togglePause() {
+    if (!PZ || PZ.phase !== "show") return;
+    PZ.paused = !PZ.paused;
+    if (!PZ.paused) stepSolution(); else { clearTimeout(PZ.timer); renderPanel(); }
+  }
+
+  function nextPuzzle() {
+    if (PZ && PZ.p && (PZ.phase === "solve" || PZ.phase === "wait") && (PZ.moved || PZ.hint)) conclude(0);
+    if (PZ && PZ.p && !PZ.retry) PS.next[PZ.L] = Math.max(nextIndex(PZ.L), PZ.i + 1);
+    savePS();
+    const L = pickLevel();
+    startPuzzle(L, nextIndex(L));
+  }
+
+  function renderPanel() {
+    if (tab !== "puzzles") return;
+    const e = pzEls;
+    e.pzRating.textContent = PS.rating;
+    e.pzDelta.textContent = PZ && PZ.delta != null ? (PZ.delta >= 0 ? "+" : "−") + Math.abs(PZ.delta) : "";
+    e.pzDelta.className = "delta" + (PZ && PZ.delta != null ? (PZ.delta >= 0 ? " up" : " down") : "");
+    e.pzStats.textContent = PS.played ? `${PS.solved} of ${PS.played} solved · streak ${PS.streak} · best ${PS.best}` : "Your puzzle rating. It starts at 600 and moves with every puzzle.";
+    e.pzDots.innerHTML = PS.recent.map(r => `<i class="${r}"></i>`).join("");
+    const p = PZ && PZ.p;
+    e.pzId.textContent = PZ ? `Puzzle ${PZ.L}·${PZ.i}${PZ.retry ? " (practice)" : ""}` : "Puzzle";
+    const done = PZ && ["solved", "failed", "show", "shown"].includes(PZ.phase);
+    e.pzRated.textContent = p ? (done ? `Rated ${p.rating}` : `Level ${PZ.L} · win in ${p.n}`) : "";
+    e.pzMsg.textContent = PZ ? PZ.tip : "";
+    e.pzChips.innerHTML = p && done ? [...p.notes, p.how].map(t => `<span>${THEME[t]}</span>`).join("") : "";
+    const ph = PZ ? PZ.phase : "load";
+    e.pzHint.hidden = ph !== "solve" && ph !== "wait";
+    e.pzHint.disabled = ph !== "solve" || PZ.hint;
+    e.pzSolve.hidden = ph === "show";
+    e.pzSolve.textContent = ph === "shown" ? "Replay solution" : "Show solution";
+    e.pzSolve.disabled = !p;
+    e.pzRetry.hidden = !(ph === "failed" || ph === "solved" || ph === "shown");
+    e.pzPause.hidden = e.pzStep.hidden = ph !== "show";
+    e.pzPause.textContent = PZ && PZ.paused ? "Play" : "Pause";
+    e.pzStep.disabled = !(PZ && PZ.paused);
+    e.pzNext.textContent = ph === "solve" && !(PZ.moved || PZ.hint) ? "Skip" : "Next puzzle";
+    e.pzNext.classList.toggle("primary", ph !== "solve" && ph !== "wait");
+  }
+  function buildPick() {
+    let o = `<option value="auto">Match my rating</option>`;
+    for (let L = 1; L <= LEVELS_N; L++) {
+      const [lo, hi] = levelRange(L);
+      const n = lo + 75 < 800 ? "win in 1–2" : lo + 75 < 1250 ? "win in 2" : "win in 3";
+      o += `<option value="${L}">Level ${L} · ${lo}–${L === LEVELS_N ? hi + "+" : hi} · ${n}</option>`;
+    }
+    pzEls.pzPick.innerHTML = o;
+    pzEls.pzPick.value = PS.pick;
+  }
+
+  function setTab(t) {
+    if (t === tab) return;
+    tab = t;
+    try { localStorage.setItem("monsiv-tab", t); } catch (e) {}
+    setVal("tab", t);
+    pzEls.puzPanel.hidden = t !== "puzzles";
+    pzEls.pzAbout.hidden = t !== "puzzles";
+    pzEls.playPanel.hidden = t === "puzzles";
+    if (t === "puzzles") {
+      clearTimeout(cpuTimer); thinking = false;
+      GAME = G; save();
+      const c = PS.cur;
+      if (PZ && PZ.phase === "load") startPuzzle(PZ.L, PZ.i, PZ.retry);
+      else if (PZ && PZ.g) { G = PZ.g; PZ.g = null; render(); renderPanel(); }
+      else if (c && nextIndex(c.L) <= c.i) startPuzzle(c.L, c.i);
+      else { const L = pickLevel(); startPuzzle(L, nextIndex(L)); }
+    } else {
+      if (PZ) { clearTimeout(PZ.timer); PZ.g = G; if (PZ.phase === "wait") PZ.phase = "solve"; if (PZ.phase === "show") PZ.phase = "shown"; }
+      G = GAME || G; render(); maybeCpu();
+    }
+  }
+
+  document.querySelectorAll('input[name="tab"]').forEach(el => el.addEventListener("change", () => setTab(val("tab"))));
+  pzEls.pzNext.addEventListener("click", nextPuzzle);
+  pzEls.pzHint.addEventListener("click", hint);
+  pzEls.pzSolve.addEventListener("click", showSolution);
+  pzEls.pzRetry.addEventListener("click", () => startPuzzle(PZ.L, PZ.i, true));
+  pzEls.pzPause.addEventListener("click", togglePause);
+  pzEls.pzStep.addEventListener("click", () => stepSolution(true));
+  document.querySelectorAll('input[name="speed"]').forEach(el => el.addEventListener("change", () => { PS.speed = val("speed"); savePS(); }));
+  pzEls.pzPick.addEventListener("change", () => {
+    PS.pick = pzEls.pzPick.value; savePS();
+    if (PZ && PZ.phase === "solve" && !PZ.moved && !PZ.hint && pickLevel() !== PZ.L) { const L = pickLevel(); startPuzzle(L, nextIndex(L)); }
+  });
+  buildPick(); setVal("speed", PS.speed);
+
+  function start(data) {
+    const saved = (data && data.G) || load();
+    if (saved && saved.state && saved.state.b && saved.mode !== "puzzle") {
+      G = saved; G.sel = null;
+      setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl);
+      rebuildSeen(); render(); maybeCpu();
+    } else newGame();
+    let t = "play";
+    try { t = localStorage.getItem("monsiv-tab") || "play"; } catch (e) {}
+    if (data && data.tab) t = data.tab;
+    if (t === "puzzles") setTab("puzzles");
+  }
+  window.claude?.hot?.snapshot?.(() => ({ G: tab === "puzzles" ? GAME : G, tab }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>

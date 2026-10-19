@@ -2,7 +2,7 @@ import "./home.css";
 import { GameScope } from "../kit/GameScope";
 import { GAMES } from "../games/registry";
 
-const img = (f: string) => `../images/${f}`;
+const img = (f: string) => `images/${f}`;
 const Arrow = () => <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5 L11 7 L3 12.5 Z" fill="currentColor" /></svg>;
 
 export function Home() {
@@ -45,7 +45,7 @@ export function Home() {
           </ul>
         </section>
         <footer>
-          <p>Monsiv was designed by Harley Bailey; this is an unofficial fan rebuild. This is the React edition; <a href="../">the original pages</a> are still there.</p>
+          <p>Monsiv was designed by Harley Bailey; this is an unofficial fan rebuild. The first single-page versions are kept in <a href="classic/">the classic collection</a>.</p>
           <p><a href="https://github.com/richiewharris/CelticCross">Source on GitHub</a></p>
         </footer>
       </div>

@@ -1,21 +1,30 @@
 # Celtic Cross
 
-Small browser games with a Celtic theme. None needs installing or building: open `index.html` for the front page that links them all, or open a game's own `index.html`.
+Small browser games with a Celtic theme, built with React and TypeScript. The site at the root of
+this repo (`index.html` and `assets/`) is the built app; its source is in [`react/`](react/).
 
-| Game | File |
-|------|------|
-| **Celtic Cross Lock**: a lock-picking puzzle | [`celtic-cross-lock/index.html`](celtic-cross-lock/index.html) |
-| Celtic Cross Lock v1 (the original stone-swapping version) | [`celtic-cross-lock/v1/index.html`](celtic-cross-lock/v1/index.html) |
-| **Fidchell**: the early Irish board game | [`fidchell/index.html`](fidchell/index.html) |
-| **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | [`fidchell-cups/index.html`](fidchell-cups/index.html) |
-| **Goldmines River**: a gold panning game | [`goldmines-river/index.html`](goldmines-river/index.html) |
-| **Fiche**: a dice race to twenty | [`fiche/index.html`](fiche/index.html) |
-| **Cnoc**: a battle for a fairy mound | [`cnoc/index.html`](cnoc/index.html) |
-| **Cnoc Mór**: the big hill, a longer Cnoc | [`cnoc-mor/index.html`](cnoc-mor/index.html) |
-| **The React edition**: every game rebuilt from shared components (source in [`react/`](react/)) | [`next/index.html`](next/index.html) |
-| **Monsiv**: a 5×5 chess-like strategy game | [`monsiv/index.html`](monsiv/index.html) |
+| Game | Address on the site |
+|------|---------------------|
+| **Monsiv**: a 5×5 chess-like strategy game | `#/monsiv` |
+| **Fidchell**: the early Irish board game | `#/fidchell` |
+| **Celtic Cross Lock**: a lock-picking puzzle | `#/lock` |
+| Celtic Cross Lock, classic (the first stone-swapping version) | `#/lock/v1` |
+| **Fiche**: a dice race to twenty | `#/fiche` |
+| **Cnoc**: a battle for a fairy mound | `#/cnoc` |
+| **Cnoc Mór**: the big hill, a longer Cnoc | `#/cnoc-mor` |
+| **Fidchell of Cups**: Fidchell with dice and drinks, by Tablero's rules | `#/fidchell-cups` |
+| **Goldmines River**: a gold panning game | `#/goldmines` |
+| Component playground | `#/playground` |
 
-To host them free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder). The front page will be at `/`, Monsiv at `/monsiv/`, the lock at `/celtic-cross-lock/`, v1 at `/celtic-cross-lock/v1/`, Fidchell at `/fidchell/`, Fidchell of Cups at `/fidchell-cups/`, Goldmines River at `/goldmines-river/`, Fiche at `/fiche/`, Cnoc at `/cnoc/`, Cnoc Mór at `/cnoc-mor/`, and the React edition at `/next/`.
+GitHub Pages serves the `main` branch from the root folder. The old addresses (`/monsiv/`, `/cnoc/`,
+`/celtic-cross-lock/v1/`, `/next/` and the rest) are small pages that redirect to the new ones, so
+existing links keep working.
+
+To change a game, work in [`react/`](react/) (see [`react/README.md`](react/README.md)), then run
+`npm run publish-site` there: it type-checks, builds, and copies the result to `index.html` and `assets/`.
+
+The first single-file versions of every game are kept, unchanged, in [`classic/`](classic/).
+The notes below describe the games; they apply to both versions.
 
 ---
 
@@ -51,7 +60,7 @@ The **Cheat** button makes the cover see-through, rings every loose end in red, 
 
 ### Tuning
 
-These values in the script in `celtic-cross-lock/index.html` control the feel:
+These values control the feel. In the React edition they live in `react/src/games/lock/engine/` (`knot.ts` and `dial.ts`); in the classic page, in its script:
 
 - `TIERS`: rings, stones per ring and stones turned for each tier.
 - `spareTurns`: how many spare turns skill buys.
@@ -179,7 +188,7 @@ A playable rebuild of **Monsiv**, a browser strategy game first released around 
 
 ### Play
 
-Open `monsiv/index.html` in any modern browser. There's nothing to install or build.
+Open the site and pick Monsiv (`#/monsiv`). The classic single-file version, `classic/monsiv/index.html`, opens in any modern browser with nothing to install.
 
 To host it free, turn on **GitHub Pages** for this repo (Settings → Pages → deploy from the `main` branch, root folder).
 
@@ -244,12 +253,3 @@ These details couldn't be confirmed from surviving sources and are best guesses:
 ### Credits
 
 Monsiv was designed by Harley Bailey. This is an unofficial fan rebuild with original artwork and code.
-
-## The React edition
-
-[`react/`](react/) holds a Vite + React + TypeScript rebuild of every game, with the front page and
-a component playground. Each game's rules engine is plain TypeScript with tests (424 in all: rules,
-computer players, puzzle and lock generators, dice odds); the same engines drive the games, the
-computer players in Web Workers, and command-line simulators. A playground page shows every component
-with fixed data. Run `npm run publish-site` in `react/` to rebuild into [`next/`](next/). See
-[`react/README.md`](react/README.md).

@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fidchell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a yew-wood board with 25 peg holes is the hero; a narrow ledger beside it holds the opponent, the count of pieces, the rules and the move list. Stacks on phones. Single dark look by choice, matching the Celtic Cross Lock: bog oak, yew, bone and aged bronze. */
+:root {
+  --oak: #17130f;
+  --oak-2: #221b15;
+  --oak-3: #2e251c;
+  --ink: #efe6d2;
+  --muted: #a99c84;
+  --line: #3d3328;
+  --bronze: #b08d55;
+  --bronze-hi: #d2b27a;
+  --bone: #ece3cc;
+  --garnet: #d0584a;
+  --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
+  --font-body: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--oak); color: var(--ink);
+  background-image: radial-gradient(120% 80% at 50% 0%, var(--oak-2), var(--oak) 70%);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 40px;
+  min-height: 100%;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.2rem, 7vw, 3.2rem); margin: 0; line-height: 1.05; color: var(--bronze-hi); }
+.tag { margin: 0; color: var(--muted); font-style: italic; max-width: 64ch; }
+
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
+@media (max-width: 800px) { .game { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.status { font-weight: 600; text-align: center; min-height: 1.6em; text-wrap: balance; max-width: 36ch; }
+.status.win { color: var(--bronze-hi); }
+.status.lose { color: var(--garnet); }
+#board { width: min(100%, 540px); aspect-ratio: 1; max-width: 100%; display: block; user-select: none; -webkit-user-select: none; border-radius: 14px; }
+#board:focus { outline: none; }
+#board:focus-visible { outline: 3px solid var(--bronze-hi); outline-offset: 4px; }
+.cellhit { cursor: pointer; fill: transparent; }
+.locked .cellhit { cursor: default; }
+.pc { transition: transform .3s cubic-bezier(.3,.75,.3,1), opacity .3s ease; }
+.pc.gone { opacity: 0; }
+.hint-line { color: var(--muted); font-size: .92rem; margin: 0; text-align: center; max-width: 48ch; min-height: 1.4em; }
+
+aside { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 9px; }
+.label { margin: 0; font-size: .74rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); font-family: var(--font-mono); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 7px 4px; cursor: pointer; font-size: .9rem; border-left: 1px solid var(--line); color: var(--muted); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--oak-3); color: var(--bronze-hi); font-weight: 600; box-shadow: inset 0 -2px 0 var(--bronze); }
+.seg input:focus-visible + label { outline: 2px solid var(--bronze-hi); outline-offset: -3px; }
+#cpuOpts[hidden] { display: none !important; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button.btn {
+  font: inherit; font-weight: 600; letter-spacing: .02em;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--bronze); background: transparent; color: var(--bronze-hi);
+}
+button.btn.primary { background: var(--bronze); color: var(--oak); }
+button.btn:hover { filter: brightness(1.12); }
+button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+button.btn:disabled { opacity: .4; cursor: not-allowed; }
+button.btn.hint { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+button.btn.hint[aria-pressed="true"] { border-style: solid; border-color: var(--garnet); color: var(--ink); background: color-mix(in srgb, var(--garnet) 30%, transparent); }
+
+.tally { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 6px 10px; align-items: center; font-size: .95rem; }
+.tally .pegs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tally .peg { width: 13px; height: 13px; border-radius: 50%; }
+.tally .peg.g { background: radial-gradient(circle at 38% 34%, #e0c48f, #8a6b3e 70%, #4f3a1d); }
+.tally .peg.w { background: radial-gradient(circle at 38% 34%, #fffaf0, #d6ccb3 70%, #8f866f); }
+.tally .peg.lost { opacity: .18; }
+.tally .n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; }
+.quiet { margin: 0; font-family: var(--font-mono); font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: .95rem; }
+.rules li { padding-left: 16px; position: relative; }
+.rules li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; transform: rotate(45deg); background: var(--bronze); }
+.note { margin: 0; font-size: .86rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.log {
+  font-family: var(--font-mono); font-size: .82rem; font-variant-numeric: tabular-nums;
+  margin: 0; padding: 0; list-style: none; max-height: 200px; overflow-y: auto;
+  display: grid; grid-template-columns: 2.4em 1fr 1fr; gap: 3px 8px; align-content: start;
+}
+.log .n { color: var(--muted); }
+.log .empty { grid-column: 1 / -1; color: var(--muted); font-family: var(--font-body); font-style: italic; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) { .pc { transition: none; } }
+</style>
+</head>
+<body>
+<div style="max-width:1040px;margin:0 auto"><a href="../" style="display:inline-block;margin:0 0 6px;font:500 .8rem 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.08em;color:#a99c84;text-decoration:none">&larr; All games</a>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Fidchell</h1>
+    <p class="tag">The "wood-wisdom" of the early Irish: gold against white on a board of 25 holes. Trap an enemy piece between two of yours to take it.</p>
+  </header>
+
+  <div class="game">
+    <section class="stage" aria-label="Fidchell board">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <svg id="board" viewBox="0 0 520 520" tabindex="0" aria-label="Board. Arrow keys move the cursor, Enter selects.">
+        <defs>
+          <filter id="yew" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency=".006 .09" numOctaves="3" seed="11" result="grain"/>
+            <feColorMatrix in="grain" type="matrix" values="0 0 0 0 .17  0 0 0 0 .1  0 0 0 0 .05  0 0 0 1.1 -.35" result="streak"/>
+            <feComposite in="streak" in2="SourceGraphic" operator="in" result="streakIn"/>
+            <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="streakIn"/></feMerge>
+          </filter>
+          <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7a4f2c"/>
+            <stop offset=".55" stop-color="#5f3b20"/>
+            <stop offset="1" stop-color="#47291a"/>
+          </linearGradient>
+          <radialGradient id="hole" cx="50%" cy="42%" r="55%">
+            <stop offset="0" stop-color="#070504"/>
+            <stop offset=".75" stop-color="#140c07"/>
+            <stop offset="1" stop-color="#2a1a0f"/>
+          </radialGradient>
+          <radialGradient id="gold" cx="36%" cy="32%" r="72%">
+            <stop offset="0" stop-color="#e3c891"/>
+            <stop offset=".45" stop-color="#a7844c"/>
+            <stop offset="1" stop-color="#4c381c"/>
+          </radialGradient>
+          <radialGradient id="white" cx="36%" cy="32%" r="72%">
+            <stop offset="0" stop-color="#fffbf2"/>
+            <stop offset=".5" stop-color="#ddd3ba"/>
+            <stop offset="1" stop-color="#857c66"/>
+          </radialGradient>
+          <filter id="pegShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="1.6" dy="2.4" stdDeviation="1.6" flood-color="#000" flood-opacity=".6"/>
+          </filter>
+          <!-- A two-strand plait for the carved border -->
+          <pattern id="plait" width="24" height="16" patternUnits="userSpaceOnUse">
+            <path d="M0 4 C 6 4, 6 12, 12 12 S 18 4, 24 4" fill="none" stroke="#2a180c" stroke-width="3.6"/>
+            <path d="M0 4 C 6 4, 6 12, 12 12 S 18 4, 24 4" fill="none" stroke="#8e6b3f" stroke-width="1.6"/>
+            <path d="M0 12 C 6 12, 6 4, 12 4 S 18 12, 24 12" fill="none" stroke="#2a180c" stroke-width="3.6"/>
+            <path d="M0 12 C 6 12, 6 4, 12 4 S 18 12, 24 12" fill="none" stroke="#8e6b3f" stroke-width="1.6"/>
+          </pattern>
+        </defs>
+        <g id="boardArt"></g>
+        <g id="marks"></g>
+        <g id="pieces" filter="url(#pegShadow)"></g>
+        <g id="overlay"></g>
+        <g id="hits"></g>
+      </svg>
+      <p class="hint-line" id="hintLine"></p>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <p class="label">Opponent</p>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-cpu" value="cpu" checked><label for="mode-cpu">Computer</label>
+          <input type="radio" name="mode" id="mode-pvp" value="pvp"><label for="mode-pvp">Friend, same screen</label>
+        </div>
+        <div id="cpuOpts" class="panel">
+          <div class="seg">
+            <input type="radio" name="side" id="side-g" value="1" checked><label for="side-g">Play gold</label>
+            <input type="radio" name="side" id="side-w" value="2"><label for="side-w">Play white</label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="lvl" id="lvl-1" value="1"><label for="lvl-1">Casual</label>
+            <input type="radio" name="lvl" id="lvl-2" value="2" checked><label for="lvl-2">Steady</label>
+            <input type="radio" name="lvl" id="lvl-3" value="3"><label for="lvl-3">Strong</label>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="button" id="newBtn">New game</button>
+          <button class="btn" type="button" id="undoBtn">Undo</button>
+          <button class="btn hint" type="button" id="hintBtn" aria-pressed="false">Hints</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="label">Pieces</p>
+        <div class="tally" id="tally"></div>
+        <p class="quiet" id="quiet"></p>
+      </div>
+
+      <div class="panel">
+        <p class="label">How to play</p>
+        <ul class="rules">
+          <li>Each side has five pieces. Gold moves first.</li>
+          <li>On your turn, move one piece any distance in a straight line, along a row or column, through empty holes. No diagonals, no jumping.</li>
+          <li>Capture by trapping an enemy piece between the piece you just moved and another of yours, in a line. One move can take up to three pieces this way.</li>
+          <li>Moving into a gap between two enemy pieces is safe. You're only taken when they close on you.</li>
+          <li>Win by cutting your rival down to one piece, or by leaving them with no move.</li>
+          <li>After 30 moves in a row without a capture, the side with more pieces wins. Equal pieces is a draw.</li>
+        </ul>
+        <p class="note">Fidchell's rules are lost. Irish texts say its pieces were split into gold and white halves and taken by trapping between two. This version follows that on a compact 5×5 board, marked like the 7×7 Ballinderry board, with moves borrowed from the Roman game it's often compared with, ludus latrunculorum.</p>
+      </div>
+
+      <div class="panel">
+        <p class="label">Moves</p>
+        <ol class="log" id="log"></ol>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ---------- Rules ---------- */
+  const N = 5, GOLD = 1, WHITE = 2, QUIET_LIMIT = 30, MID = (N - 1) / 2;
+  const other = s => 3 - s;
+  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const at = (r, c) => r * N + c;
+  const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const sq = i => "abcdefg"[i % N] + (N - ((i / N) | 0));
+  const NAME = { 1: "Gold", 2: "White" };
+
+  function initial() {
+    const b = new Array(N * N).fill(0);
+    const pieces = [];
+    let id = 0;
+    for (let c = 0; c < N; c++) { b[at(0, c)] = WHITE; pieces.push({ id: id++, side: WHITE, pos: at(0, c), alive: true }); }
+    for (let c = 0; c < N; c++) { b[at(N - 1, c)] = GOLD; pieces.push({ id: id++, side: GOLD, pos: at(N - 1, c), alive: true }); }
+    return { b, pieces, turn: GOLD, quiet: 0, last: null, winner: null, reason: null, ply: 0 };
+  }
+
+  function genMoves(b, side) {
+    const out = [];
+    for (let i = 0; i < N * N; i++) {
+      if (b[i] !== side) continue;
+      const r = (i / N) | 0, c = i % N;
+      for (const [dr, dc] of DIRS) {
+        let rr = r + dr, cc = c + dc;
+        while (inB(rr, cc) && b[at(rr, cc)] === 0) { out.push([i, at(rr, cc)]); rr += dr; cc += dc; }
+      }
+    }
+    return out;
+  }
+
+  // Custodial capture: the moved piece and a friendly piece beyond close on an enemy.
+  function capturesFor(b, to, side) {
+    const r = (to / N) | 0, c = to % N, foe = other(side), caps = [];
+    for (const [dr, dc] of DIRS) {
+      const r1 = r + dr, c1 = c + dc, r2 = r + 2 * dr, c2 = c + 2 * dc;
+      if (inB(r2, c2) && b[at(r1, c1)] === foe && b[at(r2, c2)] === side) caps.push(at(r1, c1));
+    }
+    return caps;
+  }
+
+  function count(b, side) { let n = 0; for (const v of b) if (v === side) n++; return n; }
+
+  // Apply a move to a bare board (used by the search). Returns captured squares.
+  function applyBoard(b, m, side) {
+    b[m[1]] = side; b[m[0]] = 0;
+    const caps = capturesFor(b, m[1], side);
+    for (const x of caps) b[x] = 0;
+    return caps;
+  }
+
+  function play(s, m) {
+    const side = s.turn;
+    const b = s.b.slice();
+    const caps = applyBoard(b, m, side);
+    const pieces = s.pieces.map(p => ({ ...p }));
+    const mover = pieces.find(p => p.alive && p.pos === m[0]);
+    mover.pos = m[1];
+    for (const x of caps) { const p = pieces.find(q => q.alive && q.pos === x && q.side !== side); if (p) p.alive = false; }
+    const n = { b, pieces, turn: other(side), quiet: caps.length ? 0 : s.quiet + 1, last: { from: m[0], to: m[1], caps, side }, winner: null, reason: null, ply: s.ply + 1 };
+    const foeLeft = count(b, other(side));
+    if (foeLeft <= 1) { n.winner = side; n.reason = "reduced"; }
+    else if (genMoves(b, other(side)).length === 0) { n.winner = side; n.reason = "blocked"; }
+    else if (n.quiet >= QUIET_LIMIT) {
+      const g = count(b, GOLD), w = count(b, WHITE);
+      n.winner = g > w ? GOLD : w > g ? WHITE : 0; n.reason = "quiet";
+    }
+    return n;
+  }
+
+  /* ---------- Computer opponent ---------- */
+  const WIN = 100000;
+  function evaluate(b, side) {
+    // Material dominates; then mobility; then a small pull away from the edges.
+    let mine = 0, theirs = 0, pos = 0;
+    for (let i = 0; i < N * N; i++) {
+      const v = b[i]; if (!v) continue;
+      const r = (i / N) | 0, c = i % N;
+      const centre = MID - Math.max(Math.abs(r - MID), Math.abs(c - MID));
+      if (v === side) { mine++; pos += centre; } else { theirs++; pos -= centre; }
+    }
+    const mob = genMoves(b, side).length - genMoves(b, other(side)).length;
+    return (mine - theirs) * 120 + mob * 2 + pos * 3;
+  }
+  class TimeUp extends Error {}
+  function orderMoves(b, ms, side) {
+    return ms.map(m => [capturesFor(withMove(b, m, side), m[1], side).length, m]).sort((x, y) => y[0] - x[0]).map(x => x[1]);
+  }
+  function withMove(b, m, side) { const c = b.slice(); c[m[1]] = side; c[m[0]] = 0; return c; }
+
+  function search(state, maxDepth, budgetMs, noise) {
+    const deadline = performance.now() + budgetMs;
+    let nodes = 0;
+    function negamax(b, side, quiet, depth, alpha, beta, ply) {
+      if ((++nodes & 1023) === 0 && performance.now() > deadline) throw new TimeUp();
+      const mineN = count(b, side), foeN = count(b, other(side));
+      if (mineN <= 1) return -WIN + ply;
+      if (quiet >= QUIET_LIMIT) return mineN > foeN ? WIN / 2 - ply : mineN < foeN ? -WIN / 2 + ply : 0;
+      const ms = genMoves(b, side);
+      if (!ms.length) return -WIN + ply;
+      if (depth === 0) return evaluate(b, side);
+      let best = -Infinity;
+      for (const m of orderMoves(b, ms, side)) {
+        const c = b.slice();
+        const caps = applyBoard(c, m, side);
+        const v = -negamax(c, other(side), caps.length ? 0 : quiet + 1, depth - 1, -beta, -alpha, ply + 1);
+        if (v > best) best = v;
+        if (v > alpha) alpha = v;
+        if (alpha >= beta) break;
+      }
+      return best;
+    }
+    const side = state.turn;
+    let moves = genMoves(state.b, side);
+    for (let i = moves.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [moves[i], moves[j]] = [moves[j], moves[i]]; }
+    moves = orderMoves(state.b, moves, side);
+    let bestMove = moves[0];
+    for (let d = 1; d <= maxDepth; d++) {
+      try {
+        let alpha = -Infinity, best = null, bestV = -Infinity;
+        const scored = [];
+        for (const m of moves) {
+          const c = state.b.slice();
+          const caps = applyBoard(c, m, side);
+          const v = -negamax(c, other(side), caps.length ? 0 : state.quiet + 1, d - 1, -Infinity, -alpha, 1) + (noise ? (Math.random() - .5) * noise : 0);
+          scored.push([v, m]);
+          if (v > bestV) { bestV = v; best = m; }
+          if (v > alpha) alpha = v;
+        }
+        bestMove = best;
+        moves = scored.sort((x, y) => y[0] - x[0]).map(x => x[1]);
+        if (bestV > WIN / 4) break;
+      } catch (e) { if (e instanceof TimeUp) break; throw e; }
+    }
+    return bestMove;
+  }
+  const LEVELS = { 1: { depth: 1, ms: 200, noise: 140 }, 2: { depth: 3, ms: 700, noise: 8 }, 3: { depth: 6, ms: 1500, noise: 0 } };
+
+  // Pieces of `side` the opponent could take with their next move.
+  function threatened(b, side) {
+    const foe = other(side), set = new Set();
+    for (const m of genMoves(b, foe)) for (const x of capturesFor(withMove(b, m, foe), m[1], foe)) set.add(x);
+    return set;
+  }
+
+  /* ---------- Board art ---------- */
+  const PAD = 50, CELL = 84, PR = 30, HR = 12; // cell, peg radius and hole radius
+  const cx = i => PAD + CELL / 2 + (i % N) * CELL;
+  const cy = i => PAD + CELL / 2 + ((i / N) | 0) * CELL;
+  const svg = document.getElementById("board");
+  const piecesEl = document.getElementById("pieces"), marksEl = document.getElementById("marks"), overlayEl = document.getElementById("overlay"), hitsEl = document.getElementById("hits");
+
+  function drawBoard() {
+    let h = "";
+    h += `<rect x="4" y="4" width="512" height="512" rx="14" fill="url(#wood)" filter="url(#yew)"/>`;
+    h += `<rect x="4.5" y="4.5" width="511" height="511" rx="14" fill="none" stroke="#1d110a" stroke-width="1.2"/>`;
+    // Carved border band with a plait, framed by fine incised lines
+    h += `<path d="M14 14H506V506H14Z M40 40V480H480V40Z" fill="url(#plait)" fill-rule="evenodd" opacity=".9"/>`;
+    h += `<rect x="13.5" y="13.5" width="493" height="493" rx="8" fill="none" stroke="#2a180c" stroke-width="1"/>`;
+    h += `<rect x="40.5" y="40.5" width="439" height="439" rx="3" fill="none" stroke="#2a180c" stroke-width="1"/>`;
+    h += `<rect x="42" y="42" width="436" height="436" rx="2" fill="none" stroke="rgb(255 225 180 / .12)" stroke-width=".6"/>`;
+    // Faint guide lines between holes
+    for (let k = 0; k < N; k++) {
+      const p = PAD + CELL / 2 + k * CELL;
+      h += `<line x1="${PAD + CELL / 2}" y1="${p}" x2="${PAD + CELL / 2 + (N - 1) * CELL}" y2="${p}" stroke="#2a180c" stroke-width=".8" opacity=".55"/>`;
+      h += `<line x1="${p}" y1="${PAD + CELL / 2}" x2="${p}" y2="${PAD + CELL / 2 + (N - 1) * CELL}" stroke="#2a180c" stroke-width=".8" opacity=".55"/>`;
+    }
+    // The holes; marked at the centre and corners, as on the Ballinderry board
+    for (let i = 0; i < N * N; i++) {
+      const r = (i / N) | 0, c = i % N;
+      const marked = (r === MID && c === MID) || ((r === 0 || r === N - 1) && (c === 0 || c === N - 1));
+      if (marked) h += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${HR + 10}" fill="none" stroke="#2a180c" stroke-width="1.2"/><circle cx="${cx(i)}" cy="${cy(i)}" r="${HR + 10.8}" fill="none" stroke="rgb(255 225 180 / .14)" stroke-width=".5"/>`;
+      h += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${HR}" fill="url(#hole)" stroke="rgb(255 225 180 / .16)" stroke-width=".6"/>`;
+    }
+    // Coordinates, cut small into the border
+    for (let k = 0; k < N; k++) {
+      h += `<text x="${PAD + CELL / 2 + k * CELL}" y="494" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#d9b98a" opacity=".55">${"abcdefg"[k]}</text>`;
+      h += `<text x="27" y="${PAD + CELL / 2 + k * CELL + 3.5}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#d9b98a" opacity=".55">${N - k}</text>`;
+    }
+    document.getElementById("boardArt").innerHTML = h;
+    let hits = "";
+    for (let i = 0; i < N * N; i++) hits += `<rect class="cellhit" data-i="${i}" x="${cx(i) - CELL / 2}" y="${cy(i) - CELL / 2}" width="${CELL}" height="${CELL}"/>`;
+    hitsEl.innerHTML = hits;
+  }
+
+  function pieceMarkup(p) {
+    const fill = p.side === GOLD ? "url(#gold)" : "url(#white)";
+    const edge = p.side === GOLD ? "#3a2a14" : "#6d6552";
+    return `<g class="pc" id="pc${p.id}" style="transform: translate(${cx(p.pos)}px, ${cy(p.pos)}px)">` +
+      `<circle r="${PR}" fill="${fill}" stroke="${edge}" stroke-width="1"/>` +
+      `<circle r="${PR * .69}" fill="none" stroke="${p.side === GOLD ? "rgb(40 26 10 / .35)" : "rgb(90 80 60 / .3)"}" stroke-width=".7"/>` +
+      `<circle r="${PR * .33}" fill="none" stroke="${p.side === GOLD ? "rgb(40 26 10 / .3)" : "rgb(90 80 60 / .25)"}" stroke-width=".6"/>` +
+      `<circle cx="-1.7" cy="-2.3" r="2.9" fill="${p.side === GOLD ? "#f0dcac" : "#fffdf7"}" opacity=".9"/></g>`;
+  }
+
+  /* ---------- State and UI ---------- */
+  let G; // { state, history, mode, side, lvl, sel, cursor }
+  let thinking = false, aiTimer = null, hints = false;
+  const val = n => document.querySelector(`input[name="${n}"]:checked`).value;
+  const setVal = (n, v) => { const e = document.querySelector(`input[name="${n}"][value="${v}"]`); if (e) e.checked = true; };
+
+  const humanSide = () => G.mode === "pvp" ? G.state.turn : +G.side;
+  const humanTurn = () => !over() && !thinking && (G.mode === "pvp" || G.state.turn === +G.side);
+  const over = () => G.state.winner !== null;
+
+  function newGame() {
+    clearTimeout(aiTimer); thinking = false;
+    G = { state: initial(), history: [], mode: val("mode"), side: val("side"), lvl: val("lvl"), sel: null, cursor: at(N - 1, MID), notes: [] };
+    piecesEl.innerHTML = "";
+    render(); save(); maybeAI();
+  }
+
+  function doMove(m) {
+    const s = G.state;
+    const caps = capturesFor(withMove(s.b, m, s.turn), m[1], s.turn);
+    const note = sq(m[0]) + (caps.length ? "×" : "–") + sq(m[1]) + (caps.length > 1 ? `(${caps.length})` : "");
+    G.history.push({ state: s, note, by: s.turn });
+    G.state = play(s, m);
+    G.sel = null;
+    render(); save(); maybeAI();
+  }
+
+  function maybeAI() {
+    if (G.mode !== "cpu" || over() || G.state.turn === +G.side) return;
+    thinking = true; render();
+    const lv = LEVELS[G.lvl];
+    aiTimer = setTimeout(() => {
+      const m = search(G.state, lv.depth, lv.ms, lv.noise);
+      thinking = false;
+      if (m) doMove(m); else render();
+    }, 420);
+  }
+
+  function undo() {
+    if (!G.history.length) return;
+    clearTimeout(aiTimer); thinking = false;
+    let h = G.history.pop();
+    if (G.mode === "cpu") while (h.by !== +G.side && G.history.length) h = G.history.pop();
+    G.state = h.state; G.sel = null;
+    render(); save(); maybeAI();
+  }
+
+  function clickCell(i) {
+    if (!humanTurn()) return;
+    const s = G.state, me = s.turn;
+    G.cursor = i;
+    if (G.sel !== null) {
+      const legal = genMoves(s.b, me).find(m => m[0] === G.sel && m[1] === i);
+      if (legal) return doMove(legal);
+      if (i === G.sel) { G.sel = null; return render(); }
+    }
+    G.sel = s.b[i] === me && genMoves(s.b, me).some(m => m[0] === i) ? i : null;
+    render();
+  }
+
+  function render() {
+    const s = G.state;
+    // Pieces: keep elements so moves glide and captures fade out
+    const present = new Set();
+    for (const p of s.pieces) {
+      let el = document.getElementById("pc" + p.id);
+      if (p.alive) {
+        present.add(el ? el.id : "pc" + p.id);
+        if (!el) { piecesEl.insertAdjacentHTML("beforeend", pieceMarkup(p)); el = document.getElementById("pc" + p.id); }
+        el.classList.remove("gone");
+        el.style.transform = `translate(${cx(p.pos)}px, ${cy(p.pos)}px)`;
+      } else if (el && !el.classList.contains("gone")) {
+        el.classList.add("gone");
+        el.style.transform = `translate(${cx(p.pos)}px, ${cy(p.pos)}px) scale(.55)`;
+      }
+    }
+    // Marks: last move, selection, legal targets
+    let mk = "";
+    if (s.last) {
+      for (const i of [s.last.from, s.last.to]) mk += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${PR + 5}" fill="none" stroke="#d2b27a" stroke-width="1" opacity=".55"/>`;
+      for (const i of s.last.caps) mk += `<circle cx="${cx(i)}" cy="${cy(i)}" r="${HR + 4}" fill="none" stroke="#d0584a" stroke-width="1.2" stroke-dasharray="2 3" opacity=".8"/>`;
+    }
+    let ov = "";
+    if (humanTurn()) {
+      const me = s.turn;
+      if (G.sel !== null) {
+        ov += `<circle cx="${cx(G.sel)}" cy="${cy(G.sel)}" r="${PR + 5}" fill="none" stroke="#f0d79c" stroke-width="2.2"/>`;
+        for (const m of genMoves(s.b, me)) {
+          if (m[0] !== G.sel) continue;
+          const caps = capturesFor(withMove(s.b, m, me), m[1], me).length;
+          ov += caps ? `<circle cx="${cx(m[1])}" cy="${cy(m[1])}" r="${HR + 3}" fill="none" stroke="#d0584a" stroke-width="2.4"/><circle cx="${cx(m[1])}" cy="${cy(m[1])}" r="5" fill="#d0584a"/>`
+                     : `<circle cx="${cx(m[1])}" cy="${cy(m[1])}" r="5.5" fill="#f0d79c" opacity=".85"/>`;
+        }
+      }
+      if (hints) {
+        for (const x of threatened(s.b, me)) ov += `<circle cx="${cx(x)}" cy="${cy(x)}" r="${PR + 5}" fill="none" stroke="#d0584a" stroke-width="1.8" stroke-dasharray="4 3"/>`;
+        const sug = suggestion();
+        if (sug) {
+          const x1 = cx(sug[0]), y1 = cy(sug[0]), x2 = cx(sug[1]), y2 = cy(sug[1]);
+          const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+          const sx = x1 + ux * (PR + 3), sy = y1 + uy * (PR + 3), ex = x2 - ux * (HR + 2), ey = y2 - uy * (HR + 2);
+          ov += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="#e8c97e" stroke-width="2.4" stroke-linecap="round" opacity=".9"/>` +
+                `<path d="M${ex + ux * 6} ${ey + uy * 6} L${ex - uy * 6} ${ey + ux * 6} L${ex + uy * 6} ${ey - ux * 6} Z" fill="#e8c97e" opacity=".9"/>`;
+        }
+      }
+    }
+    if (document.activeElement === svg && G.cursor != null) ov += `<rect x="${cx(G.cursor) - PR - 8}" y="${cy(G.cursor) - PR - 8}" width="${2 * PR + 16}" height="${2 * PR + 16}" rx="10" fill="none" stroke="#f0d79c" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    marksEl.innerHTML = mk; overlayEl.innerHTML = ov;
+    svg.classList.toggle("locked", !humanTurn());
+
+    // Status
+    const st = document.getElementById("status");
+    st.className = "status";
+    if (over()) {
+      const w = s.winner;
+      const why = s.reason === "reduced" ? "cut the other side down to one piece" : s.reason === "blocked" ? "left the other side with no move" : `held more pieces after ${QUIET_LIMIT} quiet moves`;
+      if (w === 0) st.textContent = `${QUIET_LIMIT} quiet moves with equal pieces. A draw.`;
+      else {
+        st.textContent = `${NAME[w]} wins: ${why}.`;
+        if (G.mode === "cpu") st.className = "status " + (w === +G.side ? "win" : "lose");
+      }
+    } else if (thinking) st.textContent = "The computer is thinking…";
+    else if (G.mode === "cpu") st.textContent = `Your move (${NAME[G.side]})`;
+    else st.textContent = `${NAME[s.turn]} to move`;
+
+    const hl = document.getElementById("hintLine");
+    hl.textContent = over() ? "" : !humanTurn() ? "" : G.sel !== null ? "Tap a dot to move there. A red ring means that move captures. Tap the piece again to cancel." :
+      hints ? "Dashed red rings mark your pieces in danger. The arrow is a suggested move." : "Tap one of your pieces to see where it can go.";
+
+    // Tally
+    const t = (side, cls) => {
+      const alive = s.pieces.filter(p => p.side === side && p.alive).length;
+      return `<span>${NAME[side]}</span><span class="pegs">${Array.from({ length: N }, (_, k) => `<span class="peg ${cls}${k < alive ? "" : " lost"}"></span>`).join("")}</span><span class="n">${alive}</span>`;
+    };
+    document.getElementById("tally").innerHTML = t(GOLD, "g") + t(WHITE, "w");
+    document.getElementById("quiet").textContent = over() ? "" : `Moves since a capture: ${s.quiet} of ${QUIET_LIMIT}`;
+
+    // Log
+    const h = G.history, logEl = document.getElementById("log");
+    if (!h.length) logEl.innerHTML = `<li class="empty">No moves yet. Gold goes first.</li>`;
+    else {
+      let out = "";
+      for (let k = 0; k < h.length; k += 2) out += `<li class="n">${k / 2 + 1}.</li><li>${h[k].note}</li><li>${h[k + 1] ? h[k + 1].note : ""}</li>`;
+      logEl.innerHTML = out; logEl.scrollTop = logEl.scrollHeight;
+    }
+    document.getElementById("undoBtn").disabled = !h.length || (G.mode === "cpu" && !h.some(x => x.by === +G.side));
+    document.getElementById("cpuOpts").hidden = val("mode") !== "cpu";
+    const hb = document.getElementById("hintBtn");
+    hb.setAttribute("aria-pressed", String(hints)); hb.textContent = hints ? "Hints on" : "Hints";
+  }
+
+  let sugCache = { key: null, move: null };
+  function suggestion() {
+    const key = G.state.b.join("") + G.state.turn;
+    if (sugCache.key !== key) sugCache = { key, move: search(G.state, 3, 250, 0) };
+    return sugCache.move;
+  }
+
+  /* ---------- Input ---------- */
+  hitsEl.addEventListener("click", e => { const r = e.target.closest(".cellhit"); if (r) clickCell(+r.dataset.i); });
+  svg.addEventListener("keydown", e => {
+    const r = (G.cursor / N) | 0, c = G.cursor % N;
+    const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+    if (mv) { e.preventDefault(); const nr = r + mv[0], nc = c + mv[1]; if (inB(nr, nc)) G.cursor = at(nr, nc); render(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); clickCell(G.cursor); }
+    else if (e.key === "Escape" && G.sel !== null) { G.sel = null; render(); }
+  });
+  svg.addEventListener("focus", () => render());
+  svg.addEventListener("blur", () => render());
+  document.getElementById("newBtn").addEventListener("click", newGame);
+  document.getElementById("undoBtn").addEventListener("click", undo);
+  document.getElementById("hintBtn").addEventListener("click", () => { hints = !hints; render(); });
+  document.querySelectorAll('input[name="mode"],input[name="side"]').forEach(el => el.addEventListener("change", newGame));
+  document.querySelectorAll('input[name="lvl"]').forEach(el => el.addEventListener("change", () => { G.lvl = val("lvl"); save(); }));
+
+  function save() { try { localStorage.setItem("fidchell-game", JSON.stringify(G)); } catch (e) {} }
+  function load() { try { const v = JSON.parse(localStorage.getItem("fidchell-game") || "null"); return v && v.state && v.state.b && v.state.b.length === N * N ? v : null; } catch (e) { return null; } }
+
+  function start(data) {
+    drawBoard();
+    const saved = (data && data.G) || load();
+    if (saved) {
+      G = saved; G.sel = null;
+      setVal("mode", G.mode); setVal("side", G.side); setVal("lvl", G.lvl);
+      piecesEl.innerHTML = ""; render(); maybeAI();
+    } else newGame();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ G }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
