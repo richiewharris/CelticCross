@@ -2,6 +2,7 @@
 import { geom } from "./engine/dial";
 import { TIERS, looseEnds } from "./engine/knot";
 import { Dial, Example } from "./components/Dial";
+import { VariantNav } from "./components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "./components/Ledger";
 import { useLock } from "./useLock";
 
@@ -20,6 +21,7 @@ export function LockGame() {
       <header>
         <h1>Celtic Cross Lock</h1>
         <p className="tag">Turn the stones until the knot runs unbroken all the way round. You can only see a third of it at a time, so spin the disc to check your work, then press the center of the dial to try the lock.</p>
+        <VariantNav current="v2" />
       </header>
 
       <div className="game">

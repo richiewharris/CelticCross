@@ -105,3 +105,9 @@ body.gm-lock .meter i { transition: none; }
 
 /* Tokens the site's top bar reads. */
 body.gm-lock { --bg: var(--oak); --fg: var(--ink); --surface: var(--oak-2); }
+
+body.gm-lock .variants, body.gm-lock-v1 .variants { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+body.gm-lock .variants a, body.gm-lock-v1 .variants a { font-size: .85rem; text-decoration: none; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 11px; }
+body.gm-lock .variants a:hover, body.gm-lock-v1 .variants a:hover { color: var(--ink, var(--fg)); border-color: var(--gold); }
+body.gm-lock .variants a[aria-current="page"], body.gm-lock-v1 .variants a[aria-current="page"] { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+body.gm-lock .variants a:focus-visible, body.gm-lock-v1 .variants a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }

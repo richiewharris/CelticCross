@@ -2,6 +2,7 @@
 import { createPortal } from "react-dom";
 import { CROSS_TIERS } from "./engine/cross";
 import { CrossBoard, TileSvg } from "./components/CrossBoard";
+import { VariantNav } from "./components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "./components/Ledger";
 import { useCross } from "./useCross";
 
@@ -27,6 +28,7 @@ export function CrossGame() {
       <header>
         <h1>Celtic Cross Lock</h1>
         <p className="tag">Rejoin the knotwork on the ringed cross. When every strand meets its match, try the lock.</p>
+        <VariantNav current="v1" />
       </header>
 
       <div className="game">
