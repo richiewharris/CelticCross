@@ -1,4 +1,7 @@
-// Placeholder until this game is ported.
+import "./fidchell.css";
+import { GameScope } from "../../kit/GameScope";
+import { FidchellGame } from "./FidchellGame";
+
 export default function Page() {
-  return <div className="wrap"><header><h1>Coming soon</h1></header><p><a href="../fidchell/">Play the original</a>.</p></div>;
+  return <GameScope id="fidchell"><FidchellGame /></GameScope>;
 }

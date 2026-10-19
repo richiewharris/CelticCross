@@ -1,8 +1,8 @@
 .topnav { max-width: 1040px; margin: 0 auto 14px; display: flex; gap: 18px; flex-wrap: wrap; font-size: .92rem; }
-.topnav a { color: var(--muted); text-decoration: none; }
-.topnav a:hover, .topnav a:focus-visible { color: var(--fg); text-decoration: underline; }
+.topnav a { color: var(--muted, #8a8a80); text-decoration: none; }
+.topnav a:hover, .topnav a:focus-visible { color: var(--fg, currentColor); text-decoration: underline; }
 .topnav a[aria-current="page"] { color: var(--fg); }
-.topnav .here { color: var(--fg); }
+.topnav .here { color: var(--fg, currentColor); }
 .topnav a[href="#/playground"] { margin-left: auto; }
 .loading { text-align: center; color: var(--muted); font-style: italic; }
 .pg { max-width: 1040px; margin: 0 auto; display: grid; gap: 30px; }

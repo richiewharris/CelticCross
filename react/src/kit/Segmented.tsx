@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { Fragment, useId } from "react";
 
 export interface SegOption<T extends string | number> { value: T; label: string }
 
@@ -12,10 +12,10 @@ export function Segmented<T extends string | number>(props: {
       {props.options.map(o => {
         const id = `${name}-${o.value}`;
         return (
-          <span key={String(o.value)} style={{ display: "contents" }}>
+          <Fragment key={String(o.value)}>
             <input type="radio" id={id} name={name} checked={o.value === props.value} onChange={() => props.onChange(o.value)} />
             <label htmlFor={id}>{o.label}</label>
-          </span>
+          </Fragment>
         );
       })}
     </div>
