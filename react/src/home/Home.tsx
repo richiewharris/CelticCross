@@ -40,6 +40,7 @@ export function Home() {
             {more.map(g => (
               <li key={g.id}><a href={`#/${g.id}`}><img src={img(g.image)} alt="" width="72" height="72" /><span><b>{g.title}</b><span>{g.blurb}</span></span></a></li>
             ))}
+            <li><a href="#/lock/v1"><img src={img("celtic-cross-lock.jpg")} alt="" width="72" height="72" style={{ filter: "sepia(.6)" }} /><span><b>Celtic Cross Lock, classic</b><span>The first version of the lock: rejoin the knotwork on a ringed cross by swapping stones.</span></span></a></li>
             <li><a href="#/playground"><img src={img("cnoc.jpg")} alt="" width="72" height="72" style={{ filter: "grayscale(.7)" }} /><span><b>Component playground</b><span>Every game's pieces and boards on one page, for building and checking them.</span></span></a></li>
           </ul>
         </section>
