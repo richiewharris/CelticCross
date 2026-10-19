@@ -16,7 +16,7 @@
 .pg-game .specimens { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; }
 .pg-game .specimens figure { margin: 0; display: grid; gap: 4px; justify-items: center; font-size: .85rem; color: var(--muted); }
 .pg-game .specimens svg.piece { width: 64px; height: 64px; }
-.pg-game .boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+.pg-game .boards { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
 .pg-game .boards figure { margin: 0; display: grid; gap: 6px; }
 .pg-game figcaption { font-size: .9rem; color: var(--muted); }
 .pg-game code { font-size: .85em; }
