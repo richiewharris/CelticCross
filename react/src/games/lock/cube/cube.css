@@ -1,0 +1,53 @@
+/* Celtic Cross Lock, the cube. Builds on lock.css (body.gm-lock); everything here is cube-only. */
+body.gm-lock .cube-box { --cube-s: min(270px, 52vw); overflow: hidden; }
+body.gm-lock .cube-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+body.gm-lock .cube-scene {
+  position: relative; width: min(100%, calc(var(--cube-s) * 1.85)); height: calc(var(--cube-s) * 1.7);
+  perspective: calc(var(--cube-s) * 4.2); perspective-origin: 50% 45%;
+  touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; border-radius: 10px;
+}
+body.gm-lock .cube-scene:active { cursor: grabbing; }
+body.gm-lock .cube-scene:focus { outline: none; }
+body.gm-lock .cube-scene:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
+body.gm-lock .cube-floor {
+  position: absolute; left: 50%; top: 50%; width: calc(var(--cube-s) * 1.6); height: calc(var(--cube-s) * .42);
+  transform: translate(-50%, calc(var(--cube-s) * .62));
+  background: radial-gradient(closest-side, rgb(0 0 0 / .55), rgb(0 0 0 / 0));
+  pointer-events: none;
+}
+body.gm-lock .cube-body {
+  position: absolute; left: 50%; top: 50%; width: var(--cube-s); height: var(--cube-s);
+  margin: calc(var(--cube-s) / -2) 0 0 calc(var(--cube-s) / -2);
+  transform-style: preserve-3d; will-change: transform;
+}
+body.gm-lock .cube-face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background: #0b0806; box-shadow: 0 0 0 .5px #0b0806;
+}
+body.gm-lock .cube-face-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+body.gm-lock .cube-shade { position: absolute; inset: 0; background: #000; pointer-events: none; will-change: opacity; }
+body.gm-lock .cube-tile { transform-box: view-box; }
+body.gm-lock .stone.live { cursor: pointer; }
+body.gm-lock .stone:focus { outline: none; }
+body.gm-lock .stone:focus-visible { stroke: var(--glow); stroke-width: 1.6; }
+/* The pins stand a little proud of their grooves until the lock opens, then drop home. */
+body.gm-lock .cube-pins-lift { transform: translate(-.5px, -.7px); transition: transform .45s cubic-bezier(.6, 0, .9, .6), filter .45s; }
+body.gm-lock .cube-scene.home .cube-pins-lift { transform: none; filter: brightness(.82); }
+/* (no filter on .cube-body: a filter would flatten the 3D) */
+body.gm-lock .cube-scene.open .cube-floor { background: radial-gradient(closest-side, rgb(243 207 106 / .4), rgb(243 207 106 / 0)); transition: background .6s; }
+body.gm-lock .cube-scene.clunk { animation: clunk-cube .22s ease-out; }
+@keyframes clunk-cube { 30% { transform: translateY(4px) scale(.99); } 100% { transform: none; } }
+body.gm-lock .cube-turns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+body.gm-lock .cube-turns .btn.icon { min-width: 46px; }
+body.gm-lock button.btn.boss { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px; }
+body.gm-lock .triskele { width: 26px; height: 26px; display: block; }
+body.gm-lock .examples svg { max-width: 140px; }
+@media (max-width: 420px) {
+  body.gm-lock .cube-box { --cube-s: min(220px, 57vw); padding: 14px 8px; }
+  body.gm-lock .cube-turns { gap: 6px; }
+  body.gm-lock .cube-turns .btn.icon { min-width: 42px; padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.gm-lock .cube-scene.clunk { animation: none; }
+  body.gm-lock .cube-pins-lift { transition: none; }
+}
