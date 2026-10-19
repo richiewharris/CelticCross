@@ -12,6 +12,7 @@ import { Dial, Example, restingAnim } from "./components/Dial";
 import { CrossBoard, TileSvg } from "./components/CrossBoard";
 import { SkillPanel, TierPanel, TurnsPanel } from "./components/Ledger";
 import { StrandKey } from "./CrossGame";
+import { StackPlayground } from "./stack/StackPlayground";
 
 const SOL = makeKnot(TIERS[4], mulberry32(11));
 const CUR = SOL.map((m, k) => (m !== 15 && k % 5 === 1 ? rotCW(m) : m));
@@ -80,6 +81,7 @@ function CurrentParts() {
         <div className="status good">The box opens. Skill +5.</div>
         <div className="status bad">The knot was broken…</div>
       </section>
+      <StackPlayground />
     </div></GameScope>
   );
 }

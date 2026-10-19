@@ -1,0 +1,64 @@
+/* Celtic Cross Lock, stacked discs: the pile of discs in the box and the stack ledger.
+   Scoped under body.gm-lock like lock.css; nothing here touches the dial's own rules. */
+body.gm-lock .stk-plaque {
+  margin: 0; font-family: var(--font-mono); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+body.gm-lock .stk-plaque b { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; letter-spacing: .04em; color: var(--gold); text-transform: none; }
+
+/* The pile: the live dial on top, the plates beneath it each a step lower and narrower, so only their edges show. */
+body.gm-lock .stk-pile {
+  --step: 10px;
+  position: relative; width: min(100%, 470px);
+  padding-bottom: calc(var(--n) * var(--step));
+  transition: padding-bottom .5s ease;
+}
+body.gm-lock .stk-live { position: relative; z-index: 20; border-radius: 10px; }
+body.gm-lock .stk-live #lock { width: 100%; }
+body.gm-lock .stk-rim {
+  --hi: #8d9094; --lo: #3b3d41;
+  position: absolute; border-radius: 12px;
+  left: calc(var(--i) * 11px); right: calc(var(--i) * 11px);
+  top: calc(var(--i) * var(--step)); bottom: calc((var(--n) - var(--i)) * var(--step));
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13px, rgb(0 0 0 / .22) 13px 15px),
+    linear-gradient(to top, var(--lo) 0, var(--hi) 5px, var(--lo) var(--step), var(--lo));
+  box-shadow: 0 0 0 1px #0b0806, 0 4px 8px rgb(0 0 0 / .55);
+  transition: top .5s ease, bottom .5s ease, left .5s ease, right .5s ease;
+}
+body.gm-lock .stk-rim span {
+  position: absolute; right: 16px; bottom: 0; line-height: var(--step); font: 600 8px/var(--step) var(--font-mono);
+  color: rgb(0 0 0 / .7); letter-spacing: .08em; padding: 0 3px; background: var(--hi); border-radius: 2px;
+}
+body.gm-lock .stk-m1 { --hi: #8d9094; --lo: #3b3d41; }
+body.gm-lock .stk-m2 { --hi: #b88c4c; --lo: #5a4122; }
+body.gm-lock .stk-m3 { --hi: #d4d8dc; --lo: #6d7176; }
+body.gm-lock .stk-m4 { --hi: #e3bb58; --lo: #7d5f1e; }
+body.gm-lock .stk-m5 { --hi: #9aa792; --lo: #3f4a3d; }
+
+/* The disc that has just opened, lifting off over the next. Only the round disc lifts, not its square plate. */
+body.gm-lock .stk-lift { position: absolute; inset: 0 0 auto 0; z-index: 30; pointer-events: none; transform-origin: 50% 50%; }
+body.gm-lock .stk-lift #lock { width: 100%; clip-path: circle(45.4% at 50% 50%); }
+
+/* The stack in the ledger. */
+body.gm-lock .stk-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+body.gm-lock .stk-list li {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+}
+body.gm-lock .stk-list li.now { border-color: var(--gold); color: var(--ink); background: color-mix(in srgb, var(--oak-3) 70%, transparent); }
+body.gm-lock .stk-list li.done { opacity: .55; }
+body.gm-lock .stk-list li.done .stk-name { text-decoration: line-through; text-decoration-color: var(--muted); }
+body.gm-lock .stk-num {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: .85rem; color: #1a140e;
+  background: radial-gradient(circle at 40% 35%, var(--hi), var(--lo));
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .45);
+}
+body.gm-lock .stk-name { display: grid; line-height: 1.25; font-weight: 600; }
+body.gm-lock .stk-name small { font-weight: 400; font-size: .8rem; font-style: italic; color: var(--muted); }
+body.gm-lock .stk-state { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+body.gm-lock .stk-list li.now .stk-state { color: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) {
+body.gm-lock .stk-pile, body.gm-lock .stk-rim { transition: none; }
+}
