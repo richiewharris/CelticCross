@@ -1,0 +1,120 @@
+body.gm-goldmines {
+  --peat: #141716;
+  --peat-2: #1c2220;
+  --slate: #29302d;
+  --ink: #ece6d6;
+  --muted: #a3a08f;
+  --fg: var(--ink);
+  --bg: var(--peat);
+  --line: #36403b;
+  --gold: #e2b33c;
+  --gold-hi: #f6d77a;
+  --water: #6f9a93;
+  --garnet: #d0584a;
+  --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
+  --font-body: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+body.gm-goldmines * { box-sizing: border-box; }
+body.gm-goldmines, body.gm-goldmines { margin: 0; }
+body.gm-goldmines { height: 100%; }
+body.gm-goldmines [hidden] { display: none !important; }
+body.gm-goldmines {
+  background: var(--peat); color: var(--ink);
+  background-image: radial-gradient(120% 80% at 50% 0%, var(--peat-2), var(--peat) 70%);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 40px;
+  min-height: 100%;
+}
+body.gm-goldmines .wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+body.gm-goldmines header { display: grid; gap: 4px; }
+body.gm-goldmines h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.1rem, 6.5vw, 3.1rem); margin: 0; line-height: 1.05; color: var(--gold); }
+body.gm-goldmines .tag { margin: 0; color: var(--muted); font-style: italic; max-width: 66ch; }
+body.gm-goldmines .game { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 30px; align-items: start; }
+@media (max-width: 840px) {
+body.gm-goldmines .game { grid-template-columns: minmax(0, 1fr); }
+ }
+body.gm-goldmines .stage { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+body.gm-goldmines .status { font-weight: 600; text-align: center; min-height: 3.1em; text-wrap: balance; max-width: 40ch; display: grid; place-items: center; }
+body.gm-goldmines .status.warn { color: var(--garnet); }
+body.gm-goldmines .status.good { color: var(--gold-hi); }
+body.gm-goldmines .canvas-wrap { position: relative; width: min(100%, 600px); aspect-ratio: 1; max-width: 100%; }
+body.gm-goldmines #pan { width: 100%; height: 100%; display: block; border-radius: 16px; touch-action: none; cursor: grab; }
+body.gm-goldmines #pan.dragging { cursor: grabbing; }
+body.gm-goldmines #pan:focus { outline: none; }
+body.gm-goldmines #pan:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+body.gm-goldmines .card {
+  position: absolute; inset: 0; margin: auto; width: min(86%, 380px); height: fit-content;
+  background: rgb(20 23 22 / .93); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px 22px; display: grid; gap: 10px; text-align: center;
+  box-shadow: 0 16px 40px rgb(0 0 0 / .55);
+}
+body.gm-goldmines .card[hidden] { display: none; }
+body.gm-goldmines .card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--gold); font-size: 1.6rem; }
+body.gm-goldmines .card .big { font-family: var(--font-mono); font-size: 1.6rem; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+body.gm-goldmines .card dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; text-align: left; font-size: .95rem; }
+body.gm-goldmines .card dt { color: var(--muted); }
+body.gm-goldmines .card dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+body.gm-goldmines .card p { margin: 0; color: var(--muted); font-size: .92rem; }
+body.gm-goldmines .gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(100%, 600px); }
+body.gm-goldmines .gauge { display: grid; gap: 4px; }
+body.gm-goldmines .gauge[hidden] { display: none; }
+body.gm-goldmines .gauge .bar { height: 8px; border-radius: 4px; background: var(--slate); position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+body.gm-goldmines .gauge .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }
+body.gm-goldmines #waterBar i { background: var(--water); }
+body.gm-goldmines #settleBar i { background: var(--gold); }
+body.gm-goldmines #tiltBar i { background: var(--ink); }
+body.gm-goldmines #tiltBar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 72%; right: 0; background: color-mix(in srgb, var(--garnet) 40%, transparent); }
+body.gm-goldmines .label { margin: 0; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-family: var(--font-mono); }
+body.gm-goldmines .controls { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; }
+body.gm-goldmines button.btn {
+  font: inherit; font-weight: 600; letter-spacing: .02em;
+  padding: 8px 15px; border-radius: 6px; cursor: pointer; touch-action: none;
+  border: 1px solid var(--gold); background: transparent; color: var(--gold-hi);
+  -webkit-user-select: none; user-select: none;
+}
+body.gm-goldmines button.btn.primary { background: var(--gold); color: var(--peat); }
+body.gm-goldmines button.btn:hover { filter: brightness(1.12); }
+body.gm-goldmines button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body.gm-goldmines button.btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+body.gm-goldmines button.btn.held { background: color-mix(in srgb, var(--gold) 25%, transparent); }
+body.gm-goldmines button.btn.coach { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+body.gm-goldmines button.btn.coach[aria-pressed="true"] { border-style: solid; border-color: var(--water); color: var(--ink); background: color-mix(in srgb, var(--water) 30%, transparent); }
+body.gm-goldmines .keys { margin: 0; font-size: .84rem; color: var(--muted); text-align: center; max-width: 60ch; }
+body.gm-goldmines .keys kbd { font-family: var(--font-mono); font-size: .78rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--slate); color: var(--ink); }
+body.gm-goldmines aside { display: grid; gap: 22px; min-width: 0; }
+body.gm-goldmines .panel { display: grid; gap: 9px; }
+body.gm-goldmines #river { width: 100%; height: auto; display: block; border-radius: 10px; }
+body.gm-goldmines .spot-mark { cursor: pointer; }
+body.gm-goldmines .spot-mark:focus { outline: none; }
+body.gm-goldmines .spot-mark:focus-visible circle.ring { stroke: var(--gold-hi); stroke-width: 3; }
+body.gm-goldmines .spots { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+body.gm-goldmines .spots button {
+  width: 100%; text-align: left; font: inherit; color: var(--ink); background: var(--slate);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; cursor: pointer;
+  display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline;
+}
+body.gm-goldmines .spots button:hover { border-color: var(--gold); }
+body.gm-goldmines .spots button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+body.gm-goldmines .spots button:disabled { opacity: .45; cursor: not-allowed; }
+body.gm-goldmines .spots .k { font-family: var(--font-mono); color: var(--gold); font-size: .85rem; }
+body.gm-goldmines .spots .nm { font-weight: 600; font-size: .93rem; }
+body.gm-goldmines .spots .yd { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+body.gm-goldmines .spots .tip { grid-column: 2 / 4; font-size: .84rem; color: var(--muted); }
+body.gm-goldmines .day { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; }
+body.gm-goldmines .pips { display: flex; gap: 5px; flex-wrap: wrap; }
+body.gm-goldmines .pip { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--gold); }
+body.gm-goldmines .pip.on { background: var(--gold); }
+body.gm-goldmines .haul { font-family: var(--font-mono); font-size: 1.3rem; color: var(--gold-hi); font-variant-numeric: tabular-nums; }
+body.gm-goldmines .small { margin: 0; font-family: var(--font-mono); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+body.gm-goldmines .steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: .93rem; counter-reset: s; }
+body.gm-goldmines .steps li { padding-left: 26px; position: relative; color: var(--muted); }
+body.gm-goldmines .steps li b { color: var(--ink); }
+body.gm-goldmines .steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: .1em; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); font-family: var(--font-mono); font-size: .72rem; display: grid; place-items: center; color: var(--muted); }
+body.gm-goldmines .steps li.now { color: var(--ink); }
+body.gm-goldmines .steps li.now::before { background: var(--gold); border-color: var(--gold); color: var(--peat); }
+body.gm-goldmines .note { margin: 0; font-size: .86rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+
