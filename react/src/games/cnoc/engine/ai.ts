@@ -1,11 +1,13 @@
 // The computer opponent: a static evaluation plus alpha-beta search with iterative deepening.
 import {
-  ALL8, LO, N, NN, SP, SUMMIT, TIER, apply, count, gen, key, from, to,
+  ALL8, LO, N, NN, PH, RI, SP, SUMMIT, TIER, apply, count, gen, key, from, sideOf, to,
   type Move, type Piece, type Rules, type Side, type State,
 } from "./rules";
 
 export const MATE = 100000;
-const PV: Record<number, number> = { 1: 100, 2: 0, 3: 230, 4: 480 };
+/** The Phalanx (combining variant): a Spearman that also steps diagonally, worth a little less than the three it replaces. */
+export const PHALANX_VALUE = 270;
+const PV: Record<number, number> = { 1: 100, 2: 0, 3: 230, 4: 480, 5: PHALANX_VALUE };
 export const pieceValue = (p: Piece) => PV[p] ?? 0;
 
 /** Position value from the Host's point of view. */
@@ -15,10 +17,11 @@ export function evalHost(s: State, rules: Rules): number {
   for (let i = 0; i < NN; i++) {
     const p = b[i];
     if (!p) continue;
-    const sg = p >= 3 ? -1 : 1;
+    const sg = sideOf(p) ? -1 : 1;
     v += sg * PV[p];
     if (p === LO) lord = i;
     if (p === SP) v += 12 * (TIER[i] - 1);
+    else if (p === PH) v += 25 * (TIER[i] - 1);
     if (SUMMIT[i]) { if (sg > 0) hTop++; else sTop++; }
   }
   if (lord >= 0) {
@@ -27,7 +30,7 @@ export function evalHost(s: State, rules: Rules): number {
     let g = 0;
     for (const [dr, dc] of ALL8) {
       const rr = r + dr, cc = c + dc;
-      if (rr >= 0 && rr < N && cc >= 0 && cc < N && b[rr * N + cc] === SP) g++;
+      if (rr >= 0 && rr < N && cc >= 0 && cc < N && (b[rr * N + cc] === SP || b[rr * N + cc] === PH)) g++;
     }
     v += 15 * Math.min(g, 3);
     let best = 9;
@@ -43,6 +46,7 @@ export function orderScore(s: State, m: Move): number {
   const q = s.b[to(m)], p = s.b[from(m)];
   if (q === LO) return 1e5;
   if (p === LO && SUMMIT[to(m)]) return 9e4;
+  if (p === RI && q === RI) return 1500; // a merge
   return q ? 1000 + PV[q] - PV[p] / 10 : 0;
 }
 
@@ -64,7 +68,7 @@ function makeSearcher(rules: Rules, seen: Seen, deadline: number) {
   function nm(s: State, d: number, a: number, bb: number, ply: number): number {
     if ((++nodes & 511) === 0 && performance.now() > deadline) throw new TimeUp();
     if (d === 0) { const v = evalHost(s, rules); return s.turn === 0 ? v : -v; }
-    const ms = gen(s);
+    const ms = gen(s, rules);
     if (!ms.length) return -MATE + ply;
     ms.sort((x, y) => orderScore(s, y) - orderScore(s, x));
     let best = -Infinity;
@@ -101,7 +105,7 @@ function makeSearcher(rules: Rules, seen: Seen, deadline: number) {
 export function search(rootS: State, opts: SearchOpts, seen: Seen, rules: Rules): Move | null {
   const deadline = performance.now() + opts.ms;
   const S = makeSearcher(rules, seen, deadline);
-  let moves = gen(rootS);
+  let moves = gen(rootS, rules);
   if (!moves.length) return null;
   moves.sort((x, y) => orderScore(rootS, y) - orderScore(rootS, x));
   let bestMove = moves[0];
@@ -133,7 +137,7 @@ export interface Analysis { m: Move | null; v: number; depth: number }
 export function analyse(rootS: State, maxDepth: number, ms: number, seen: Seen, rules: Rules): Analysis {
   const deadline = performance.now() + ms;
   const S = makeSearcher(rules, seen, deadline);
-  let moves = gen(rootS);
+  let moves = gen(rootS, rules);
   if (!moves.length) return { m: null, v: -MATE, depth: 0 };
   moves.sort((x, y) => orderScore(rootS, y) - orderScore(rootS, x));
   let out: Analysis | null = null;
@@ -170,9 +174,9 @@ export function placeScore(s: State, side: Side, piece: Piece, i: number, rules:
   const b = s.b.slice(); b[i] = piece;
   let v = evalHost({ b, turn: 0, hold: 0 }, rules);
   if (side === 1) v = -v;
-  const enemy = gen({ b, turn: (side ^ 1) as Side, hold: 0 });
+  const enemy = gen({ b, turn: (side ^ 1) as Side, hold: 0 }, rules);
   if (enemy.some(m => to(m) === i)) v -= PV[piece] / 2 + (piece === LO ? 400 : 0);
-  const mine = gen({ b, turn: side, hold: 0 });
+  const mine = gen({ b, turn: side, hold: 0 }, rules);
   for (const m of mine) if (from(m) === i && b[to(m)]) v += 20;
   return v;
 }
@@ -192,4 +196,28 @@ export function cpuPlace(
     if (v > bv) { bv = v; best = i; }
   }
   return best;
+}
+
+/** Noise on the Phalanx decision by level: the Novice is close to a coin toss, the High King decides on judgement alone. */
+const PHX_NOISE: Record<number, number> = { 1: 600, 2: 120, 3: 40, 4: 0 };
+/** What the computer reckons a Phalanx's freedom (stepping in eight directions, and onto the summit corners) is worth over plain Spearmen. */
+const PHX_MOBILITY = 60;
+
+/**
+ * Should the computer's Host take the Phalanx with this action (combining variant)?
+ * Own setup: compare the best hole for the Phalanx against the best hole for a Spearman plus the two
+ * further Spearmen it would cost. Rival's setup: the Sí will set it, so judge it in the abstract.
+ */
+export function cpuWantsPhalanx(
+  s: State, swap: boolean, lvl: number, zone: (i: number) => boolean, rules: Rules, rnd: () => number = Math.random,
+): boolean {
+  const noise = (rnd() - 0.5) * 2 * (PHX_NOISE[lvl] ?? 0);
+  if (swap) return PV[PH] + PHX_MOBILITY - 3 * PV[SP] + noise > 0;
+  let bestP = -Infinity, bestS = -Infinity;
+  for (let i = 0; i < NN; i++) {
+    if (s.b[i] || !zone(i)) continue;
+    bestP = Math.max(bestP, placeScore(s, 0, PH, i, rules));
+    bestS = Math.max(bestS, placeScore(s, 0, SP, i, rules));
+  }
+  return bestP + PHX_MOBILITY - (bestS + 2 * PV[SP]) + noise > 0;
 }

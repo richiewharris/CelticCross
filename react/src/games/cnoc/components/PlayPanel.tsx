@@ -24,6 +24,8 @@ export function PlayPanel(props: {
         options={[{ value: 7, label: `Hold ${7 - d} turns` }, { value: 8, label: `Hold ${8 - d} (easier Host)` }] as { value: PlaySettings["holdN"]; label: string }[]} />
       <Segmented label="Setup" title="Who sets each side's pieces at the start" value={st.swap ? "swap" : "own"} onChange={v => props.change({ swap: v === "swap" })}
         options={[{ value: "own", label: "Set your own pieces" }, { value: "swap", label: "Set your rival's" }]} />
+      <Segmented label="Pieces" title="Combining: the Host may field a Phalanx in place of 3 Spearmen; two Sí Riders on the summit may merge into a Chariot" value={st.combine ? "combine" : "standard"} onChange={v => props.change({ combine: v === "combine" })}
+        options={[{ value: "standard", label: "Standard pieces" }, { value: "combine", label: "Combining" }]} />
       <div className="row">
         <button className="btn primary" type="button" onClick={props.newGame}>New game</button>
         <button className="btn" type="button" disabled={!props.canUndo} onClick={props.undo}>Undo</button>

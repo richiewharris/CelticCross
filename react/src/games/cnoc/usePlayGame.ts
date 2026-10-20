@@ -5,25 +5,32 @@ import { useStoredState } from "../../kit/useStoredState";
 import { createRpc } from "../../kit/rpc";
 import { LEVELS } from "./engine/ai";
 import {
-  actor, currentSlot, newGame, placePiece, playMove, rulesOf, seenMap, trayChoices, undo, type Game,
+  actor, currentSlot, newGame, phalanxOffer, placePiece, playMove, rulesOf, seenMap, trayChoices, undo, type Game,
 } from "./engine/game";
+import { cpuSetupChoice } from "./engine/cpu";
 import { buildEntries, type Entry } from "./engine/review";
-import { CH, LO, RI, SP, from, gen, type Move, type Piece, type Side } from "./engine/rules";
+import { CH, LO, RI, SP, from, gen, sideOf, type Move, type Piece, type Side } from "./engine/rules";
 import { slotZone } from "./engine/setup";
 import { aiRpc, makeAiWorker } from "./aiClient";
 
-export interface PlaySettings { mode: "cpu" | "pvp"; side: Side; lvl: 1 | 2 | 3 | 4; holdN: 7 | 8; swap: boolean }
-export const DEFAULT_SETTINGS: PlaySettings = { mode: "cpu", side: 0, lvl: 2, holdN: 7, swap: false };
+export interface PlaySettings {
+  mode: "cpu" | "pvp"; side: Side; lvl: 1 | 2 | 3 | 4; holdN: 7 | 8; swap: boolean;
+  /** The combining variant (absent in settings saved before it existed). */
+  combine?: boolean;
+}
+export const DEFAULT_SETTINGS: PlaySettings = { mode: "cpu", side: 0, lvl: 2, holdN: 7, swap: false, combine: false };
 
 export interface ReviewState { list: Entry[]; done: number; v: number; playing: boolean; ready: boolean }
 
-const fresh = (st: PlaySettings) => newGame({ swap: st.swap, holdN: st.holdN });
+const fresh = (st: PlaySettings) => newGame({ swap: st.swap, holdN: st.holdN, combine: !!st.combine });
 
 export function usePlayGame(active: boolean) {
   const [settings, setSettings] = useStoredState<PlaySettings>("cnoc-react-settings", DEFAULT_SETTINGS);
   const [g, setG] = useStoredState<Game>("cnoc-react-game", () => fresh(settings));
   const [sel, setSel] = useState<number | null>(null);
   const [pick, setPick] = useState<Piece | null>(null);
+  // Rival's setup in the combining variant: the Host's Phalanx choice, sent with the Lord.
+  const [phx, setPhx] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [review, setReview] = useState<ReviewState | null>(null);
   const reviewWorker = useRef<Worker | null>(null);
@@ -40,12 +47,9 @@ export function usePlayGame(active: boolean) {
     const rules = rulesOf(g), rpc = aiRpc();
     const timer = setTimeout(async () => {
       if (g.phase === "place") {
-        const slot = currentSlot(g), tr = g.trays[slot.o], choices = trayChoices(g);
-        const special = slot.o === 0 ? LO : CH, plain = slot.o === 0 ? SP : RI;
-        const left = (tr[special] ?? 0) + (tr[plain] ?? 0);
-        const piece = slot.k ?? (choices.includes(special) && (Math.random() < 1 / left || !choices.includes(plain)) ? special : plain);
-        const i = await rpc.call<number>("place", { s: g.s, placed: g.placed, swap: g.swap, piece, lvl: settings.lvl, rules });
-        if (live) setG(cur => (cur === g ? placePiece(g, i, piece) : cur));
+        const slot = currentSlot(g), { piece, takePhalanx } = cpuSetupChoice(g, settings.lvl);
+        const i = await rpc.call<number>("place", { s: g.s, placed: g.placed, swap: g.swap, piece, lvl: settings.lvl, rules, slot });
+        if (live) setG(cur => (cur === g ? placePiece(g, i, piece, takePhalanx) : cur));
       } else {
         const m = await rpc.call<Move | null>("move", { s: g.s, opts: LEVELS[settings.lvl], seen: [...seenMap(g)], rules });
         if (live && m != null) setG(cur => (cur === g ? playMove(g, m) : cur));
@@ -69,7 +73,7 @@ export function usePlayGame(active: boolean) {
   useEffect(() => () => reviewWorker.current?.terminate(), []);
 
   const restart = useCallback((st: PlaySettings) => {
-    stopReview(); setResultOpen(false); setSel(null); setPick(null);
+    stopReview(); setResultOpen(false); setSel(null); setPick(null); setPhx(false);
     prevWinner.current = null;
     setG(fresh(st));
   }, [setG, stopReview]);
@@ -86,8 +90,9 @@ export function usePlayGame(active: boolean) {
       const slot = currentSlot(g);
       if (g.s.b[i] || !slotZone(slot, i)) return;
       const tr = g.trays[slot.o];
-      const piece = slot.k ?? (pick && tr[pick] ? pick : slot.o === 0 ? (tr[SP] ? SP : LO) : (tr[RI] ? RI : CH));
-      setG(placePiece(g, i, piece));
+      const piece = slot.k ?? (pick && trayChoices(g).includes(pick) ? pick : slot.o === 0 ? (tr[SP] ? SP : LO) : (tr[RI] ? RI : CH));
+      setG(placePiece(g, i, piece, phx && phalanxOffer(g)));
+      setPhx(false);
       return;
     }
     if (sel !== null) {
@@ -96,13 +101,13 @@ export function usePlayGame(active: boolean) {
       if (i === sel) { setSel(null); return; }
     }
     const p = g.s.b[i];
-    setSel(p && (p >= 3 ? 1 : 0) === g.s.turn ? i : null);
+    setSel(p && sideOf(p) === g.s.turn ? i : null);
   };
 
   const canUndo = g.history.length > 0 && (settings.mode === "pvp" || g.history.some(h => h.by === settings.side));
   const takeBack = () => {
     if (!canUndo) return;
-    stopReview(); setResultOpen(false); setSel(null);
+    stopReview(); setResultOpen(false); setSel(null); setPhx(false);
     prevWinner.current = null;
     setG(undo(g, settings.mode === "cpu" ? settings.side : undefined));
   };
@@ -145,7 +150,7 @@ export function usePlayGame(active: boolean) {
   });
 
   return {
-    g, settings, changeSettings, sel, pick, setPick, clickCell,
+    g, settings, changeSettings, sel, pick, setPick, phx, setPhx, clickCell,
     humanTurn, thinking: cpuTurn, isHuman,
     newGame: () => restart(settings), canUndo, takeBack,
     resultOpen, closeResult: () => setResultOpen(false),
@@ -153,4 +158,4 @@ export function usePlayGame(active: boolean) {
   };
 }
 
-export const legalFrom = (g: Game, sq: number) => gen(g.s).filter(m => from(m) === sq);
+export const legalFrom = (g: Game, sq: number) => gen(g.s, rulesOf(g)).filter(m => from(m) === sq);

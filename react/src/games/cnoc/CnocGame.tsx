@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { Segmented } from "../../kit/Segmented";
 import { useStoredState } from "../../kit/useStoredState";
-import { currentSlot, trayChoices } from "./engine/game";
-import { CH, LO, RI, SP, SUMMIT, from, gen, presence, sideName, sideOf, to, type Piece, type Side, type State } from "./engine/rules";
+import { currentSlot, phalanxOffer, phalanxTaken, rulesOf, totalPlacements, trayChoices } from "./engine/game";
+import {
+  CH, LO, PH, RI, SP, SUMMIT, from, gen, isMerge, presence, sideName, sideOf, to,
+  type Piece, type Rules, type Side, type State,
+} from "./engine/rules";
 import { effectiveHold, slotZone } from "./engine/setup";
 import { Board, type Mark } from "./components/Board";
 import { HoldStones } from "./components/HoldStones";
@@ -21,21 +24,26 @@ import { why } from "./text";
 
 type Tab = "play" | "puzzles";
 
-function moveMarks(s: State, sel: number | null): Map<number, Mark> {
+function moveMarks(s: State, sel: number | null, rules?: Rules): Map<number, Mark> {
   const marks = new Map<number, Mark>();
   if (sel === null) return marks;
-  for (const m of gen(s)) {
+  for (const m of gen(s, rules)) {
     if (from(m) !== sel) continue;
     const t = to(m);
-    marks.set(t, s.b[t] ? "cap" : s.b[sel] === LO && SUMMIT[t] ? "win" : "go");
+    marks.set(t, isMerge(s.b, m) ? "merge" : s.b[t] ? "cap" : s.b[sel] === LO && SUMMIT[t] ? "win" : "go");
   }
   return marks;
 }
 
-const selHint = (s: State, sel: number) =>
-  s.b[sel] === LO && presence(s.b, 1)
-    ? "The Lord can't climb onto the summit while a Sí piece stands on it."
-    : "Tap a dot to move, a red ring to take. Tap the piece again to let go.";
+const MERGE_HINT = "Two Riders on the summit can merge into a Chariot.";
+const canMerge = (s: State, rules?: Rules) => !!rules?.combine && s.turn === 1 && gen(s, rules).some(m => isMerge(s.b, m));
+
+function selHint(s: State, sel: number, rules?: Rules) {
+  if (s.b[sel] === LO && presence(s.b, 1)) return "The Lord can't climb onto the summit while a Sí piece stands on it.";
+  if (rules?.combine && gen(s, rules).some(m => from(m) === sel && isMerge(s.b, m)))
+    return `${MERGE_HINT} Tap the double silver ring to merge them there; a dot to move. Tap the Rider again to let go.`;
+  return "Tap a dot to move, a red ring to take. Tap the piece again to let go.";
+}
 
 export function CnocGame() {
   const [tab, setTab] = useStoredState<Tab>("cnoc-react-tab", "play");
@@ -85,19 +93,24 @@ export function CnocGame() {
       if (settings.mode === "cpu" && g.winner !== -1) statusTone = g.winner === settings.side ? "win" : "lose";
     } else if (play.thinking) status = g.phase === "place" ? "The computer sets a piece…" : "The computer is thinking…";
     else if (g.phase === "place") {
-      const slot = currentSlot(g);
-      status = g.swap ? `${sideName(slot.p)}: set a ${sideName(slot.o)} piece (${g.placed + 1} of 13)` : `${sideName(slot.p)}: set a piece (${g.placed + 1} of 13)`;
+      const slot = currentSlot(g), total = totalPlacements(g);
+      status = g.swap ? `${sideName(slot.p)}: set a ${sideName(slot.o)} piece (${g.placed + 1} of ${total})` : `${sideName(slot.p)}: set a piece (${g.placed + 1} of ${total})`;
     } else status = settings.mode === "cpu" ? `Your move, ${sideName(settings.side)}` : `${sideName(s.turn)} to move`;
 
     if (g.phase === "place") {
       const slot = currentSlot(g);
       hint = slot.top ? "The Sí Chariot starts on the summit." : (slot.o === 0 ? "Host pieces go on the outer ring." : "Sí pieces go on the slope or the summit.")
-        + (g.swap && slot.o !== slot.p ? " You're setting your rival's piece: put it where it does least." : "");
+        + (g.swap && slot.o !== slot.p ? " You're setting your rival's piece: put it where it does least." : "")
+        + (play.humanTurn && phalanxOffer(g) ? (g.swap
+          ? " You may bring a Phalanx in place of three Spearmen; the Sí will set it."
+          : " You may take the Phalanx in place of three Spearmen.") : "");
       if (play.humanTurn) for (let i = 0; i < 49; i++) if (!s.b[i] && slotZone(slot, i)) marks.set(i, "place");
     } else if (g.winner === null) {
+      const rules = rulesOf(g);
       sel = play.sel;
-      if (play.humanTurn) marks = moveMarks(s, play.sel);
-      hint = play.sel !== null ? selHint(s, play.sel) : "Tap a piece to see where it can go.";
+      if (play.humanTurn) marks = moveMarks(s, play.sel, rules);
+      hint = play.sel !== null ? selHint(s, play.sel, rules)
+        : `Tap a piece to see where it can go.${play.humanTurn && canMerge(s, rules) ? ` ${MERGE_HINT}` : ""}`;
     }
   }
 
@@ -105,11 +118,16 @@ export function CnocGame() {
   let tray = null;
   if (tab === "play" && !review && g.phase === "place") {
     const slot = currentSlot(g), tr = g.trays[slot.o], kinds: Piece[] = slot.o === 0 ? [SP, LO] : [RI, CH];
+    // The combining variant's Phalanx: an option in the Host's own tray, or a piece the Sí must set once chosen.
+    const ownPhx = g.combine && !g.swap, swapPhx = g.combine && g.swap && tr[PH] !== undefined;
+    if (slot.o === 0 && (ownPhx || swapPhx)) kinds.push(PH);
+    const counts = slot.o === 0 && ownPhx ? { ...tr, [PH]: phalanxTaken(g) ? 0 : 1 } : tr;
     const choices = trayChoices(g);
-    const picked = slot.k ?? (play.pick && tr[play.pick] ? play.pick : (tr[kinds[0]] ? kinds[0] : kinds[1]));
+    const picked = slot.k ?? (play.pick && choices.includes(play.pick) ? play.pick : (tr[kinds[0]] ? kinds[0] : kinds[1]));
+    const toggle = g.combine && g.swap && play.humanTurn && phalanxOffer(g) ? { on: play.phx, set: play.setPhx } : null;
     tray = (
       <Tray label={play.humanTurn ? `${sideName(slot.p)}: choose a ${sideName(slot.o)} piece, then a marked hole` : `${sideName(slot.o)} pieces still to set`}
-        kinds={kinds} counts={tr} picked={picked} enabled={k => play.humanTurn && choices.includes(k)} onPick={play.setPick} />
+        kinds={kinds} counts={counts} picked={picked} enabled={k => play.humanTurn && choices.includes(k)} onPick={play.setPick} phalanxToggle={toggle} />
     );
   }
 
@@ -150,7 +168,7 @@ export function CnocGame() {
               <MoveLog history={tab === "puzzles" ? puz.pz?.g.history ?? [] : g.history} settingUp={tab === "play" && g.phase === "place"} />
             </div>
           )}
-          <RulesPanel holdN={holdOf} />
+          <RulesPanel holdN={holdOf} combine={tab === "play" && !!g.combine} />
         </aside>
       </div>
       {play.resultOpen && tab === "play" && g.winner !== null ? (

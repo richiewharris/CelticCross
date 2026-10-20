@@ -66,7 +66,7 @@ export function assessPlacement(e: PlaceEntry, g: Game) {
 export function analyseMove(e: MoveEntry, g: Game, seen: Map<string, number>, ms = 900) {
   const k0 = key(e.s);
   seen.set(k0, (seen.get(k0) || 0) + 1);
-  e.only = gen(e.s).length === 1;
+  e.only = gen(e.s, rulesOf(g)).length === 1;
   e.ev = analyse(e.s, 8, ms, seen, rulesOf(g));
 }
 

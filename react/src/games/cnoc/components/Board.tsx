@@ -2,7 +2,7 @@ import { NAMES, NN, TIER, sideName, sideOf, sqName, type Piece } from "../engine
 import { CnocPiece } from "../glyphs";
 import { Terrain } from "./Terrain";
 
-export type Mark = "go" | "cap" | "win" | "place";
+export type Mark = "go" | "cap" | "win" | "place" | "merge";
 export interface BoardProps {
   b: Piece[];
   marks?: Map<number, Mark>;
@@ -35,7 +35,7 @@ export function Board(p: BoardProps) {
             if (p.best?.from === i) cls.push("bestfrom"); else if (p.best?.to === i) cls.push("bestto");
             if (p.hint === i) cls.push("hintsq");
             const desc = piece ? `${sideName(sideOf(piece))} ${NAMES[piece]}` : "empty";
-            const act = mark === "cap" ? ", take" : mark === "go" || mark === "win" ? ", move here" : mark === "place" ? ", set a piece here" : "";
+            const act = mark === "cap" ? ", take" : mark === "go" || mark === "win" ? ", move here" : mark === "place" ? ", set a piece here" : mark === "merge" ? ", merge the two Riders into a Chariot here" : "";
             return (
               <button key={i} type="button" className={cls.join(" ")} aria-label={`${sqName(i)}, ${TIER_NAME[TIER[i]]}, ${desc}${act}`} onClick={() => p.onCell?.(i)}>
                 {piece ? <CnocPiece p={piece} pop={p.animate && p.last?.to === i} /> : null}

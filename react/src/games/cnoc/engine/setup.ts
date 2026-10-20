@@ -1,5 +1,5 @@
 // The setup phase: who sets which piece where.
-import { CH, LO, RI, SP, SUMMIT, TIER, type Piece, type Side } from "./rules";
+import { CH, LO, PH, RI, SP, SUMMIT, TIER, type Piece, type Side } from "./rules";
 
 export interface Slot {
   /** Owner of the piece going down. */
@@ -40,3 +40,32 @@ export const freshTrays = (): Trays => ({ 0: { [LO]: 1, [SP]: 7 }, 1: { [CH]: 1,
 
 /** The hold length actually used: the rival's setup plays two turns shorter. */
 export const effectiveHold = (holdN: number, swap: boolean) => (swap ? holdN - 2 : holdN);
+
+// ---- The combining variant ----
+// The Host may set a Phalanx in place of three Spearmen, so the number of placements is no longer
+// fixed: the order is worked out from what is left in the trays.
+
+/** Pieces a side still has to set. In "set your own", a Phalanx not yet chosen is only an option, so it isn't counted. */
+export const leftIn = (t: Trays, side: Side) =>
+  side === 0 ? (t[0][LO] ?? 0) + (t[0][SP] ?? 0) + (t[0][PH] ?? 0) : (t[1][CH] ?? 0) + (t[1][RI] ?? 0);
+
+/**
+ * The next slot in the combining variant. Own setup: Host first, alternate while both sides have
+ * pieces left, then whoever still has pieces. Rival's setup: Host's Lord, Sí Chariot on the summit,
+ * then the Host set Riders and the Sí set Host pieces (Spearmen, or the Phalanx if the Host chose it) in turn.
+ */
+export function comboSlot(placed: number, swap: boolean, t: Trays): Slot {
+  if (!swap) {
+    const h = leftIn(t, 0), si = leftIn(t, 1);
+    const p: Side = !h ? 1 : !si ? 0 : ((placed & 1) as Side);
+    return { o: p, p, k: null };
+  }
+  if (placed === 0) return { o: 0, p: 0, k: LO };
+  if (placed === 1) return { o: 1, p: 1, k: CH, top: true };
+  const h = leftIn(t, 0), ri = t[1][RI] ?? 0;
+  const hostSets = !h ? true : !ri ? false : (placed & 1) === 0;
+  return hostSets ? { o: 1, p: 0, k: RI } : { o: 0, p: 1, k: null };
+}
+
+/** A Phalanx uses up three Spearmen. */
+export const PHALANX_COST = 3;

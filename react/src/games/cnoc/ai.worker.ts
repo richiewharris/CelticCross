@@ -3,11 +3,11 @@ import { cpuPlace, search, type SearchOpts } from "./engine/ai";
 import type { Game } from "./engine/game";
 import { analyseMove, assessPlacement, buildEntries, finishReview } from "./engine/review";
 import type { Piece, Rules, Side, State } from "./engine/rules";
-import { slotAt, slotZone } from "./engine/setup";
+import { slotAt, slotZone, type Slot } from "./engine/setup";
 
 type Msg =
   | { id: number; type: "move"; payload: { s: State; opts: SearchOpts; seen: [string, number][]; rules: Rules } }
-  | { id: number; type: "place"; payload: { s: State; placed: number; swap: boolean; piece: Piece; lvl: number; rules: Rules } }
+  | { id: number; type: "place"; payload: { s: State; placed: number; swap: boolean; piece: Piece; lvl: number; rules: Rules; slot?: Slot } }
   | { id: number; type: "review"; payload: { game: Game; ms: number } };
 
 self.onmessage = (e: MessageEvent<Msg>) => {
@@ -17,7 +17,8 @@ self.onmessage = (e: MessageEvent<Msg>) => {
     self.postMessage({ id, result: search(s, opts, new Map(seen), rules) });
   } else if (type === "place") {
     const { s, placed, swap, piece, lvl, rules } = e.data.payload;
-    const slot = slotAt(placed, swap);
+    // The combining variant's setup order depends on the trays, so the caller sends the slot.
+    const slot = e.data.payload.slot ?? slotAt(placed, swap);
     self.postMessage({ id, result: cpuPlace(s, slot.o as Side, piece, lvl, slot.o !== slot.p, i => slotZone(slot, i), rules) });
   } else if (type === "review") {
     const { game, ms } = e.data.payload;

@@ -12,7 +12,7 @@ import { Tray } from "./components/Tray";
 import { CnocPiece } from "./glyphs";
 import { newGame, playMove, type Game } from "./engine/game";
 import { PUZZLES, mainLine, puzzleStart } from "./engine/puzzles";
-import { CH, LO, NAMES, RI, SP, emptyBoard, from, gen, to, type Piece } from "./engine/rules";
+import { CH, LO, NAMES, PH, RI, SP, emptyBoard, from, gen, sideOf, to, type Piece } from "./engine/rules";
 import type { Entry, Grade } from "./engine/review";
 import { PLACEMENTS } from "./engine/setup";
 
@@ -51,6 +51,9 @@ export default function Playground() {
   const marks = new Map<number, Mark>();
   if (sel !== null) for (const m of gen(START)) if (from(m) === sel) marks.set(to(m), START.b[to(m)] ? "cap" : "go");
 
+  const mergeBoard = emptyBoard();
+  mergeBoard[24] = RI; mergeBoard[25] = RI; mergeBoard[44] = PH; mergeBoard[48] = LO;
+  const mergeMarks = new Map<number, Mark>([[25, "merge"], [16, "go"], [18, "go"], [30, "go"], [32, "go"]]);
   const setupBoard = emptyBoard();
   setupBoard[0] = LO; setupBoard[3] = SP; setupBoard[24] = CH;
   const placeMarks = new Map<number, Mark>();
@@ -61,7 +64,7 @@ export default function Playground() {
       <section>
         <h2>Pieces <code>&lt;CnocPiece&gt;</code></h2>
         <div className="specimens">
-          {([LO, SP, CH, RI] as Piece[]).map(p => <figure key={p}><CnocPiece p={p} /><figcaption>{NAMES[p]}</figcaption></figure>)}
+          {([LO, SP, PH, CH, RI] as Piece[]).map(p => <figure key={p}><CnocPiece p={p} /><figcaption>{NAMES[p]}</figcaption></figure>)}
           <figure><CnocPiece p={LO} pop /><figcaption>pop (just moved)</figcaption></figure>
         </div>
       </section>
@@ -70,8 +73,12 @@ export default function Playground() {
         <h2>Board <code>&lt;Board&gt;</code></h2>
         <div className="boards">
           <figure>
-            <Board b={START.b} marks={marks} selected={sel} onCell={i => setSel(START.b[i] && (START.b[i] >= 3 ? 1 : 0) === START.turn && i !== sel ? i : null)} />
+            <Board b={START.b} marks={marks} selected={sel} onCell={i => setSel(START.b[i] && sideOf(START.b[i]) === START.turn && i !== sel ? i : null)} />
             <figcaption>Puzzle {PZ.label}, live: tap a {PZ.side === 0 ? "Host" : "Sí"} piece to see its moves.</figcaption>
+          </figure>
+          <figure>
+            <Board b={mergeBoard} marks={mergeMarks} selected={24} />
+            <figcaption>Combining pieces: the Rider on d4 may merge with the one on e4 (double ring), beside a Host Phalanx.</figcaption>
           </figure>
           <figure>
             <Board b={setupBoard} marks={placeMarks} last={{ to: 3 }} />
@@ -100,6 +107,7 @@ export default function Playground() {
       <section>
         <h2>Setup tray <code>&lt;Tray&gt;</code></h2>
         <Tray label="Host: choose a Host piece, then a marked hole" kinds={[SP, LO]} counts={{ [SP]: 5, [LO]: 1 }} picked={pick} enabled={() => true} onPick={setPick} />
+        <Tray label="Combining pieces: the Phalanx in the Host's tray" kinds={[SP, LO, PH]} counts={{ [SP]: 5, [LO]: 1, [PH]: 1 }} picked={pick} enabled={() => true} onPick={setPick} />
         <Tray label="Sí pieces still to set" kinds={[RI, CH]} counts={{ [RI]: 2, [CH]: 0 }} picked={RI} enabled={() => false} onPick={() => {}} />
       </section>
 

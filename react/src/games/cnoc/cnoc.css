@@ -82,6 +82,11 @@ body.gm-cnoc .mk.go { width: 24%; height: 24%; background: var(--fg); opacity: .
 body.gm-cnoc .mk.cap { inset: 6%; border: 4px solid var(--mark); }
 body.gm-cnoc .mk.place { width: 30%; height: 30%; border: 2px dashed var(--fg); opacity: .55; }
 body.gm-cnoc .mk.win { inset: 6%; border: 4px solid var(--good); }
+body.gm-cnoc .mk.merge { inset: 4%; border: 7px double var(--silver); box-shadow: 0 0 8px rgb(200 220 255 / .7); }
+body.gm-cnoc .tray .phx { width: auto; padding: 4px 10px 4px 4px; border-radius: 999px; display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--fg); }
+body.gm-cnoc .tray .phx svg { width: 36px; height: 36px; flex: none; }
+body.gm-cnoc .tray .phx .n { position: static; }
+body.gm-cnoc .tray .phx small { color: var(--muted); white-space: nowrap; }
 body.gm-cnoc .board.locked .sq { cursor: default; }
 body.gm-cnoc .stones { display: flex; align-items: flex-end; gap: 10px; min-height: 44px; }
 body.gm-cnoc .stones span.lab { font-size: .9rem; color: var(--muted); font-style: italic; margin-right: 6px; align-self: center; }
