@@ -18,8 +18,9 @@ To make a game playable online:
    - `defaultOptions` and `describeOptions(o)`: the game options an invite carries (variants,
      hold length, setup style…), plain JSON.
    - `start(o)`, `seatToAct(s)` (null when over), `legal(s, m)`, `apply(s, m)`, `result(s)`.
-   - Moves `M` must be small plain JSON (numbers or short arrays/objects; Firestore stores them
-     as a list in the document). Setup placements count as moves.
+   - Moves `M` must be small plain JSON: a number or a flat object (e.g. `{ f: 12, t: 7 }`).
+     Never an array: the moves are already a list in the document, and Firestore can't store a
+     list inside a list. Setup placements count as moves.
    - Test: replaying a whole self-played game through the adapter gives the same final state
      and result as the engine; illegal moves are refused; `replay()` stops at a bad move.
 2. **Use the session hook** in the game page: `useOnlineGame(adapter, useOnlineId("<game>"), "<Title>")`.

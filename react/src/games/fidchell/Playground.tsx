@@ -3,12 +3,12 @@ import { useState } from "react";
 import "./fidchell.css";
 import { GameScope } from "../../kit/GameScope";
 import { Board, Peg } from "./components/Board";
-import { Controls } from "./components/Controls";
+import { Controls, type View } from "./components/Controls";
 import { MoveLog } from "./components/MoveLog";
 import { RulesPanel } from "./components/RulesPanel";
 import { Tally } from "./components/Tally";
 import type { LevelId } from "./engine/ai";
-import { doMove, newGame, type Game, type Mode } from "./engine/game";
+import { doMove, newGame, type Game } from "./engine/game";
 import { GOLD, WHITE, fromRows, fromSq, genMoves, initial, play, threatened, type Move, type Side } from "./engine/rules";
 
 const mv = (a: string, b: string): Move => [fromSq(a), fromSq(b)];
@@ -31,7 +31,7 @@ export default function Playground() {
   const [live, setLive] = useState(initial);
   const [sel, setSel] = useState<number | null>(null);
   const [cursor, setCursor] = useState(fromSq("c1"));
-  const [mode, setMode] = useState<Mode>("cpu");
+  const [mode, setMode] = useState<View>("cpu");
   const [side, setSide] = useState<Side>(GOLD);
   const [lvl, setLvl] = useState<LevelId>(2);
   const [hints, setHints] = useState(false);
@@ -89,8 +89,10 @@ export default function Playground() {
       <section>
         <h2>Controls <code>&lt;Controls&gt;</code></h2>
         <aside style={{ maxWidth: 300 }}>
-          <Controls mode={mode} side={side} lvl={lvl} setMode={setMode} setSide={setSide} setLvl={setLvl}
-            newGame={() => {}} canUndo undo={() => {}} hints={hints} toggleHints={() => setHints(h => !h)} />
+          <Controls view={mode} side={side} lvl={lvl} setView={setMode} setSide={setSide} setLvl={setLvl}
+            newGame={() => {}} canUndo undo={() => {}} hints={hints} toggleHints={() => setHints(h => !h)}>
+            <p className="hint-line">(The online panel shows here.)</p>
+          </Controls>
         </aside>
       </section>
 

@@ -1,5 +1,6 @@
 // The game against the computer or a friend: state, the computer's turn, undo, hints and saving.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { recordGameEnd, recordGameStart } from "../../online/analytics";
 import { useStoredState } from "../../kit/useStoredState";
 import { HINT_LEVEL, LEVELS, type LevelId } from "./engine/ai";
 import { START_CURSOR, canUndo, doMove, isOver, newGame, undo, validGame, type Game, type Mode } from "./engine/game";
@@ -9,7 +10,8 @@ import { think } from "./aiClient";
 const fresh = () => newGame("cpu", 1, 2);
 const keyOf = (g: Game) => g.state.b.join("") + g.state.turn;
 
-export function useFidchell() {
+/** `paused`: the page is showing an online game, so the computer and hints here wait. */
+export function useFidchell(paused = false) {
   const [stored, setG] = useStoredState<Game>("fidchell-react-game", fresh);
   const g = validGame(stored) ? stored : null;
   useEffect(() => { if (!g) setG(fresh()); }, [g, setG]);
@@ -22,18 +24,36 @@ export function useFidchell() {
 
   const over = isOver(game);
   const thinking = !over && game.mode === "cpu" && game.state.turn !== game.side;
-  const humanTurn = !over && !thinking;
+  const humanTurn = !over && !thinking && !paused;
+
+  // Statistics: a game starts with its first move and ends with a result (once per round).
+  const seen = useRef({ round: game.round, len: game.history.length, over, started: -1, ended: -1 });
+  useEffect(() => {
+    const p = seen.current, len = game.history.length;
+    const mode = game.mode === "cpu" ? "computer" : "friend";
+    const level = game.mode === "cpu" ? game.lvl : undefined;
+    if (p.round === game.round) {
+      if (p.len === 0 && len > 0 && p.started !== game.round) { p.started = game.round; recordGameStart("fidchell", { mode, level }); }
+      if (!p.over && over && p.ended !== game.round) {
+        p.ended = game.round;
+        const w = game.state.winner;
+        const result = w === 0 ? "draw" : game.mode === "cpu" ? (w === game.side ? "win" : "loss") : w === 1 ? "gold" : "white";
+        recordGameEnd("fidchell", { mode, result, level });
+      }
+    }
+    Object.assign(p, { round: game.round, len, over });
+  }, [game.round, game.history.length, over, game.mode, game.lvl, game.side, game.state.winner]);
 
   // The computer's turn: a short pause, then the search in the worker. Stale answers are dropped.
   useEffect(() => {
-    if (!g || !thinking) return;
+    if (!g || !thinking || paused) return;
     let live = true;
     const timer = setTimeout(async () => {
       const m = await think(g.state, LEVELS[g.lvl]);
       if (live && m) setG(cur => (cur === g ? doMove(g, m) : cur));
     }, 420);
     return () => { live = false; clearTimeout(timer); };
-  }, [g, thinking, setG]);
+  }, [g, thinking, paused, setG]);
 
   // The hint arrow, worked out once per position.
   const key = keyOf(game);

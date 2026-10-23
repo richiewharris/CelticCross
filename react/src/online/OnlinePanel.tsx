@@ -47,7 +47,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
         <div className="online-seats" role="radiogroup" aria-label="Your side">
           {adapter.seats.map(x => (
             <label key={x.id} className={seat === x.id ? "on" : ""}>
-              <input type="radio" name={name} checked={seat === x.id} onChange={() => setSeat(x.id)} /> Play the {x.label}
+              <input type="radio" name={name} checked={seat === x.id} onChange={() => setSeat(x.id)} /> Play as {x.label}
             </label>
           ))}
         </div>
@@ -62,7 +62,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
               {waiting.map(g => {
                 const mine = Object.keys(g.doc.seats).find(k => g.doc.seats[k] === o.uid);
                 const state = g.doc.status === "open" ? "waiting for a friend" : g.doc.turn === o.uid ? "your move" : "their move";
-                return <li key={g.id}><a href={onlineHash(adapter.game, g.id)}>{`The ${seatLabel(mine)} · ${state}`}</a> <span>{ago(g.doc.updatedAt)}</span></li>;
+                return <li key={g.id}><a href={onlineHash(adapter.game, g.id)}>{`${seatLabel(mine)} · ${state}`}</a> <span>{ago(g.doc.updatedAt)}</span></li>;
               })}
             </ul>
           </div>
@@ -90,7 +90,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
   if (d.status === "open" && o.mySeat) {
     body = (
       <>
-        <p className="online-note" aria-live="polite">You play the {seatLabel(o.mySeat)}. Send this link to your friend; the game starts when they take the {freeSeats.map(x => x.label).join(" and ")} seat.</p>
+        <p className="online-note" aria-live="polite">You play as {seatLabel(o.mySeat)}. Send this link to your friend; the game starts when they open it and take the {freeSeats.map(x => x.label).join(" and ")} seat.</p>
         <div className="online-link">
           <input readOnly value={link} aria-label="Invite link" onFocus={e => e.currentTarget.select()} />
           <button className="btn primary" type="button" onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</button>
@@ -104,18 +104,18 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
       <>
         <p className="online-note">You've been invited to a game of {title}{describe ? ` (${describe})` : ""}.</p>
         <div className="row">
-          {freeSeats.map(x => <button key={x.id} className="btn primary" type="button" disabled={o.busy} onClick={() => void o.join(x.id)}>Play the {x.label}</button>)}
+          {freeSeats.map(x => <button key={x.id} className="btn primary" type="button" disabled={o.busy} onClick={() => void o.join(x.id)}>Play as {x.label}</button>)}
           {leave}
         </div>
       </>
     );
   } else if (d.status === "active") {
-    const status = !o.mySeat ? `Watching: the ${seatLabel(Object.keys(d.seats).find(k => d.seats[k] === d.turn))} to move.`
+    const status = !o.mySeat ? `Watching: ${seatLabel(Object.keys(d.seats).find(k => d.seats[k] === d.turn))} to move.`
       : o.illegalAt !== null ? "A move broke the rules, so the game has stopped."
-      : o.myTurn ? "Your move." : `Waiting for the ${otherSeat?.label ?? "other player"} to move…`;
+      : o.myTurn ? "Your move." : `Waiting for ${otherSeat?.label ?? "the other player"} to move…`;
     body = (
       <>
-        <p className={`online-turn${o.myTurn ? " mine" : ""}`} aria-live="polite">{o.mySeat ? `You play the ${seatLabel(o.mySeat)}. ` : ""}{status}</p>
+        <p className={`online-turn${o.myTurn ? " mine" : ""}`} aria-live="polite">{o.mySeat ? `You play as ${seatLabel(o.mySeat)}. ` : ""}{status}</p>
         <div className="row">
           {notifyButton}
           {o.mySeat ? (confirmResign
@@ -128,7 +128,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
     );
   } else {
     const r = d.result;
-    const verdict = !r ? "The game is over." : r.winner === null ? `A draw. ${r.text}` : o.mySeat ? (r.winner === o.mySeat ? `You win! ${r.text}` : `You lose. ${r.text}`) : `The ${seatLabel(r.winner)} win. ${r.text}`;
+    const verdict = !r ? "The game is over." : r.winner === null ? `A draw. ${r.text}` : o.mySeat ? (r.winner === o.mySeat ? `You win! ${r.text}` : `You lose. ${r.text}`) : `${seatLabel(r.winner)} won. ${r.text}`;
     body = (
       <>
         <p className="online-turn" aria-live="polite">{verdict}</p>

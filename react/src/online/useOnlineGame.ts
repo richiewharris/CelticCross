@@ -131,7 +131,7 @@ export function useOnlineGame<S, M, O>(adapter: OnlineAdapter<S, M, O>, id: stri
     const label = adapter.seats.find(x => x.id === seat)?.label ?? seat;
     await guard(async () => {
       const b = await getBackend();
-      await b.resign(id, me, { winner: other, text: `The ${label} resigned.`, resigned: seat });
+      await b.resign(id, me, { winner: other, text: `${label} resigned.`, resigned: seat });
       recordGameEnd(adapter.game, { mode: "online", result: "resigned" });
     });
   }, [adapter, id]);
