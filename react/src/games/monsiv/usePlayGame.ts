@@ -1,9 +1,10 @@
 // A game against the computer or a friend: state, the computer's turns, undo and saving.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { recordGameEnd, recordGameStart, type GameEventInfo } from "../../online/analytics";
 import { useStoredState } from "../../kit/useStoredState";
 import { LEVELS } from "./engine/ai";
 import { col, sameMove, type Move, type Turn } from "./engine/core";
-import { legalMoves, newGame, pathOf, playMove, undo, type Game } from "./engine/game";
+import { legalMoves, newGame, pathOf, playMove, undo, who, type Game } from "./engine/game";
 import { aiRpc } from "./aiClient";
 
 export interface PlaySettings { mode: "cpu" | "pvp"; side: Turn; lvl: 1 | 2 | 3 }
@@ -29,9 +30,17 @@ export function usePlayGame(active: boolean) {
   const cpuTurn = active && settings.mode === "cpu" && !over && g.s.turn !== settings.side;
   const humanTurn = !over && (settings.mode === "pvp" || g.s.turn === settings.side) && !cpuTurn;
 
+  /** Each game is recorded once: started on its first move, ended when it is won. */
+  const recorded = useRef({ started: false, ended: false });
   const play = (from: Game, m: Move) => {
     const next = playMove(from, m);
     setSel(null); setAnim(next.history.length);
+    const info: GameEventInfo = settings.mode === "cpu" ? { mode: "computer", level: settings.lvl } : { mode: "friend" };
+    if (from.history.length === 0 && !recorded.current.started) { recorded.current.started = true; recordGameStart("monsiv", info); }
+    if (next.winner !== null && !recorded.current.ended) {
+      recorded.current.ended = true;
+      recordGameEnd("monsiv", { ...info, result: settings.mode === "cpu" ? (next.winner === settings.side ? "win" : "loss") : `${who(next.winner).toLowerCase()} won` });
+    }
     return next;
   };
 
@@ -47,7 +56,7 @@ export function usePlayGame(active: boolean) {
     return () => { live = false; clearTimeout(timer); };
   }, [cpuTurn, g, settings.lvl, setG]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const restart = () => { setSel(null); setAnim(-1); setG(newGame()); };
+  const restart = () => { setSel(null); setAnim(-1); setG(newGame()); recorded.current = { started: false, ended: false }; };
 
   const changeSettings = (patch: Partial<PlaySettings>) => {
     setSettings({ ...settings, ...patch });

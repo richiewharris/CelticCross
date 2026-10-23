@@ -3,6 +3,7 @@
 // after each change, with a single timer for the defender's replies and the solution playback.
 import { useEffect, useReducer, useRef } from "react";
 import { useStoredState } from "../../kit/useStoredState";
+import { recordGameEnd } from "../../online/analytics";
 import { bestReply, forces, gen, other, puzzleState, sameMove, type Move, type Puzzle, type Turn } from "./engine/core";
 import { fromState, legalMoves, pathOf, playMove, squaresOf, who, type Game } from "./engine/game";
 import { SPEED_MS, freshStats, nextIndex, pickLevel, recordResult, type PuzzleStats } from "./engine/rating";
@@ -111,6 +112,7 @@ export function usePuzzles(active: boolean) {
 
   function solved(pz: PzState) {
     pz.phase = "solved"; conclude(pz, pz.hint ? 0.5 : 1);
+    recordGameEnd("monsiv", { mode: "puzzle", result: pz.hint ? "solved with a hint" : "solved", level: pz.L, ...(pz.retry ? { variant: "practice" } : {}) });
     pz.status = "Solved!";
     pz.tip = pz.retry ? "Solved again. Practice runs don't change your rating." : pz.hint ? "Solved with a hint, which counts as half." : "Nicely found.";
     render();

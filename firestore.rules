@@ -18,7 +18,7 @@ service cloud.firestore {
       function onlineGame(g) { return g in ['monsiv', 'cnoc', 'fidchell']; }
       function fields() {
         return ['v', 'game', 'options', 'seats', 'players', 'creator', 'status', 'firstSeat',
-                'moves', 'turn', 'result', 'next', 'createdAt', 'updatedAt'];
+                'moves', 'moveCount', 'turn', 'result', 'next', 'createdAt', 'updatedAt'];
       }
       function seated(seats) { return seats.values().removeAll([null]); }
       function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
@@ -40,7 +40,8 @@ service cloud.firestore {
         && seated(request.resource.data.seats) == [me()]
         && request.resource.data.firstSeat in request.resource.data.seats.keys()
         && request.resource.data.status == 'open'
-        && request.resource.data.moves == []
+        && request.resource.data.moves == {}
+        && request.resource.data.moveCount == 0
         && request.resource.data.turn == null
         && request.resource.data.result == null
         && request.resource.data.next == null
@@ -66,15 +67,19 @@ service cloud.firestore {
       }
 
       // Add one move on your own turn; the moves before it can't change.
+      // Moves are stored as a map from their index ("0", "1", …) plus a count.
       function moving() {
         let r = resource.data;
         let d = request.resource.data;
+        let n = r.moveCount;
         return r.status == 'active'
           && r.turn == me()
-          && changed().hasOnly(['moves', 'turn', 'status', 'result', 'updatedAt'])
-          && d.moves.size() == r.moves.size() + 1
-          && d.moves.size() <= 1000
-          && d.moves[0:r.moves.size()] == r.moves
+          && changed().hasOnly(['moves', 'moveCount', 'turn', 'status', 'result', 'updatedAt'])
+          && n < 1000
+          && d.moveCount == n + 1
+          && d.moves.diff(r.moves).addedKeys() == [string(n)].toSet()
+          && d.moves.diff(r.moves).changedKeys().size() == 0
+          && d.moves.diff(r.moves).removedKeys().size() == 0
           && ((d.status == 'active' && d.turn in r.players && d.result == null)
               || (d.status == 'done' && d.turn == null && d.result is map));
       }

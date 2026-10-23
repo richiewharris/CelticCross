@@ -24,18 +24,27 @@ function friendly(e: unknown): Error {
   return new OnlineError("other", (e as Error)?.message || "Something went wrong.");
 }
 
+// In Firestore the moves are a map from index to move plus a count, so the security rules can
+// check that a player adds exactly the next move and leaves the earlier ones alone.
+type Stored = Omit<OnlineDoc, "moves"> & { moves: Record<string, unknown>; moveCount: number };
+const toStored = (d: OnlineDoc): Stored => ({ ...d, moves: Object.fromEntries(d.moves.map((m, i) => [String(i), m])), moveCount: d.moves.length });
+function fromStored(s: Stored): OnlineDoc {
+  const { moveCount, moves, ...rest } = s;
+  return { ...rest, moves: Array.from({ length: moveCount ?? 0 }, (_, i) => moves?.[String(i)]) };
+}
+
 export function firebaseBackend(): OnlineBackend {
   const auth = getAuth(firebaseApp());
   const db: Firestore = getFirestore(firebaseApp());
   const games = collection(db, "games");
   let ready: Promise<User> | null = null;
 
-  const tx = async (id: string, f: (d: OnlineDoc) => Partial<OnlineDoc>) => {
+  const tx = async (id: string, f: (d: OnlineDoc) => Record<string, unknown>) => {
     try {
       await runTransaction(db, async t => {
         const ref = doc(games, id), snap = await t.get(ref);
         if (!snap.exists()) throw new OnlineError("missing", "That game doesn't exist.");
-        t.update(ref, { ...f(snap.data() as OnlineDoc), updatedAt: Date.now() });
+        t.update(ref, { ...f(fromStored(snap.data() as Stored)), updatedAt: Date.now() });
       });
     } catch (e) { throw friendly(e); }
   };
@@ -83,10 +92,10 @@ export function firebaseBackend(): OnlineBackend {
       return ready.then(u => u.uid);
     },
     async create(d) {
-      try { return (await addDoc(games, d)).id; } catch (e) { throw friendly(e); }
+      try { return (await addDoc(games, toStored(d))).id; } catch (e) { throw friendly(e); }
     },
     watch(id, cb, onError) {
-      return onSnapshot(doc(games, id), snap => cb(snap.exists() ? (snap.data() as OnlineDoc) : null), e => onError(friendly(e)));
+      return onSnapshot(doc(games, id), snap => cb(snap.exists() ? fromStored(snap.data() as Stored) : null), e => onError(friendly(e)));
     },
     join(id, seat, uid) {
       return tx(id, d => {
@@ -101,7 +110,7 @@ export function firebaseBackend(): OnlineBackend {
         if (d.status !== "active") throw new OnlineError("stale", "The game is over.");
         if (d.turn !== uid) throw new OnlineError("not-your-turn", "It isn't your turn.");
         if (d.moves.length !== expected) throw new OnlineError("stale", "The game moved on. Try again.");
-        return { moves: [...d.moves, move], turn: result ? null : nextTurn, status: result ? "done" : "active", result };
+        return { [`moves.${d.moves.length}`]: move, moveCount: d.moves.length + 1, turn: result ? null : nextTurn, status: result ? "done" : "active", result };
       });
     },
     resign(id, uid, result) {
@@ -114,7 +123,7 @@ export function firebaseBackend(): OnlineBackend {
       try {
         // One condition only, so no composite index is needed; the game filter happens here.
         const snap = await getDocs(query(games, where("players", "array-contains", uid), limit(60)));
-        return snap.docs.map(s => ({ id: s.id, doc: s.data() as OnlineDoc })).filter(g => g.doc.game === game).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt);
+        return snap.docs.map(s => ({ id: s.id, doc: fromStored(s.data() as Stored) })).filter(g => g.doc.game === game).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt);
       } catch (e) { throw friendly(e); }
     },
   };
