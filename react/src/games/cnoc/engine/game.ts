@@ -1,7 +1,7 @@
 // A whole game of Cnoc as plain data, with pure transitions. The UI, the review and the
 // simulator all drive the game through these functions.
 import {
-  LETTER, NN, PH, SP, apply, count, emptyBoard, from, gen, isMerge, key, sqName, to,
+  CH, LETTER, LO, NN, PH, RI, SP, apply, count, emptyBoard, from, gen, isMerge, key, sqName, to,
   type Move, type Piece, type Rules, type Side, type State, type WinReason,
 } from "./rules";
 import { PHALANX_COST, PLACEMENTS, comboSlot, effectiveHold, freshTrays, leftIn, slotAt, type Slot, type Trays } from "./setup";
@@ -133,3 +133,12 @@ export function trayChoices(g: Game): Piece[] {
 
 export const isOver = (g: Game) => g.winner !== null;
 export const boardSize = NN;
+
+const PREFER: Piece[] = [SP, RI, LO, CH, PH];
+/** The piece a click sets: the one picked in the tray if allowed, else the plainest piece still to set. */
+export function defaultPiece(g: Game, pick: Piece | null): Piece {
+  const slot = currentSlot(g), choices = trayChoices(g);
+  if (slot.k) return slot.k;
+  if (pick !== null && choices.includes(pick)) return pick;
+  return PREFER.find(k => choices.includes(k)) ?? choices[0];
+}

@@ -7,6 +7,7 @@ import { from, sideName, to, type Move, type Side } from "./engine/rules";
 import { PLACEMENTS } from "./engine/setup";
 import { aiRpc } from "./aiClient";
 import { why } from "./text";
+import { recordGameEnd } from "../../online/analytics";
 
 export type PzPhase = "solve" | "wait" | "solved" | "failed" | "show" | "shown";
 export interface Flash { sqs: number[]; kind: "good" | "bad" }
@@ -68,6 +69,7 @@ export function usePuzzles(active: boolean) {
     if (g1.winner === me) {
       const full = !cur.hint;
       setProgress(pr => ({ ...pr, solved: { ...pr.solved, [cur.p.id]: full ? 1 : Math.max(pr.solved[cur.p.id] ?? 0, 0.5) } }));
+      recordGameEnd("cnoc", { mode: "puzzle", result: full ? "solved" : "solved with a hint", level: cur.p.id });
       setPz({ ...cur, g: g1, flash: flashOf(m, "good"), hintSq: null, phase: "solved", status: "Solved!",
         msg: `${why(g1.why)} ${full ? "Well found." : "Solved with a hint: try it again cold to earn the full mark."}` });
       return;

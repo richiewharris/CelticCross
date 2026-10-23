@@ -5,13 +5,14 @@ import { useStoredState } from "../../kit/useStoredState";
 import { createRpc } from "../../kit/rpc";
 import { LEVELS } from "./engine/ai";
 import {
-  actor, currentSlot, newGame, phalanxOffer, placePiece, playMove, rulesOf, seenMap, trayChoices, undo, type Game,
+  actor, currentSlot, defaultPiece, newGame, phalanxOffer, placePiece, playMove, rulesOf, seenMap, undo, type Game,
 } from "./engine/game";
 import { cpuSetupChoice } from "./engine/cpu";
 import { buildEntries, type Entry } from "./engine/review";
-import { CH, LO, RI, SP, from, gen, sideOf, type Move, type Piece, type Side } from "./engine/rules";
+import { from, gen, sideOf, type Move, type Piece, type Side } from "./engine/rules";
 import { slotZone } from "./engine/setup";
 import { aiRpc, makeAiWorker } from "./aiClient";
+import { recordGameEnd, recordGameStart, type GameEventInfo } from "../../online/analytics";
 
 export interface PlaySettings {
   mode: "cpu" | "pvp"; side: Side; lvl: 1 | 2 | 3 | 4; holdN: 7 | 8; swap: boolean;
@@ -24,7 +25,8 @@ export interface ReviewState { list: Entry[]; done: number; v: number; playing: 
 
 const fresh = (st: PlaySettings) => newGame({ swap: st.swap, holdN: st.holdN, combine: !!st.combine });
 
-export function usePlayGame(active: boolean) {
+/** paused: an online game is on the board, so the local game waits (no computer turns). */
+export function usePlayGame(active: boolean, paused = false) {
   const [settings, setSettings] = useStoredState<PlaySettings>("cnoc-react-settings", DEFAULT_SETTINGS);
   const [g, setG] = useStoredState<Game>("cnoc-react-game", () => fresh(settings));
   const [sel, setSel] = useState<number | null>(null);
@@ -37,7 +39,7 @@ export function usePlayGame(active: boolean) {
 
   const isHuman = (side: Side) => settings.mode === "pvp" || side === settings.side;
   const over = g.winner !== null;
-  const cpuTurn = active && settings.mode === "cpu" && !over && !review && !isHuman(actor(g));
+  const cpuTurn = active && !paused && settings.mode === "cpu" && !over && !review && !isHuman(actor(g));
   const humanTurn = !over && !review && isHuman(actor(g));
 
   // The computer's turn. Answers that arrive after the game has moved on are dropped.
@@ -61,9 +63,31 @@ export function usePlayGame(active: boolean) {
   // Open the result dialog when a game ends (not when a finished game is reloaded).
   const prevWinner = useRef(g.winner);
   useEffect(() => {
-    if (prevWinner.current === null && g.winner !== null) setResultOpen(true);
+    if (prevWinner.current === null && g.winner !== null) {
+      setResultOpen(true);
+      recordGameEnd("cnoc", { ...eventInfo(), result: resultFor(g.winner) });
+    }
     prevWinner.current = g.winner;
-  }, [g.winner]);
+  }, [g.winner]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Statistics: a game starts with its first placement.
+  const prevLen = useRef(g.history.length);
+  useEffect(() => {
+    if (prevLen.current === 0 && g.history.length === 1) recordGameStart("cnoc", eventInfo());
+    prevLen.current = g.history.length;
+  }, [g.history.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  function eventInfo(): GameEventInfo {
+    return {
+      mode: settings.mode === "cpu" ? "computer" : "friend",
+      ...(g.combine ? { variant: "combining" } : {}),
+      ...(settings.mode === "cpu" ? { level: settings.lvl } : {}),
+    };
+  }
+  function resultFor(w: Side | -1): string {
+    if (w === -1) return "draw";
+    if (settings.mode === "cpu") return w === settings.side ? "win" : "loss";
+    return w === 0 ? "host" : "si";
+  }
 
   const stopReview = useCallback(() => {
     reviewWorker.current?.terminate();
@@ -89,9 +113,7 @@ export function usePlayGame(active: boolean) {
     if (g.phase === "place") {
       const slot = currentSlot(g);
       if (g.s.b[i] || !slotZone(slot, i)) return;
-      const tr = g.trays[slot.o];
-      const piece = slot.k ?? (pick && trayChoices(g).includes(pick) ? pick : slot.o === 0 ? (tr[SP] ? SP : LO) : (tr[RI] ? RI : CH));
-      setG(placePiece(g, i, piece, phx && phalanxOffer(g)));
+      setG(placePiece(g, i, defaultPiece(g, pick), phx && phalanxOffer(g)));
       setPhx(false);
       return;
     }
@@ -112,15 +134,17 @@ export function usePlayGame(active: boolean) {
     setG(undo(g, settings.mode === "cpu" ? settings.side : undefined));
   };
 
-  const startReview = () => {
-    if (!over || review) return;
+  /** Review a finished game: this one, or another (an online game) passed in. */
+  const startReview = (src: Game = g) => {
+    if (src.winner === null && src === g) return;
+    if (review) return;
     setResultOpen(false);
-    const list = buildEntries(g);
+    const list = buildEntries(src);
     setReview({ list, done: 0, v: list.length, playing: false, ready: false });
     const w = makeAiWorker();
     reviewWorker.current = w;
     createRpc(w)
-      .call<Entry[]>("review", { game: g, ms: 900 }, p => setReview(r => (r ? { ...r, done: p as number } : r)))
+      .call<Entry[]>("review", { game: src, ms: 900 }, p => setReview(r => (r ? { ...r, done: p as number } : r)))
       .then(res => { if (reviewWorker.current === w) setReview(r => (r ? { ...r, list: res, done: res.length, ready: true } : r)); });
   };
 
