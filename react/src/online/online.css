@@ -20,3 +20,6 @@
 .consent button { font: inherit; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; border: 1px solid #b08d55; background: transparent; color: #efe6d2; }
 .consent button.consent-yes { background: #b08d55; color: #17130f; }
 .consent button:focus-visible { outline: 2px solid #efe6d2; outline-offset: 2px; }
+.online .linkish { font: inherit; padding: 0; border: 0; background: none; color: var(--fg, inherit); text-decoration: underline; cursor: pointer; }
+.online .linkish:disabled { opacity: .5; cursor: default; }
+.online .online-account { display: grid; gap: 4px; }

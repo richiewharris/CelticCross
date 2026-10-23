@@ -3,6 +3,8 @@
 // Open the site with ?online=local to use it.
 import type { OnlineDoc, OnlineGameSummary, OnlineResult, SeatId } from "./types";
 
+export interface Account { uid: string; name: string | null; anonymous: boolean }
+
 export interface OnlineBackend {
   kind: "firebase" | "local";
   /** This browser's player id if it has signed in before, without signing in. */
@@ -17,6 +19,11 @@ export interface OnlineBackend {
   /** Add a move, if the game still has `expected` moves and it is this player's turn. */
   move(id: string, uid: string, expected: number, move: unknown, nextTurn: string | null, result: OnlineResult | null): Promise<void>;
   resign(id: string, uid: string, result: OnlineResult): Promise<void>;
+  /** Follow who is signed in (null when nobody has signed in on this browser yet). */
+  onAccount(cb: (a: Account | null) => void): () => void;
+  /** Sign in with Google. An anonymous player keeps their games: the Google account is linked to them. */
+  signInWithGoogle(): Promise<void>;
+  signOut(): Promise<void>;
   /** After a finished game: point both players at a rematch game. */
   offerRematch(id: string, uid: string, next: string): Promise<void>;
   /** This player's games of one kind, newest first. */

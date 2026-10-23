@@ -1,6 +1,7 @@
 // The "Play a friend online" panel: make an invite link, join a seat, follow whose turn it is,
 // resign, rematch, and reopen your recent games. The board itself stays with each game.
 import { useEffect, useId, useState } from "react";
+import { AccountLine } from "./AccountLine";
 import { askToNotify, notifyPermission } from "./notify";
 import { inviteUrl, leaveOnline, onlineHash } from "./route";
 import type { OnlineSession } from "./useOnlineGame";
@@ -55,6 +56,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
           <button className="btn primary" type="button" disabled={o.busy} onClick={() => void o.create(options, seat)}>{o.busy ? "Making the link…" : "Make an invite link"}</button>
         </div>
         {errorLine}
+        <AccountLine />
         {waiting.length ? (
           <div className="online-list">
             <p className="label">Your online games</p>
@@ -145,6 +147,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
       <p className="label">Online game</p>
       {body}
       {errorLine}
+      {o.mySeat ? <AccountLine /> : null}
     </div>
   );
 }

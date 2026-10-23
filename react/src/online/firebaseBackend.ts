@@ -1,6 +1,9 @@
 // Online play on Firebase: anonymous sign-in and one Firestore document per game.
 // The checks here mirror firestore.rules, which enforce them on the server.
-import { getAuth, onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
+import {
+  GoogleAuthProvider, getAuth, linkWithPopup, onAuthStateChanged, signInAnonymously, signInWithCredential,
+  signInWithPopup, signOut, type User,
+} from "firebase/auth";
 import {
   addDoc, collection, doc, getDocs, getFirestore, limit, onSnapshot, query, runTransaction, where,
   type Firestore,
@@ -14,6 +17,9 @@ function friendly(e: unknown): Error {
   const code = (e as { code?: string })?.code ?? "";
   if (code.includes("permission-denied")) return new OnlineError("denied", "The game server refused that. If this keeps happening, online play may not be set up yet.");
   if (code.includes("admin-restricted-operation") || code.includes("operation-not-allowed")) return new OnlineError("denied", "Online play isn't switched on yet (anonymous sign-in is disabled).");
+  if (code.includes("popup-closed-by-user") || code.includes("cancelled-popup-request")) return new OnlineError("other", "Sign-in was cancelled.");
+  if (code.includes("popup-blocked")) return new OnlineError("other", "The sign-in window was blocked. Allow pop-ups for this site and try again.");
+  if (code.includes("unauthorized-domain")) return new OnlineError("denied", "Google sign-in isn't allowed on this address yet (add it under Authentication → Settings → Authorized domains).");
   if (code.includes("unavailable") || code.includes("network")) return new OnlineError("offline", "Can't reach the game server. Check your connection.");
   return new OnlineError("other", (e as Error)?.message || "Something went wrong.");
 }
@@ -36,6 +42,26 @@ export function firebaseBackend(): OnlineBackend {
 
   return {
     kind: "firebase",
+    onAccount(cb) {
+      return onAuthStateChanged(auth, u => cb(u ? { uid: u.uid, name: u.displayName ?? u.email ?? null, anonymous: u.isAnonymous } : null));
+    },
+    async signInWithGoogle() {
+      const provider = new GoogleAuthProvider();
+      const u = auth.currentUser;
+      try {
+        if (u?.isAnonymous) await linkWithPopup(u, provider);
+        else await signInWithPopup(auth, provider);
+      } catch (e) {
+        // This Google account already plays here from another browser: switch to it.
+        if ((e as { code?: string }).code === "auth/credential-already-in-use") {
+          const cred = GoogleAuthProvider.credentialFromError(e as never);
+          if (cred) { await signInWithCredential(auth, cred); return; }
+        }
+        throw friendly(e);
+      }
+      ready = null;
+    },
+    async signOut() { await signOut(auth); ready = null; },
     knownUid() {
       return new Promise<string | null>(resolve => {
         const stop = onAuthStateChanged(auth, u => { stop(); resolve(u?.uid ?? null); }, () => resolve(null));

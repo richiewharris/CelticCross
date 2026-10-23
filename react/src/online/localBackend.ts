@@ -26,6 +26,14 @@ export function localBackend(): OnlineBackend {
   };
   return {
     kind: "local",
+    onAccount(cb) {
+      const uid = sessionStorage.getItem("online-local-uid");
+      const name = sessionStorage.getItem("online-local-name");
+      queueMicrotask(() => cb(uid ? { uid, name, anonymous: !name } : null));
+      return () => {};
+    },
+    async signInWithGoogle() { sessionStorage.setItem("online-local-name", "Local player"); },
+    async signOut() { sessionStorage.removeItem("online-local-name"); },
     async knownUid() { return sessionStorage.getItem("online-local-uid"); },
     async offerRematch(id, uid, next) {
       update(id, d => {
