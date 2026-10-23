@@ -2,7 +2,7 @@
 // a player can take. Every move is checked against the game's own rules before it is sent, and
 // every move received is checked again on replay.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getBackend, OnlineError } from "./backend";
+import { getBackend, markPlayedOnline, OnlineError } from "./backend";
 import { goOnline } from "./route";
 import { yourMoveAlert, markTitle } from "./notify";
 import { recordGameEnd, recordGameStart } from "./analytics";
@@ -57,6 +57,7 @@ export function useOnlineGame<S, M, O>(adapter: OnlineAdapter<S, M, O>, id: stri
         if (!live) return;
         if (!d) { setPhase("missing"); setDoc(null); return; }
         const typed = d as OnlineDoc<M, O>;
+        if (typed.players.includes(me)) markPlayedOnline();
         // Alert when the other player has just moved and it is now our turn.
         if (lastLen.current !== null && typed.moves.length > lastLen.current && typed.turn === me) {
           yourMoveAlert(`${gameTitle}: your move`, "Your friend has moved.", `online-${id}`);
@@ -86,6 +87,7 @@ export function useOnlineGame<S, M, O>(adapter: OnlineAdapter<S, M, O>, id: stri
       const now = Date.now();
       const d: OnlineDoc<M, O> = { v: 1, game: adapter.game, options, seats, players: [me], creator: me, status: "open", firstSeat, moves: [], turn: null, result: null, next: null, createdAt: now, updatedAt: now };
       const newId = await b.create(d as OnlineDoc);
+      markPlayedOnline();
       recordGameStart(adapter.game, { mode: "online" });
       goOnline(adapter.game, newId);
     });

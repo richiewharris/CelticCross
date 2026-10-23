@@ -23,3 +23,29 @@
 .online .linkish { font: inherit; padding: 0; border: 0; background: none; color: var(--fg, inherit); text-decoration: underline; cursor: pointer; }
 .online .linkish:disabled { opacity: .5; cursor: default; }
 .online .online-account { display: grid; gap: 4px; }
+
+/* Your games */
+.yg { max-width: 760px; }
+.yg .lede { margin: 0; }
+.yg-section { display: grid; gap: 10px; }
+.yg-section h2 { margin: 0; font-size: .8rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; color: var(--muted, #a99c84); font-family: var(--font-mono, ui-monospace, monospace); display: flex; gap: 8px; align-items: center; }
+.yg-count { font-size: .75rem; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line, #3d3328); }
+.yg-section ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.yg-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 14px; border: 1px solid var(--line, #3d3328); border-radius: 10px; background: var(--oak-2, transparent); }
+.yg-row.mine { border-color: var(--bronze, #b08d55); box-shadow: inset 3px 0 0 var(--bronze-hi, #d9b77d); }
+.yg-main { display: grid; gap: 2px; text-decoration: none; color: inherit; min-width: 0; }
+.yg-title { font-weight: 600; }
+.yg-side { font-weight: 400; color: var(--muted, #a99c84); }
+.yg-line { font-size: .9rem; color: var(--muted, #a99c84); overflow: hidden; text-overflow: ellipsis; }
+.yg-when { font-size: .82rem; color: var(--muted, #a99c84); white-space: nowrap; }
+.yg-open, .yg-copy { font: inherit; font-size: .9rem; font-weight: 600; padding: 5px 14px; border-radius: 8px; text-decoration: none; cursor: pointer; border: 1px solid var(--bronze, #b08d55); background: transparent; color: var(--ink, inherit); }
+.yg-row.mine .yg-open { background: var(--bronze, #b08d55); color: var(--oak, #17130f); }
+.yg-open:focus-visible, .yg-copy:focus-visible, .yg-main:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 2px; }
+.yg-empty { margin: 0; color: var(--muted, #a99c84); font-style: italic; }
+.yg-empty a { color: var(--bronze-hi, inherit); }
+@media (max-width: 520px) {
+  .yg-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .yg-when { grid-column: 1; grid-row: 2; }
+}
+.yg-link { display: inline-flex; align-items: center; gap: 6px; }
+.yg-badge { display: inline-grid; place-items: center; min-width: 1.4em; height: 1.4em; padding: 0 5px; border-radius: 999px; background: #c0533d; color: #fff; font-size: .75rem; font-weight: 700; line-height: 1; }

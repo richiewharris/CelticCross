@@ -3,6 +3,7 @@ import { GameScope } from "../kit/GameScope";
 import { useEffect, useState } from "react";
 import { GAMES } from "../games/registry";
 import { fetchPlayed } from "../online/analytics";
+import { isMyTurn, useMyGames } from "../online/useMyGames";
 
 const img = (f: string) => `images/${f}`;
 const Arrow = () => <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5 L11 7 L3 12.5 Z" fill="currentColor" /></svg>;
@@ -11,6 +12,9 @@ export function Home() {
   const [played, setPlayed] = useState<Record<string, number>>({});
   useEffect(() => { let live = true; void fetchPlayed().then(p => { if (live) setPlayed(p); }); return () => { live = false; }; }, []);
   const tally = (id: string) => (played[id] ? `${played[id].toLocaleString()} game${played[id] === 1 ? "" : "s"} played` : null);
+  const mine = useMyGames(false);
+  const myMove = mine.games.filter(g => isMyTurn(g, mine.uid)).length;
+  const live = mine.games.filter(g => g.doc.status !== "done").length;
   const featured = GAMES.filter(g => g.featured), more = GAMES.filter(g => !g.featured);
   return (
     <GameScope id="home">
@@ -25,6 +29,12 @@ export function Home() {
           <h1>Celtic Cross Games</h1>
           <p className="lede">Small games to play in the browser: a lost strategy game brought back, the board game of early Ireland, a puzzle lock carved in stone, a dice race to twenty, and a battle for a fairy mound. Nothing to install.</p>
         </header>
+        {live ? (
+          <a className={`yourgames${myMove ? " mine" : ""}`} href="#/games">
+            {myMove ? `Your move in ${myMove} online game${myMove === 1 ? "" : "s"}` : `${live} online game${live === 1 ? "" : "s"} in progress`}
+            <span>Your games →</span>
+          </a>
+        ) : null}
         <main className="games">
           {featured.map(g => (
             <article className="card" key={g.id}>

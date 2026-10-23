@@ -119,6 +119,11 @@ export function firebaseBackend(): OnlineBackend {
         return { status: "done", turn: null, result };
       });
     },
+    watchMyGames(uid, cb, onError) {
+      return onSnapshot(query(games, where("players", "array-contains", uid), limit(100)),
+        snap => cb(snap.docs.map(s => ({ id: s.id, doc: fromStored(s.data() as Stored) })).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt)),
+        e => onError(friendly(e)));
+    },
     async myGames(game, uid) {
       try {
         // One condition only, so no composite index is needed; the game filter happens here.

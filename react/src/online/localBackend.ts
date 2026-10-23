@@ -80,6 +80,15 @@ export function localBackend(): OnlineBackend {
         return { ...d, status: "done", turn: null, result };
       });
     },
+    watchMyGames(uid, cb) {
+      const send = () => cb(Object.entries(load()).filter(([, d]) => d.players.includes(uid)).map(([id, doc]) => ({ id, doc })).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt));
+      const all = (e: StorageEvent) => { if (e.key === KEY) send(); };
+      const onMsg = () => send();
+      window.addEventListener("storage", all);
+      chan?.addEventListener("message", onMsg);
+      queueMicrotask(send);
+      return () => { window.removeEventListener("storage", all); chan?.removeEventListener("message", onMsg); };
+    },
     async myGames(game, uid) {
       return Object.entries(load())
         .filter(([, d]) => d.game === game && d.players.includes(uid))

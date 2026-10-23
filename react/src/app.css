@@ -3,7 +3,7 @@
 .topnav a:hover, .topnav a:focus-visible { color: var(--fg, currentColor); text-decoration: underline; }
 .topnav a[aria-current="page"] { color: var(--fg); }
 .topnav .here { color: var(--fg, currentColor); }
-.topnav a[href="#/playground"] { margin-left: auto; }
+.topnav .topnav-right { margin-left: auto; display: inline-flex; gap: 18px; align-items: center; }
 .loading { text-align: center; color: var(--muted); font-style: italic; }
 .pg { max-width: 1040px; margin: 0 auto; display: grid; gap: 30px; }
 .pg-bar { display: grid; gap: 12px; }

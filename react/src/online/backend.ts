@@ -26,6 +26,8 @@ export interface OnlineBackend {
   signOut(): Promise<void>;
   /** After a finished game: point both players at a rematch game. */
   offerRematch(id: string, uid: string, next: string): Promise<void>;
+  /** Follow every game this player sits in (all kinds), live. */
+  watchMyGames(uid: string, cb: (games: OnlineGameSummary[]) => void, onError: (e: Error) => void): () => void;
   /** This player's games of one kind, newest first. */
   myGames(game: string, uid: string): Promise<OnlineGameSummary[]>;
 }
@@ -35,6 +37,16 @@ export class OnlineError extends Error {
 }
 
 let chosen: Promise<OnlineBackend> | null = null;
+
+// Remember that this browser has played online, so the "your games" link can show turns without
+// loading Firebase for visitors who never play online.
+const PLAYED = "online-played";
+export const markPlayedOnline = () => {
+  if (hasPlayedOnline()) return;
+  try { localStorage.setItem(PLAYED, "1"); } catch { /* ignore */ }
+  window.dispatchEvent(new Event("onlineplayed"));
+};
+export const hasPlayedOnline = () => { try { return localStorage.getItem(PLAYED) === "1"; } catch { return false; } };
 
 export function backendKind(): "firebase" | "local" {
   try {
