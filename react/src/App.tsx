@@ -1,4 +1,6 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { ConsentBanner } from "./online/ConsentBanner";
+import { trackPageView } from "./online/analytics";
 import { GAMES } from "./games/registry";
 import { Home } from "./home/Home";
 import { Playground } from "./playground/Playground";
@@ -8,6 +10,7 @@ export function App() {
   const route = useHashRoute();
   const [first] = route.split("/");
   const game = GAMES.find(g => g.id === first);
+  useEffect(() => { trackPageView(); }, [route]);
   const page = game ? <game.Page /> : first === "playground" ? <Playground /> : <Home />;
   return (
     <div id="app-shell">
@@ -17,6 +20,7 @@ export function App() {
         <a href="#/playground" aria-current={first === "playground" ? "page" : undefined}>Playground</a>
       </nav>
       <Suspense fallback={<p className="loading">Loading…</p>}>{page}</Suspense>
+      <ConsentBanner />
     </div>
   );
 }

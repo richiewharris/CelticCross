@@ -55,3 +55,4 @@ body.gm-home .more ul { grid-template-columns: minmax(0, 1fr); }
 body.gm-home .shot img { transition: none; }
  }
 
+body.gm-home .facts li.tally { color: var(--bronze-hi); border-color: var(--bronze); }

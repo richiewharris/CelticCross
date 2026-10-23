@@ -1,11 +1,16 @@
 import "./home.css";
 import { GameScope } from "../kit/GameScope";
+import { useEffect, useState } from "react";
 import { GAMES } from "../games/registry";
+import { fetchPlayed } from "../online/analytics";
 
 const img = (f: string) => `images/${f}`;
 const Arrow = () => <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5 L11 7 L3 12.5 Z" fill="currentColor" /></svg>;
 
 export function Home() {
+  const [played, setPlayed] = useState<Record<string, number>>({});
+  useEffect(() => { let live = true; void fetchPlayed().then(p => { if (live) setPlayed(p); }); return () => { live = false; }; }, []);
+  const tally = (id: string) => (played[id] ? `${played[id].toLocaleString()} game${played[id] === 1 ? "" : "s"} played` : null);
   const featured = GAMES.filter(g => g.featured), more = GAMES.filter(g => !g.featured);
   return (
     <GameScope id="home">
@@ -28,7 +33,7 @@ export function Home() {
                 <p className="kicker">{g.kicker}</p>
                 <h2>{g.title}{g.say ? <> <span className="say">{g.say}</span></> : null}</h2>
                 <p>{g.blurb}</p>
-                {g.facts ? <ul className="facts">{g.facts.map(f => <li key={f}>{f}</li>)}</ul> : null}
+                {g.facts ? <ul className="facts">{g.facts.map(f => <li key={f}>{f}</li>)}{tally(g.id) ? <li className="tally">{tally(g.id)}</li> : null}</ul> : null}
                 <a className="play" href={`#/${g.id}`}>Play now <Arrow /></a>
               </div>
             </article>
@@ -38,7 +43,7 @@ export function Home() {
           <h3 id="more-title">Also in the collection</h3>
           <ul>
             {more.map(g => (
-              <li key={g.id}><a href={`#/${g.id}`}><img src={img(g.image)} alt="" width="72" height="72" /><span><b>{g.title}</b><span>{g.blurb}</span></span></a></li>
+              <li key={g.id}><a href={`#/${g.id}`}><img src={img(g.image)} alt="" width="72" height="72" /><span><b>{g.title}</b><span>{g.blurb}{tally(g.id) ? ` · ${tally(g.id)}` : ""}</span></span></a></li>
             ))}
             <li><a href="#/lock/v1"><img src={img("celtic-cross-lock.jpg")} alt="" width="72" height="72" style={{ filter: "sepia(.6)" }} /><span><b>Celtic Cross Lock, classic</b><span>The first version of the lock: rejoin the knotwork on a ringed cross by swapping stones.</span></span></a></li>
             <li><a href="#/playground"><img src={img("cnoc.jpg")} alt="" width="72" height="72" style={{ filter: "grayscale(.7)" }} /><span><b>Component playground</b><span>Every game's pieces and boards on one page, for building and checking them.</span></span></a></li>

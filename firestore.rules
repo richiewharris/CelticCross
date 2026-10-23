@@ -1,0 +1,124 @@
+rules_version = '2';
+
+// Security rules for Celtic Cross Games.
+// Paste this into Firebase console → Firestore Database → Rules, then Publish.
+//
+// games/{id}: one online game by invite. Anyone signed in (anonymously) who has the link can read it.
+//   Players can only: take an empty seat, add exactly one move on their own turn, resign, or offer a
+//   rematch. Moves are checked against the game's rules by both players' browsers on replay.
+// stats/games: public "games played" tallies; anyone may add exactly 1 to one known game.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+
+    match /games/{gameId} {
+      function onlineGame(g) { return g in ['monsiv', 'cnoc', 'fidchell']; }
+      function fields() {
+        return ['v', 'game', 'options', 'seats', 'players', 'creator', 'status', 'firstSeat',
+                'moves', 'turn', 'result', 'next', 'createdAt', 'updatedAt'];
+      }
+      function seated(seats) { return seats.values().removeAll([null]); }
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+      allow get: if signedIn();
+      allow list: if signedIn() && me() in resource.data.players;
+      allow delete: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(fields())
+        && request.resource.data.keys().hasOnly(fields())
+        && request.resource.data.v == 1
+        && onlineGame(request.resource.data.game)
+        && request.resource.data.options is map
+        && request.resource.data.creator == me()
+        && request.resource.data.players == [me()]
+        && request.resource.data.seats is map
+        && request.resource.data.seats.size() == 2
+        && seated(request.resource.data.seats) == [me()]
+        && request.resource.data.firstSeat in request.resource.data.seats.keys()
+        && request.resource.data.status == 'open'
+        && request.resource.data.moves == []
+        && request.resource.data.turn == null
+        && request.resource.data.result == null
+        && request.resource.data.next == null
+        && request.resource.data.createdAt is int
+        && request.resource.data.updatedAt is int;
+
+      // Take the empty seat. When both seats are full the game starts with firstSeat's player to act.
+      function joining() {
+        let r = resource.data;
+        let d = request.resource.data;
+        let full = seated(d.seats).size() == d.seats.size();
+        return r.status == 'open'
+          && !(me() in r.players)
+          && changed().hasOnly(['seats', 'players', 'status', 'turn', 'updatedAt'])
+          && d.seats.diff(r.seats).changedKeys().size() == 1
+          && d.seats.diff(r.seats).addedKeys().size() == 0
+          && d.seats.diff(r.seats).removedKeys().size() == 0
+          && seated(d.seats).size() == seated(r.seats).size() + 1
+          && me() in d.seats.values()
+          && d.players == r.players.concat([me()])
+          && (full ? (d.status == 'active' && d.turn == d.seats[r.firstSeat])
+                   : (d.status == 'open' && d.turn == null));
+      }
+
+      // Add one move on your own turn; the moves before it can't change.
+      function moving() {
+        let r = resource.data;
+        let d = request.resource.data;
+        return r.status == 'active'
+          && r.turn == me()
+          && changed().hasOnly(['moves', 'turn', 'status', 'result', 'updatedAt'])
+          && d.moves.size() == r.moves.size() + 1
+          && d.moves.size() <= 1000
+          && d.moves[0:r.moves.size()] == r.moves
+          && ((d.status == 'active' && d.turn in r.players && d.result == null)
+              || (d.status == 'done' && d.turn == null && d.result is map));
+      }
+
+      function resigning() {
+        let d = request.resource.data;
+        return resource.data.status == 'active'
+          && me() in resource.data.players
+          && changed().hasOnly(['status', 'turn', 'result', 'updatedAt'])
+          && d.status == 'done' && d.turn == null
+          && d.result is map && d.result.resigned is string;
+      }
+
+      function offeringRematch() {
+        return resource.data.status == 'done'
+          && me() in resource.data.players
+          && resource.data.next == null
+          && changed().hasOnly(['next', 'updatedAt'])
+          && request.resource.data.next is string;
+      }
+
+      allow update: if signedIn()
+        && request.resource.data.updatedAt is int
+        && (joining() || moving() || resigning() || offeringRematch());
+    }
+
+    match /stats/games {
+      function tallied() {
+        return ['monsiv', 'fidchell', 'lock', 'fiche', 'cnoc', 'cnoc-mor', 'fidchell-cups', 'goldmines'];
+      }
+      function upByOne(k) {
+        return !(k in request.resource.data.diff(resource.data).affectedKeys())
+          || request.resource.data[k] == resource.data.get(k, 0) + 1;
+      }
+
+      allow get: if true;
+      allow list, delete: if false;
+      allow create: if request.resource.data.keys().size() == 1
+        && request.resource.data.keys().hasOnly(tallied())
+        && request.resource.data.values()[0] == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().size() == 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(tallied())
+        && upByOne('monsiv') && upByOne('fidchell') && upByOne('lock') && upByOne('fiche')
+        && upByOne('cnoc') && upByOne('cnoc-mor') && upByOne('fidchell-cups') && upByOne('goldmines');
+    }
+  }
+}
