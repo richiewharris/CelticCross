@@ -5,6 +5,7 @@ import { useStoredState } from "../../../kit/useStoredState";
 import { geom, norm, snapPhi, visible } from "../engine/dial";
 import { NEW_PROFILE, TIERS, makeKnot, openedMessage, skillGain, solved, type Profile, type TierId } from "../engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "../components/Dial";
+import { useLockRecord } from "../record";
 import { canFinish, earnDeal, isMade, knotJoins, need, startState, turnStone, type EarnState, type Join } from "./engine";
 
 export type MsgKind = "" | "good" | "bad";
@@ -66,6 +67,7 @@ export function useEarn() {
   const [cheat, setCheatState] = useState(false);
   const [svgOpen, setSvgOpen] = useState(false);
   const [flash, setFlash] = useState<Flash | null>(null);
+  const rec = useLockRecord("earn");
 
   const sRef = useRef(s), pRef = useRef(profile), cheatRef = useRef(cheat);
   pRef.current = profile;
@@ -120,6 +122,7 @@ export function useEarn() {
   const newLock = (tier: TierId) => {
     const f = freshLock(tier, makeKnot(TIERS[tier]), cheatRef.current, NEW_MSG);
     anim.current = restingAnim(f.phi);
+    rec.drop();
     commit(f.s); setDrawnPhi(f.phi); setSvgOpen(false); clearFlash();
   };
 
@@ -139,6 +142,7 @@ export function useEarn() {
     if (S.st.pool <= 0) { commit({ ...S, msg: "No turns left. Press the center for a fresh start.", msgKind: "bad" }); return; }
     const r = turnStone(S.st, S.sol, S.joins, k, ccw);
     if (!r) return;
+    rec.begin(S.tier);
     const paidHere = r.made.length ? new Set([...S.paidHere, ...r.made.flatMap(i => [S.joins[i].a, S.joins[i].b])]) : S.paidHere;
     const next: EarnLock = { ...S, st: r.state, paidHere };
     const m = turnMessage(next, k, r.made, r.gain);
@@ -169,6 +173,7 @@ export function useEarn() {
         const gain = skillGain(P.skill, S.tier, S.st.pool, S.cheated);
         const np = { skill: P.skill + gain, opened: P.opened + (S.cheated ? 0 : 1), attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
+        rec.end(S.tier, "opened", S.cheated);
         commit({ ...S, open: true, msg: openedMessage(S.cheated, gain), msgKind: "good" });
         const slide = (v: number) => { anim.current.cover = v; apply(); };
         const setRaise = (v: number) => { anim.current.raise = v; apply(); };
@@ -187,6 +192,7 @@ export function useEarn() {
         // The dial spins, the stones fall back to a new scramble of the same knot, and a fresh purse.
         const np = { ...P, attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
+        rec.end(S.tier, "failed", S.cheated);
         const from = anim.current.phi;
         const fresh = freshLock(S.tier, S.sol, cheatRef.current, "", "bad");
         fresh.s.msg = `The knot was broken. The stones scramble. Fresh start: ${turnsWord(fresh.s.st.start)}.`;

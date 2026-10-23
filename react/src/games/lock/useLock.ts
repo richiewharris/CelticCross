@@ -7,6 +7,7 @@ import {
   NEW_PROFILE, TIERS, deal, makeKnot, openedMessage, rotCCW, rotCW, skillGain, solved, type Profile, type TierId,
 } from "./engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "./components/Dial";
+import { useLockRecord } from "./record";
 
 export interface LockState {
   tier: TierId; sol: number[]; cur: number[];
@@ -31,6 +32,7 @@ export function useLock() {
   const [drawnPhi, setDrawnPhi] = useState(first.current.phi);
   const [cheat, setCheatState] = useState(false);
   const [svgOpen, setSvgOpen] = useState(false);
+  const rec = useLockRecord("dial");
 
   // Mirrors of state for use inside animation callbacks.
   const sRef = useRef(s), pRef = useRef(profile), cheatRef = useRef(cheat);
@@ -77,6 +79,7 @@ export function useLock() {
   const newLock = (tier: TierId) => {
     const f = freshLock(tier, makeKnot(TIERS[tier]), pRef.current.skill, cheatRef.current, NEW_MSG);
     anim.current = restingAnim(f.phi);
+    rec.drop();
     commit(f.s); setDrawnPhi(f.phi); setSvgOpen(false);
   };
 
@@ -96,6 +99,7 @@ export function useLock() {
     if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the center.", msgKind: "bad" }); return; }
     const cur = S.cur.slice(); cur[k] = ccw ? rotCCW(cur[k]) : rotCW(cur[k]);
     const left = S.turnsLeft - 1;
+    rec.begin(S.tier);
     commit({ ...S, cur, turnsLeft: left, msg: left === 0 ? "That was your last turn. Press the center." : "", msgKind: "" });
     redraw();
     dom.current.disc?.querySelector<SVGElement>(`[data-k="${k}"]`)?.focus({ preventScroll: true });
@@ -121,6 +125,7 @@ export function useLock() {
         const gain = skillGain(P.skill, S.tier, S.turnsLeft, S.cheated);
         const np = { skill: P.skill + gain, opened: P.opened + (S.cheated ? 0 : 1), attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
+        rec.end(S.tier, "opened", S.cheated);
         commit({ ...S, open: true, msg: openedMessage(S.cheated, gain), msgKind: "good" });
         // The shield catches, snaps about 28% open, then glides the rest of the way.
         const slide = (v: number) => { anim.current.cover = v; apply(); };
@@ -140,6 +145,7 @@ export function useLock() {
         // The dial spins and the stones fall back to a new random state.
         const np = { ...P, attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
+        rec.end(S.tier, "failed", S.cheated);
         const from = anim.current.phi;
         const fresh = freshLock(S.tier, S.sol, np.skill, cheatRef.current, "The knot was broken. The dial spins and the stones scramble.", "bad");
         commit({ ...S, msg: "The knot was broken…", msgKind: "bad" });

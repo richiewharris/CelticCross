@@ -4,10 +4,19 @@ import { useStoredState } from "../../kit/useStoredState";
 import { aiChoice } from "./engine/ai";
 import { sample, type Die, type Rng } from "./engine/dice";
 import {
-  DEFAULT_SETTINGS, diceOdds, isHuman, land, legalDie, live, newMatch, nextRound, takeDie, type Game, type Settings,
+  DEFAULT_SETTINGS, diceOdds, isHuman, land, legalDie, live, newMatch, nextRound, takeDie, type Game, type Match, type Settings,
 } from "./engine/game";
 import { ROLL_MS, type Flight } from "./components/Tray";
 import { useReducedMotion } from "./useReducedMotion";
+import { recordGameEnd, recordGameStart, type GameEventInfo } from "../../online/analytics";
+
+/** What the statistics say about a match. */
+export function matchInfo(M: Match): GameEventInfo {
+  const info: GameEventInfo = M.mode === "cpu" ? { mode: "computer", level: M.lvl } : { mode: "friend" };
+  info.variant = `best of ${M.best}`;
+  if (M.over) info.result = M.mode === "cpu" ? (M.over === 1 ? "win" : "loss") : `player ${M.over}`;
+  return info;
+}
 
 const rng: Rng = Math.random;
 
@@ -34,6 +43,9 @@ export function useFiche() {
     if (flightRef.current) return;
     const real = legalDie(g, d);
     if (real === null) return;
+    // The player's first die of a match starts it (a match only dealt, then left, is not counted,
+    // even when the computer opened it).
+    if (g.M.round === 1 && isHuman(g.M, g.R.turn) && !g.R.rolls.some(r => isHuman(g.M, r.p))) recordGameStart("fiche", matchInfo(g.M));
     const fl: Flight = { p: g.R.turn, d: real, v: sample(real, rng), seed: rng(), t0: performance.now(), dur: reduce ? 1 : ROLL_MS };
     flightRef.current = fl;
     setFlight(fl);
@@ -57,6 +69,15 @@ export function useFiche() {
     const t = setTimeout(() => { setThinking(false); roll(aiChoice(g.R, g.M.lvl, rng)); }, later(g.R.kind === "again" ? 900 : 700));
     return () => { clearTimeout(t); setThinking(false); };
   }, [cpuTurn, flight, g]);
+
+  // A match has just been won: record it once. A finished match reloaded from storage was
+  // recorded before (and is replaced by a new one), so only a change from live to over counts.
+  const wasOver = useRef(g.M.over);
+  useEffect(() => {
+    const was = wasOver.current;
+    wasOver.current = g.M.over;
+    if (!was && g.M.over) recordGameEnd("fiche", matchInfo(g.M));
+  }, [g.M.over]);
 
   // A round has just ended: show the result after a moment.
   const roundOver = !!g.R.over;

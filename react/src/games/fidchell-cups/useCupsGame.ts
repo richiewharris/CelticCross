@@ -1,8 +1,8 @@
 // Everything about a game in progress: the stored game, the dice spin, the computer's turns,
 // the pass pause, and the player's taps and keys.
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useStoredState } from "../../kit/useStoredState";
-import { bestPlan, bestToastTarget, threatened, treasonVictim } from "./engine/ai";
+import { LEVELS, bestPlan, bestToastTarget, threatened, treasonVictim } from "./engine/ai";
 import {
   DEFAULT_SETTINGS, START_CURSOR, endWait, isGame, isHuman, land, newGame, over, playStep, playToast, settle,
   startTreasonPick, statusLine, treasonByComputer, treasonPicked, type Game, type Settings,
@@ -10,6 +10,18 @@ import {
 import { N, NAME, capturesFor, d6, inB, legalNow, other, at } from "./engine/rules";
 import type { Overlay } from "./components/Board";
 import { planStep } from "./aiClient";
+import { recordGameEnd, recordGameStart, type GameEventInfo } from "../../online/analytics";
+
+/** What the statistics say about a game (with its result once it is over). */
+export function gameInfo(g: Game): GameEventInfo {
+  const info: GameEventInfo = g.mode === "cpu" ? { mode: "computer", level: LEVELS[g.lvl].name } : { mode: "friend" };
+  info.variant = g.turns;
+  const w = g.state.winner;
+  if (w !== null) {
+    info.result = w === 0 ? "draw" : g.mode === "cpu" ? (w === g.side ? "win" : "loss") : NAME[w].toLowerCase();
+  }
+  return info;
+}
 
 const reduceMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -33,6 +45,17 @@ export function useCupsGame() {
   const rolling = spin !== null;
   const humanTurn = !isOver && !rolling && g.wait === null && isHuman(g, s.turn);
   const cpuTurn = !isOver && !rolling && g.wait === null && !isHuman(g, s.turn);
+
+  // A game starts with the player's first roll (a game only dealt, then left, is not counted, even
+  // when the computer opened it) and ends when a winner (or a draw) is decided; each game
+  // (told apart by its nonce) is recorded once. A finished game reloaded from storage was recorded before.
+  const startedNonce = useRef<number | null>(null);
+  const endedNonce = useRef<number | null>(isOver ? g.nonce : null);
+  useEffect(() => {
+    if (!isOver || endedNonce.current === g.nonce) return;
+    endedNonce.current = g.nonce;
+    recordGameEnd("fidchell-cups", gameInfo(g));
+  }, [isOver, g]);
 
   const startRoll = () => { setTumble(t => t + 1); setSpin([d6(), d6()]); };
 
@@ -93,6 +116,11 @@ export function useCupsGame() {
         setG(g2);
         if (over(g2)) return;
       } else { setG(startTreasonPick(g)); return; }
+    }
+    const firstRoll = g.mode === "pvp" ? g.log.length === 0 && g.pendingLog === null : !g.log.some(e => e.who === NAME[g.side]);
+    if (firstRoll && startedNonce.current !== g.nonce) {
+      startedNonce.current = g.nonce;
+      recordGameStart("fidchell-cups", gameInfo(g));
     }
     startRoll();
   };

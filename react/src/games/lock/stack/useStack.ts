@@ -5,6 +5,7 @@ import { useStoredState } from "../../../kit/useStoredState";
 import { geom, norm, snapPhi, visible } from "../engine/dial";
 import { NEW_PROFILE, type Profile, type TierId } from "../engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "../components/Dial";
+import { useLockRecord } from "../record";
 import { current, dealStack, layerSolved, press, resetStack, stackSkillGain, stranded, turnStone, type Layer, type Stack } from "./engine";
 
 export interface StackState { st: Stack; msg: string; msgKind: "" | "good" | "bad"; cheated: boolean }
@@ -24,6 +25,7 @@ export function useStack() {
   const [cheat, setCheatState] = useState(false);
   const [svgOpen, setSvgOpen] = useState(false);
   const [lift, setLift] = useState<Lift | null>(null);
+  const rec = useLockRecord("stack");
 
   const sRef = useRef(s), pRef = useRef(profile), cheatRef = useRef(cheat);
   pRef.current = profile;
@@ -73,6 +75,7 @@ export function useStack() {
   };
   const newStack = (tier: TierId) => {
     setLift(null);
+    rec.drop();
     show({ st: dealStack(tier, pRef.current.skill), msg: NEW_MSG, msgKind: "", cheated: cheatRef.current });
   };
 
@@ -111,6 +114,7 @@ export function useStack() {
     busy.current = true;
     const P = pRef.current, np = { ...P, attempts: P.attempts + 1 };
     pRef.current = np; setProfile(np);
+    rec.end(S.st.tier, "failed", S.cheated);
     const why = `Out of turns with ${ord(n)}'s knot still broken.`;
     commit({ ...S, msg: `${why} The stack resets…`, msgKind: "bad" });
     shake();
@@ -126,6 +130,7 @@ export function useStack() {
     const L = current(S.st), g = geom(L.tier);
     if (L.cur[k] === 15 || !visible(g, k, anim.current.phi)) return;
     if (S.st.left <= 0) return;
+    rec.begin(S.st.tier);
     const st = turnStone(S.st, k, ccw);
     const done = layerSolved(current(st));
     commit({ ...S, st, msg: st.left === 0 && done ? "That was your last turn. Press the center." : "", msgKind: "" });
@@ -158,6 +163,7 @@ export function useStack() {
         const gain = stackSkillGain(P.skill, S.st.tier, total, S.st.left, S.cheated);
         const np = { skill: P.skill + gain, opened: P.opened + (S.cheated ? 0 : 1), attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
+        rec.end(S.st.tier, "opened", S.cheated);
         const msg = S.cheated ? "The last disc opens, and the box with it. Practice stack, so no skill gained."
           : `The last disc opens, and the box with it.${gain > 0 ? ` Skill +${gain}.` : ""}`;
         commit({ ...S, st: r.st, msg, msgKind: "good" });

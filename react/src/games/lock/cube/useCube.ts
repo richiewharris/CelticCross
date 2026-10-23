@@ -8,6 +8,7 @@ import {
   qslerp, snapQuat, solved, turnCube, visibleFaces, type CubeTurn, type Quat,
 } from "./engine";
 import { emptyCubeDom, type CubeDom } from "./CubeView";
+import { useLockRecord } from "../record";
 
 export interface CubeState {
   tier: TierId; sol: number[]; cur: number[];
@@ -42,6 +43,7 @@ export function useCube() {
   const [cheat, setCheatState] = useState(false);
   const [home, setHome] = useState(false);
   const [moving, setMoving] = useState(false);
+  const rec = useLockRecord("cube");
 
   const sRef = useRef(s), pRef = useRef(profile), cheatRef = useRef(cheat), viewRef = useRef(view);
   pRef.current = profile;
@@ -120,6 +122,7 @@ export function useCube() {
     stopTween.current?.(); aim.current = null;
     const fr = freshLock(tier, makeKnot(CUBE_TIERS[tier]), pRef.current.skill, cheatRef.current, newMsg(tier));
     q.current = fr.q;
+    rec.drop();
     commit(fr.s); setHome(false); setMoving(false); apply();
   };
 
@@ -136,6 +139,7 @@ export function useCube() {
     if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the triskele to try the lock.", msgKind: "bad" }); return; }
     const cur = S.cur.slice(); cur[k] = ccw ? rotCCW(cur[k]) : rotCW(cur[k]);
     const left = S.turnsLeft - 1;
+    rec.begin(S.tier);
     commit({ ...S, cur, turnsLeft: left, msg: left === 0 ? "That was your last turn. Press the triskele." : "", msgKind: "" });
     if (!reduce) {
       // the stone and its pin swing round into place
@@ -160,6 +164,7 @@ export function useCube() {
       const gain = skillGain(P.skill, S.tier, S.turnsLeft, S.cheated);
       const np = { skill: P.skill + gain, opened: P.opened + (S.cheated ? 0 : 1), attempts: P.attempts + 1 };
       pRef.current = np; setProfile(np);
+      rec.end(S.tier, "opened", S.cheated);
       commit({ ...S, open: true, msg: openedMessage(S.cheated, gain), msgKind: "good" });
       glideTo(start, 200, () => {
         setHome(true);
@@ -176,6 +181,7 @@ export function useCube() {
       // The cube tumbles and the stones fall back to a new random state; turns refill.
       const np = { ...P, attempts: P.attempts + 1 };
       pRef.current = np; setProfile(np);
+      rec.end(S.tier, "failed", S.cheated);
       const fresh = freshLock(S.tier, S.sol, np.skill, cheatRef.current, "The knot was broken. The cube tumbles and the stones scramble.", "bad");
       commit({ ...S, msg: "The knot was broken…", msgKind: "bad" });
       const target = fresh.q;

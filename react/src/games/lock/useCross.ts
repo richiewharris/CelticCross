@@ -4,6 +4,7 @@ import { useStoredState } from "../../kit/useStoredState";
 import { CROSS_TIERS, brokenEdges, dealCross, makeLock, misplaced, nextSwap, solved, type Tile } from "./engine/cross";
 import { NEW_PROFILE, openedMessage, skillGain, type Profile, type TierId } from "./engine/knot";
 import type { CellLook } from "./components/CrossBoard";
+import { useLockRecord } from "./record";
 
 export interface CrossState {
   tier: TierId; tiles: Tile[]; arr: number[];
@@ -21,6 +22,7 @@ export function useCross() {
   const [profile, setProfile] = useStoredState<Profile>("lock-react-v1-profile", NEW_PROFILE);
   const [S, setS] = useState<CrossState>(() => dealState(makeLock(2), 2, profile.skill, false, newMsg(2)));
   const [cheat, setCheat] = useState(false);
+  const rec = useLockRecord("classic");
   const [flash, setFlash] = useState<number[]>(() => S.arr.map(() => 0));
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
   const [shakes, setShakes] = useState(0);
@@ -48,13 +50,14 @@ export function useCross() {
   };
   const update = (next: CrossState) => { rememberFocus(); setFlashed(new Set()); setS(next); };
 
-  const newLock = (tier: TierId) => update(dealState(makeLock(tier), tier, profile.skill, cheat, newMsg(tier)));
+  const newLock = (tier: TierId) => { rec.drop(); update(dealState(makeLock(tier), tier, profile.skill, cheat, newMsg(tier))); };
 
   const swap = (a: number, b: number) => {
     if (S.open || a === b) return;
     if (S.movesLeft <= 0) { update({ ...S, msg: "No moves left. Try the lock.", msgKind: "bad", sel: null }); return; }
     const arr = S.arr.slice(); [arr[a], arr[b]] = [arr[b], arr[a]];
     const left = S.movesLeft - 1;
+    rec.begin(S.tier);
     rememberFocus();
     setS({ ...S, arr, movesLeft: left, sel: null, msg: left === 0 ? "That was your last move. Try the lock." : "", msgKind: "" });
     setFlash(f => f.map((n, i) => (i === a || i === b ? n + 1 : n)));
@@ -65,10 +68,12 @@ export function useCross() {
     if (S.open) return;
     if (solved(S.tiles, S.arr)) {
       const gain = skillGain(profile.skill, S.tier, S.movesLeft, S.cheated);
+      rec.end(S.tier, "opened", S.cheated);
       setProfile({ skill: profile.skill + gain, opened: profile.opened + (S.cheated ? 0 : 1), attempts: profile.attempts + 1 });
       update({ ...S, open: true, sel: null, msg: openedMessage(S.cheated, gain), msgKind: "good" });
     } else {
       setProfile({ ...profile, attempts: profile.attempts + 1 });
+      rec.end(S.tier, "failed", S.cheated);
       update(dealState(S.tiles, S.tier, profile.skill, cheat, "The tumblers fall. The stones scramble again.", "bad"));
       setShakes(n => n + 1);
     }

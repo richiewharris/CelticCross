@@ -9,9 +9,27 @@ import { buildEntries, type Entry } from "./engine/review";
 import { DROP, NN, from, gen, sideOf, to, type Move, type Piece, type Side } from "./engine/rules";
 import { aiRpc, makeAiWorker } from "./aiClient";
 import type { ReviewState } from "./components/ReviewPanel";
+import { recordGameEnd, recordGameStart, type GameEventInfo } from "../../online/analytics";
 
 export interface PlaySettings { mode: "cpu" | "pvp"; side: Side; lvl: Level }
 export const DEFAULT_SETTINGS: PlaySettings = { mode: "cpu", side: 0, lvl: 2 };
+
+/** What the statistics say about a game in these settings (with its result once it is over). */
+export function gameInfo(st: PlaySettings, winner: Game["winner"]): GameEventInfo {
+  const info: GameEventInfo = st.mode === "cpu"
+    ? { mode: "computer", level: LEVELS[st.lvl].name, variant: st.side === 0 ? "host" : "si" }
+    : { mode: "friend" };
+  if (winner !== null) {
+    info.result = winner === -1 ? "draw"
+      : st.mode === "cpu" ? (winner === st.side ? "win" : "loss")
+      : winner === 0 ? "host" : "si";
+  }
+  return info;
+}
+
+/** Has this game been recorded as started / ended? Kept with the game, so undo and reloads don't count it twice. */
+interface Recorded { started: boolean; ended: boolean }
+const NOT_RECORDED: Recorded = { started: false, ended: false };
 
 const validGame = (g: Game | null | undefined): g is Game =>
   !!g && !!g.s && Array.isArray(g.s.b) && g.s.b.length === NN && Array.isArray(g.history) && !!g.trays;
@@ -27,6 +45,10 @@ export function usePlayGame() {
   const [review, setReview] = useState<ReviewState | null>(null);
   const [animate, setAnimate] = useState(false);
   const reviewWorker = useRef<Worker | null>(null);
+  const [recorded, setRecorded] = useStoredState<Recorded>("cnoc-mor-react-recorded", NOT_RECORDED);
+  const rec = useRef(recorded), settingsNow = useRef(settings);
+  settingsNow.current = settings;
+  const markRecorded = useCallback((r: Recorded) => { rec.current = r; setRecorded(r); }, [setRecorded]);
 
   useEffect(() => { if (!validGame(stored)) setG(newGame()); }, [stored, setG]);
 
@@ -36,7 +58,16 @@ export function usePlayGame() {
   const humanTurn = !over && !review && isHuman(actor(g));
 
   /** Every change of the game made by a move or a placement pops the piece that landed. */
-  const advance = useCallback((next: Game) => { setAnimate(true); setSel(null); setPick(null); setG(next); }, [setG]);
+  // It is also where a game starts (its first piece placed) and ends (a move that decides it), once each.
+  const advance = useCallback((next: Game) => {
+    const r = rec.current, st = settingsNow.current;
+    if (!r.started || (next.winner !== null && !r.ended)) {
+      if (!r.started) recordGameStart("cnoc-mor", gameInfo(st, null));
+      if (next.winner !== null && !r.ended) recordGameEnd("cnoc-mor", gameInfo(st, next.winner));
+      markRecorded({ started: true, ended: next.winner !== null || r.ended });
+    }
+    setAnimate(true); setSel(null); setPick(null); setG(next);
+  }, [setG, markRecorded]);
 
   // The computer's turn. Answers that arrive after the game has moved on are dropped.
   useEffect(() => {
@@ -75,8 +106,9 @@ export function usePlayGame() {
   const restart = useCallback(() => {
     stopReview(); setResultOpen(false); setSel(null); setPick(null); setAnimate(false);
     prevWinner.current = null;
+    markRecorded(NOT_RECORDED);
     setG(newGame());
-  }, [setG, stopReview]);
+  }, [setG, stopReview, markRecorded]);
 
   const changeSettings = (patch: Partial<PlaySettings>) => {
     setSettings({ ...settings, ...patch });

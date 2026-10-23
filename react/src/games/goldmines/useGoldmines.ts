@@ -5,12 +5,13 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useStoredState } from "../../kit/useStoredState";
 import { CX, W0, aim, drive, idleHands, tapAt as hitTest, toScreen, type Hands } from "./engine/control";
 import {
-  endDay, finishPan, fmt, newDay, scoopAt, statusFor, type Day, type DayResult, type PanResult, type Phase, type Status,
+  PANS_PER_DAY, endDay, finishPan, fmt, newDay, scoopAt, statusFor, type Day, type DayResult, type PanResult, type Phase, type Status,
 } from "./engine/day";
 import { STEEP, collect, dip, goldSettled, refreshExposure, stonesLeft, stonesUp, type Pan, type Particle } from "./engine/pan";
 import { rand, type Rng } from "./engine/rng";
 import { drawFrame, makeSurface, newFx, type Fx, type Surface } from "./draw";
 import { useAnimationFrame } from "./useAnimationFrame";
+import { recordGameEnd, recordGameStart } from "../../online/analytics";
 
 export type Card = { kind: "summary"; r: PanResult; pansLeft: number } | { kind: "dayEnd"; r: DayResult } | null;
 export interface Meta { best: number; coach: boolean }
@@ -63,6 +64,8 @@ export function useGoldmines(gauges: GaugeRefs, rng: Rng = Math.random) {
     if (s.phase !== "choose" || s.day.pansLeft <= 0) return;
     const pan = scoopAt(s.day, id, rng);
     if (!pan) return;
+    // The day's first pan starts it (a day only looked at is not counted).
+    if (s.day.pansLeft === PANS_PER_DAY) recordGameStart("goldmines", { mode: "solo" });
     Object.assign(s, { pan, spot: id, phase: "pan", expTimer: 0, uiTimer: 0 });
     s.hands.holdShake = s.hands.holdWash = false; s.hands.keyTilt = 0;
     setCard(null); sync();
@@ -80,8 +83,11 @@ export function useGoldmines(gauges: GaugeRefs, rng: Rng = Math.random) {
 
   const next = useCallback(() => {
     const s = w.current;
+    if (s.phase !== "summary") return;
     if (s.day.pansLeft > 0) { s.phase = "choose"; s.pan = null; setCard(null); sync(); return; }
     const r = endDay(s.day, meta.best);
+    // The eighth pan is done: the day is over (recorded here, once: the phase leaves "summary").
+    recordGameEnd("goldmines", { mode: "solo", result: fmt(r.mg), score: Math.round(r.mg) });
     setMeta(m => ({ ...m, best: r.best }));
     s.phase = "dayEnd";
     setCard({ kind: "dayEnd", r });

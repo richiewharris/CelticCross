@@ -26,6 +26,13 @@ existing links keep working.
 To change a game, work in [`react/`](react/) (see [`react/README.md`](react/README.md)), then run
 `npm run publish-site` there: it type-checks, builds, and copies the result to `index.html` and `assets/`.
 
+**Online play and statistics.** Monsiv, Cnoc and Fidchell can be played with a friend by invite link,
+using Firebase (project `celtic-cross-games`): anonymous or Google sign-in, one Firestore document per
+game, every move checked by both players' browsers. `firestore.rules` holds the database rules;
+paste it into the Firebase console (Firestore → Rules) after any change. The home page shows how many
+times each game has been played; Google Analytics runs only for visitors who allow it. Details in
+[`react/ONLINE.md`](react/ONLINE.md).
+
 The first single-file versions of every game are kept, unchanged, in [`classic/`](classic/).
 The notes below describe the games; they apply to both versions.
 
