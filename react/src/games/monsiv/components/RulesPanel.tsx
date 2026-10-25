@@ -13,7 +13,7 @@ export function RulesPanel() {
         <li><span className="label" style={{ textAlign: "center", paddingTop: 2 }}>↺</span><span><b>No repeats.</b> You can't make a move that recreates a position already seen this game, unless it wins.</span></li>
         <li><span className="label" style={{ textAlign: "center", paddingTop: 2 }}>♛</span><span><b>Win</b> by capturing the enemy Throne or by landing any piece on the far row. A player with no legal move loses, so there are no draws.</span></li>
       </ul>
-      <p className="note">Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses. The Throne and no-repeat rules were added to balance the game: in deep computer testing they took it from 72% second-player wins to roughly even.</p>
+      <p className="note">Monsiv was designed by Harley Bailey; this is an unofficial fan rebuild. Rebuilt from the original game's layout and player descriptions. The original site is offline, so details like the swap limits are best guesses. The Throne and no-repeat rules were added to balance the game: in deep computer testing they took it from 72% second-player wins to roughly even.</p>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export interface GameEntry {
 export const GAMES: GameEntry[] = [
   {
     id: "monsiv", title: "Monsiv", kicker: "Strategy · 2 players or vs computer", image: "monsiv.jpg",
-    blurb: "A fast cousin of chess on a 5×5 board. Each side has a Throne, two Angels and two Crosses, and every piece steps one square at a time. The twist is the swap: trade places with a piece of your own instead of moving, and catch your opponent off guard. Take the enemy Throne or reach the far row to win. Then sharpen up on endless puzzles that rate you as you solve.",
+    blurb: "A fast cousin of chess on a 5×5 board. Each side has a Throne, two Angels and two Crosses, and every piece steps one square at a time. The twist is the swap: trade places with a piece of your own instead of moving, and catch your opponent off guard. Take the enemy Throne or reach the far row to win. Then sharpen up on endless puzzles that rate you as you solve. Designed by Harley Bailey; this is a fan rebuild.",
     alt: "The Monsiv board: a 5 by 5 grid with black Angels, Crosses and a Throne on the top row and white ones on the bottom row.", featured: true,
     facts: ["5×5 board", "5 pieces a side", "Games in 5–10 minutes", "Endless rated puzzles"],
     Page: lazy(() => import("./monsiv/index")), Playground: lazy(() => import("./monsiv/Playground")),

@@ -130,7 +130,7 @@ export function MonsivGame() {
     <div className="wrap">
       <header>
         <h1>MONSIV</h1>
-        <p className="tag">Five pieces, one throne, and the swap.</p>
+        <p className="tag">Five pieces, one throne, and the swap. A game by Harley Bailey.</p>
       </header>
       <div className="game">
         <section className="stage" aria-label="Game board">
