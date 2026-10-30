@@ -1,18 +1,32 @@
 // The computer's choice of die. Casual picks at random, Steady weighs the odds with a little
-// noise, Shrewd always takes the die with the best chance.
-import { bit, type Die, type Rng } from "./dice";
-import { other, type Level, type Round } from "./game";
-import { chanceOf } from "./odds";
+// noise, Shrewd always takes the die with the best chance. With a three held, the choice is
+// between rerolling that die and keeping the three.
+import { bit, sample, type Die, type Rng } from "./dice";
+import { applyRoll, keepHeld, other, type Game, type Level, type Round } from "./game";
+import { chanceOf, keepChance, rerollChance } from "./odds";
 
 export const LEVEL_NAMES: Record<Level, string> = { 1: "Casual", 2: "Steady", 3: "Shrewd" };
 
-export function aiChoice(R: Round, lvl: Level, rng: Rng): Die {
+export type Choice = Die | "keep";
+
+export function aiChoice(R: Round, lvl: Level, rng: Rng): Choice {
   const p = R.turn, hp = R.hands[p], ho = R.hands[other(p)];
+  if (R.held >= 0) {
+    const d = R.held as Die;
+    if (lvl === 1) return rng() < 0.5 ? d : "keep";
+    const noise = () => (lvl === 2 ? (rng() - 0.5) * 0.18 : 0);
+    return rerollChance(R.total, hp, ho, d) + noise() >= keepChance(R.total, hp, ho, d) + noise() ? d : "keep";
+  }
   if (R.forced >= 0) return R.forced as Die;
-  const opts = ([0, 1, 2] as Die[]).filter(d => hp & bit(d) || d === R.free);
+  const opts = ([0, 1, 2] as Die[]).filter(d => hp & bit(d));
   if (lvl === 1) return opts[(rng() * opts.length) | 0];
   const scored = opts
-    .map(d => [chanceOf(R.total, hp, ho, d, -1, R.free) + (lvl === 2 ? (rng() - 0.5) * 0.18 : 0), d] as const)
+    .map(d => [chanceOf(R.total, hp, ho, d, -1) + (lvl === 2 ? (rng() - 0.5) * 0.18 : 0), d] as const)
     .sort((a, b) => b[0] - a[0]);
   return scored[0][1];
+}
+
+/** Carry out a choice: roll the die (or reroll the held one), or keep the held three. */
+export function playChoice(g: Game, c: Choice, rng: Rng): Game {
+  return c === "keep" ? keepHeld(g) : applyRoll(g, c, sample(c, rng), rng());
 }

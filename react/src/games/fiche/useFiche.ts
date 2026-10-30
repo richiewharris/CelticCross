@@ -4,7 +4,7 @@ import { useStoredState } from "../../kit/useStoredState";
 import { aiChoice } from "./engine/ai";
 import { sample, type Die, type Rng } from "./engine/dice";
 import {
-  DEFAULT_SETTINGS, diceOdds, isHuman, land, legalDie, live, newMatch, nextRound, takeDie, type Game, type Match, type Settings,
+  DEFAULT_SETTINGS, diceOdds, isHuman, keepHeld, keepOdds, land, legalDie, live, newMatch, nextRound, takeDie, type Game, type Match, type Settings,
 } from "./engine/game";
 import { ROLL_MS, type Flight } from "./components/Tray";
 import { useReducedMotion } from "./useReducedMotion";
@@ -66,7 +66,11 @@ export function useFiche() {
   useEffect(() => {
     if (!cpuTurn || flight) return;
     setThinking(true);
-    const t = setTimeout(() => { setThinking(false); roll(aiChoice(g.R, g.M.lvl, rng)); }, later(g.R.kind === "again" ? 900 : 700));
+    const t = setTimeout(() => {
+      setThinking(false);
+      const c = aiChoice(g.R, g.M.lvl, rng);
+      if (c === "keep") setG(cur => keepHeld(cur)); else roll(c);
+    }, later(g.R.kind === "again" ? 900 : 700));
     return () => { clearTimeout(t); setThinking(false); };
   }, [cpuTurn, flight, g]);
 
@@ -107,7 +111,9 @@ export function useFiche() {
     g, view, flight, busy, settings, change, coach,
     toggleCoach: () => setCoach(c => !c),
     humanTurn, roll,
+    keep: () => { if (humanTurn && g.R.held >= 0) setG(cur => keepHeld(cur)); },
     odds: humanTurn && coach ? diceOdds(g.R) : [null, null, null],
+    keepOdds: humanTurn && coach ? keepOdds(g.R) : null,
     cardOpen,
     nextRound: () => { setCardOpen(false); setG(cur => nextRound(cur)); },
     newMatch: () => restart(settings),

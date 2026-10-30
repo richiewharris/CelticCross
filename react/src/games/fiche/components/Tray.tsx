@@ -61,8 +61,9 @@ export function Tray(props: {
         const [x, y] = slotFor(r.p, nth[i]);
         return (
           <g key={i}>
-            <g transform={`translate(${x} ${y}) scale(.78)`}><DieArt d={r.d} value={r.v} seed={r.seed} /></g>
-            <text x={x} y={y + 50} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="15" fontWeight="500" fill={r.p === 1 ? "#d9a441" : "#9fb4c4"}>{r.v}{r.v === 3 ? " ↻" : ""}</text>
+            <g transform={`translate(${x} ${y}) scale(.78)`} opacity={r.void ? 0.35 : 1}><DieArt d={r.d} value={r.v} seed={r.seed} /></g>
+            <text x={x} y={y + 50} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="15" fontWeight="500" fill={r.p === 1 ? "#d9a441" : "#9fb4c4"}
+              opacity={r.void ? 0.5 : 1} textDecoration={r.void ? "line-through" : undefined}>{r.v}{r.void ? " ✕" : r.v === 3 ? " ↻" : ""}</text>
           </g>
         );
       })}

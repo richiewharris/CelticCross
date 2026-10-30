@@ -43,7 +43,7 @@ export const GAMES: GameEntry[] = [
   },
   {
     id: "fiche", title: "Fiche", kicker: "Dice · 2 players or vs computer", image: "fiche.jpg",
-    blurb: "A race to twenty with three odd dice: a bone caltrop, a wire-wrapped cube, and two cubes on a rod that only shows a 1 when it lands standing on end. Take turns rolling into one shared total. A three or a seven rolls again, nine hands the round to your rival, twelve is a draw, and only an exact twenty wins.",
+    blurb: "A race to twenty with three odd dice: a bone caltrop, a wire-wrapped cube, and two cubes on a rod that only shows a 1 when it lands standing on end. Take turns rolling into one shared total. A three can be rerolled or kept to roll again, a seven rolls again, nine hands the round to your rival, twelve is a draw, and only an exact twenty wins.",
     alt: "A bronze number dial resting on 20, above a bone caltrop, a wire-wrapped cube and two cubes joined by a rod.", featured: true,
     facts: ["3 dice each", "Best of 3 or 5", "Coach shows your odds"],
     Page: lazy(() => import("./fiche/index")), Playground: lazy(() => import("./fiche/Playground")),

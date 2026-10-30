@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALL, bit, seeded, type Die } from "./dice";
-import { DEFAULT_SETTINGS, applyRoll, legalDie, need, newMatch, newRound, nextRound, takeDie, type Game, type Player, type Settings } from "./game";
+import { DEFAULT_SETTINGS, applyRoll, keepHeld, legalDie, need, newMatch, newRound, nextRound, takeDie, type Game, type Player, type Settings } from "./game";
 
 /** A match where `starter` rolls first, with the round's total and hands set. */
 function at(total: number, hands: [number, number] = [ALL, ALL], starter: Player = 1, st: Partial<Settings> = {}): Game {
@@ -42,33 +42,48 @@ describe("turns", () => {
     expect(g.R.hands[1]).toBe(3);
     expect(g.R.total).toBe(0);
   });
-  it("a three rolls again", () => {
+  it("a three is held: reroll it or keep it", () => {
     const g = applyRoll(at(0), 0, 3);
     expect(g.R.turn).toBe(1);
     expect(g.R.kind).toBe("again");
-    expect(g.R.msg).toBe("A three on the caltrop. You roll again: another die, or the caltrop again.");
-    expect(g.R.forced).toBe(-1);
-    expect(g.R.free).toBe(0);
-  });
-  it("after a three, the same die may be rolled again without spending another", () => {
-    const g = applyRoll(at(0), 0, 3);
+    expect(g.R.held).toBe(0);
+    expect(g.R.total).toBe(0); // the three doesn't count yet
+    expect(g.R.msg).toBe("A three on the caltrop. You can reroll the caltrop, or keep it and roll again.");
     expect(legalDie(g, 0)).toBe(0);
+    expect(legalDie(g, 1)).toBeNull(); // keep first, then pick another die
+  });
+  it("keeping a three counts it and rolls again", () => {
+    const g = keepHeld(applyRoll(at(0), 0, 3));
+    expect(g.R.total).toBe(3);
+    expect(g.R.held).toBe(-1);
+    expect(g.R.turn).toBe(1);
+    expect(g.R.msg).toBe("A three on the caltrop. You roll again.");
     expect(legalDie(g, 1)).toBe(1);
-    const same = applyRoll(g, 0, 2);
-    expect(same.R.total).toBe(5);
-    expect(same.R.hands[1]).toBe(g.R.hands[1]); // wire cube and twin cubes still in hand
-    expect(same.R.free).toBe(-1);
-    const other = applyRoll(g, 1, 2);
-    expect(other.R.hands[1]).toBe(g.R.hands[1] & ~2);
+    expect(legalDie(g, 0)).toBeNull(); // the caltrop is spent
   });
-  it("landing on 7 without a three gives no same-die choice", () => {
-    expect(applyRoll(at(2), 1, 5).R.free).toBe(-1);
+  it("rerolling a three replaces it", () => {
+    const g = applyRoll(applyRoll(at(16), 0, 3), 0, 2); // needed 4, rolled 3 (19), rerolled 2
+    expect(g.R.total).toBe(18);
+    expect(g.R.held).toBe(-1);
+    expect(g.R.rolls.map(r => [r.v, !!r.void])).toEqual([[3, true], [2, false]]);
+    expect(g.R.hands[1]).toBe(ALL & ~1); // only the caltrop was spent
+    expect(g.R.turn).toBe(2);
   });
-  it("a three on the last die still forces that die", () => {
-    const g = at(0); g.R.hands[1] = 1;
-    const n = applyRoll(g, 0, 3);
-    expect(n.R.forced).toBe(0);
-    expect(n.R.free).toBe(-1);
+  it("needing 1 or 2, a three would bust: the message says so, and a reroll can still win", () => {
+    const h = applyRoll(at(18), 0, 3);
+    expect(h.R.over).toBeNull();
+    expect(h.R.msg).toBe("A three on the caltrop. You can reroll the caltrop, or keep it and go over 20.");
+    expect(applyRoll(h, 0, 2).R.over).toMatchObject({ winner: 1, why: "win" });
+    expect(keepHeld(h).R.over).toMatchObject({ winner: 2, why: "bust" });
+  });
+  it("a three that lands on 20 wins outright", () => {
+    expect(applyRoll(at(17), 0, 3).R.over).toMatchObject({ winner: 1, why: "win" });
+  });
+  it("a three again on the reroll is held again", () => {
+    const g = applyRoll(applyRoll(at(5), 1, 3), 1, 3);
+    expect(g.R.held).toBe(1);
+    expect(g.R.total).toBe(5);
+    expect(g.R.rolls.filter(r => r.void).length).toBe(1);
   });
   it("landing on 7 rolls again", () => {
     const g = applyRoll(at(2), 1, 5);
@@ -76,11 +91,11 @@ describe("turns", () => {
     expect(g.R.msg).toBe("The total lands on 7. You roll again.");
   });
   it("a three onto 7 says both", () => {
-    expect(applyRoll(at(4), 1, 3).R.msg).toBe("A three, and the total is 7. You roll again: another die, or the wire cube again.");
+    expect(keepHeld(applyRoll(at(4), 1, 3)).R.msg).toBe("A three, and the total is 7. You roll again.");
   });
   it("a three with the last die rolls the same die again", () => {
     let g = at(0, [bit(1), ALL]);
-    g = applyRoll(g, 1, 3);
+    g = keepHeld(applyRoll(g, 1, 3));
     expect(g.R.forced).toBe(1);
     expect(g.R.msg).toBe("A three on the wire cube. You roll again with the same wire cube.");
     expect(legalDie(g, 0)).toBe(1); // whatever is picked, the forced die is rolled
@@ -112,7 +127,7 @@ describe("special totals end the round", () => {
     expect(g.R.kind).toBe("lose");
   });
   it("9 hands the round to the other side, even on a three", () => {
-    const g = applyRoll(at(6, undefined, 2), 0, 3);
+    const g = keepHeld(applyRoll(at(6, undefined, 2), 0, 3));
     expect(g.R.over).toMatchObject({ winner: 1, why: "nine", text: "Nine! You take the round." });
     expect(g.R.kind).toBe("win");
   });
@@ -153,14 +168,15 @@ describe("whole matches", () => {
       for (let steps = 0; !g.M.over; steps++) {
         expect(steps).toBeLessThan(500);
         if (g.R.over) { g = nextRound(g); continue; }
-        const hand = g.R.hands[g.R.turn];
+        if (g.R.held >= 0 && rng() < 0.5) { const t = g.R.total; g = keepHeld(g); expect(g.R.total).toBe(t + 3); continue; }
+        const hand = g.R.hands[g.R.turn], wasHeld = g.R.held >= 0;
         const opts = ([0, 1, 2] as Die[]).filter(d => legalDie(g, d) !== null);
         expect(opts.length).toBeGreaterThan(0);
         const d = legalDie(g, opts[(rng() * opts.length) | 0])!;
         const before = g.R.total;
         g = applyRoll(g, d, [1, 2, 3, 4, 5, 6, 7, 8][(rng() * [4, 6, 8][d]) | 0]);
-        expect(g.R.total).toBeGreaterThan(before);
-        if (g.R.forced < 0 && hand) expect(g.R.hands[g.R.rolls.at(-1)!.p] & bit(d)).toBe(0);
+        expect(g.R.total).toBeGreaterThanOrEqual(before);
+        if (g.R.forced < 0 && hand && !wasHeld) expect(g.R.hands[g.R.rolls.at(-1)!.p] & bit(d)).toBe(0);
       }
       const n = Math.ceil(g.M.best / 2);
       expect(Math.max(g.M.wins[1], g.M.wins[2])).toBe(n);

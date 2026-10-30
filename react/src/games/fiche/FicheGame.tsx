@@ -16,8 +16,8 @@ export function FicheGame() {
   const { M, R } = view;
   const pvp = M.mode === "pvp";
   const mine = live(g) && isHuman(M, R.turn) && !f.busy;
-  const again = (who: string) => (R.forced >= 0 ? `Roll the ${DICE[R.forced].name.toLowerCase()} again`
-    : R.free >= 0 ? `A three: pick another die, or roll the ${DICE[R.free].name.toLowerCase()} again` : who);
+  const again = (who: string) => (R.held >= 0 ? `A three: reroll the ${DICE[R.held].name.toLowerCase()}, or keep the 3`
+    : R.forced >= 0 ? `Roll the ${DICE[R.forced].name.toLowerCase()} again` : who);
   const youNote = R.turn === 1 && mine ? again("Your roll. Pick a die.") : "";
   const rivalNote = R.turn === 2 && !R.over ? (pvp ? (mine ? again("Player 2 to roll. Pick a die.") : "") : f.busy ? "Thinking…" : "") : "";
   const status = R.msg || (R.over ? "" : `Total ${R.total}. ${nameOf(M, R.turn)} to roll.`);
@@ -37,11 +37,11 @@ export function FicheGame() {
           <Spiral total={R.total} hidden />
           <Dial total={g.R.total} />
           <div className="playfield">
-            <Hand side="you" name={pvp ? "Player 1" : "You"} note={youNote} hand={R.hands[1]} forced={R.forced} free={R.free}
+            <Hand side="you" name={pvp ? "Player 1" : "You"} note={youNote} hand={R.hands[1]} forced={R.forced} held={R.held} keepOdds={R.turn === 1 ? f.keepOdds : null} onKeep={f.keep}
               active={mine && R.turn === 1} odds={oddsFor(1)} onRoll={f.roll} />
             <Tray rolls={R.rolls} flight={f.flight} pvp={pvp}
               first={!R.rolls.length && !M.over ? { p: R.turn, lines: [nameOf(M, R.turn), `${verb(M, R.turn, "roll", "rolls")} first`] } : null} />
-            <Hand side="rival" name={pvp ? "Player 2" : "Rival"} note={rivalNote} hand={R.hands[2]} forced={R.forced} free={R.free}
+            <Hand side="rival" name={pvp ? "Player 2" : "Rival"} note={rivalNote} hand={R.hands[2]} forced={R.forced} held={R.held} keepOdds={R.turn === 2 ? f.keepOdds : null} onKeep={f.keep}
               active={mine && R.turn === 2} odds={pvp ? oddsFor(2) : undefined} onRoll={f.roll} />
           </div>
         </section>

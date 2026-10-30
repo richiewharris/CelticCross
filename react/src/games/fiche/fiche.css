@@ -170,3 +170,9 @@ body.gm-fiche .die-btn { transition: none; }
 
 /* ---- React edition: the site's top bar reads --fg and --muted; give it this page's single dark look. ---- */
 body.gm-fiche { --fg: var(--ink); --bg: var(--oak); }
+body.gm-fiche .keep-btn { flex-wrap: wrap; margin-top: 8px; width: 100%; font: inherit; font-weight: 600; padding: 8px 12px; border-radius: 10px; cursor: pointer; border: 1px solid var(--bronze); background: transparent; color: var(--ink); display: flex; justify-content: center; gap: 10px; align-items: baseline; }
+body.gm-fiche .keep-btn .odds { font-family: var(--font-mono); font-size: .8rem; color: var(--bronze-hi); font-weight: 400; }
+body.gm-fiche .keep-btn.best { box-shadow: 0 0 0 2px var(--bronze-hi); }
+body.gm-fiche .keep-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body.gm-fiche .die-btn.again { border-color: var(--bronze-hi); }
+body.gm-fiche .keep-btn .kl { white-space: nowrap; }

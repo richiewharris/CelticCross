@@ -1,8 +1,8 @@
 // Self-play simulator for Fiche, built on the same engine as the game.
 // Usage: npx tsx sim/fiche-sim.ts --matches 20000 --p1 3 --p2 1 [--best 3] [--seed 1]
-import { aiChoice, LEVEL_NAMES } from "../src/games/fiche/engine/ai";
-import { ALL, sample, seeded } from "../src/games/fiche/engine/dice";
-import { newMatch, nextRound, applyRoll, type Game, type Level } from "../src/games/fiche/engine/game";
+import { aiChoice, playChoice, LEVEL_NAMES } from "../src/games/fiche/engine/ai";
+import { ALL, seeded } from "../src/games/fiche/engine/dice";
+import { newMatch, nextRound, type Game, type Level } from "../src/games/fiche/engine/game";
 import { V } from "../src/games/fiche/engine/odds";
 
 const args = process.argv.slice(2);
@@ -20,8 +20,7 @@ for (let m = 0; m < matches; m++) {
     if (g.R.over) { g = nextRound(g); continue; }
     const starter = g.R.turn;
     while (!g.R.over) {
-      const d = aiChoice(g.R, g.R.turn === 1 ? lvl1 : lvl2, rng);
-      g = applyRoll(g, d, sample(d, rng), rng());
+      g = playChoice(g, aiChoice(g.R, g.R.turn === 1 ? lvl1 : lvl2, rng), rng);
       rolls++;
     }
     const w = g.R.over.winner;
