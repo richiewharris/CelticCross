@@ -47,7 +47,7 @@ export function RulesPanel() {
       <p className="label">How to play</p>
       <ul className="rules">
         <li><span className="n plain">↻</span><span>Take turns. Pick one of your dice and roll it; its number goes onto the shared total. Each die is used once a round.</span></li>
-        <li><span className="n again">3</span><span>Roll a three on any die and you roll again, with another die if you have one, or the same one if it was your last.</span></li>
+        <li><span className="n again">3</span><span>Roll a three on any die and you roll again: pick another die, or roll the same die again and keep your other dice for later. If it was your last die, roll it again.</span></li>
         <li><span className="n again">7</span><span>Land the total on 7 and you roll again.</span></li>
         <li><span className="n lose">9</span><span>Land on 9 and your opponent takes the round.</span></li>
         <li><span className="n draw">12</span><span>Land on 12 and the round is drawn.</span></li>

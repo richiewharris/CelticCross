@@ -16,6 +16,9 @@ export interface Round {
   turn: Player;
   /** The die that must be rolled again (a three or a 7 with no other die left), or -1. */
   forced: number;
+  /** After a three with dice still in hand: that same die, which may be rolled again instead of a
+   *  new one (it stays spent, so this costs no die from the hand), or -1. */
+  free: number;
   rolls: Roll[];
   over: RoundOver | null;
   /** Whoever rolled last; they start the next round. */
@@ -44,7 +47,7 @@ export const verb = (M: Match, p: Player, a: string, b: string) => (M.mode === "
 const lower = (d: number) => DICE[d].name.toLowerCase();
 
 export function newRound(starter: Player): Round {
-  return { total: 0, hands: { 1: ALL, 2: ALL }, turn: starter, forced: -1, rolls: [], over: null, last: starter, msg: "", kind: "" };
+  return { total: 0, hands: { 1: ALL, 2: ALL }, turn: starter, forced: -1, free: -1, rolls: [], over: null, last: starter, msg: "", kind: "" };
 }
 
 export function newMatch(st: Settings, rng: Rng): Game {
@@ -65,12 +68,13 @@ export const live = (g: Game) => !g.R.over && !g.M.over;
 export function legalDie(g: Game, d: Die): Die | null {
   if (!live(g)) return null;
   if (g.R.forced >= 0) return g.R.forced as Die;
+  if (d === g.R.free) return d;
   return g.R.hands[g.R.turn] & bit(d) ? d : null;
 }
 
-/** The die leaves the hand (a forced re-roll uses the die already spent). */
+/** The die leaves the hand (a forced or free re-roll uses the die already spent). */
 export function takeDie(g: Game, d: Die): Game {
-  if (g.R.forced >= 0) return g;
+  if (g.R.forced >= 0 || d === g.R.free) return g;
   const p = g.R.turn;
   return { ...g, R: { ...g.R, hands: { ...g.R.hands, [p]: g.R.hands[p] & ~bit(d) } } };
 }
@@ -84,6 +88,7 @@ export function land(g: Game, d: Die, v: number, seed: number): Game {
   R.total += v;
   R.last = p;
   R.forced = -1;
+  R.free = -1;
   M.log.push({ p, text: `${DICE[d].name} ${v} → ${R.total}` });
   const what = landing(R.total, v), o = other(p), me = nameOf(M, p), them = nameOf(M, o);
   const end = (winner: 0 | Player, text: string, why: Ending) => endRound(M, R, winner, text, why);
@@ -96,6 +101,10 @@ export function land(g: Game, d: Die, v: number, seed: number): Game {
     if (!R.hands[p]) {
       R.forced = d;
       R.msg = `${why}. ${me} ${verb(M, p, "roll", "rolls")} again with the same ${lower(d)}.`;
+    } else if (v === 3) {
+      // A three: roll a new die, or the same one again and keep the others for later.
+      R.free = d;
+      R.msg = `${why}. ${me} ${verb(M, p, "roll", "rolls")} again: another die, or the ${lower(d)} again.`;
     } else R.msg = `${why}. ${me} ${verb(M, p, "roll", "rolls")} again.`;
     R.kind = "again";
     M.log.push({ e: true, text: R.msg });
@@ -125,5 +134,5 @@ export function applyRoll(g: Game, d: Die, v: number, seed = 0.5): Game {
 /** The coach: each die's chance of taking the round for the player to move, or null if it can't be rolled. */
 export function diceOdds(R: Round): (number | null)[] {
   const p = R.turn, hp = R.hands[p], ho = R.hands[other(p)];
-  return ([0, 1, 2] as Die[]).map(d => (hp & bit(d) || R.forced === d ? chanceOf(R.total, hp, ho, d, R.forced) : null));
+  return ([0, 1, 2] as Die[]).map(d => (hp & bit(d) || R.forced === d || R.free === d ? chanceOf(R.total, hp, ho, d, R.forced, R.free) : null));
 }

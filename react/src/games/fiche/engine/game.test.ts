@@ -46,8 +46,29 @@ describe("turns", () => {
     const g = applyRoll(at(0), 0, 3);
     expect(g.R.turn).toBe(1);
     expect(g.R.kind).toBe("again");
-    expect(g.R.msg).toBe("A three on the caltrop. You roll again.");
+    expect(g.R.msg).toBe("A three on the caltrop. You roll again: another die, or the caltrop again.");
     expect(g.R.forced).toBe(-1);
+    expect(g.R.free).toBe(0);
+  });
+  it("after a three, the same die may be rolled again without spending another", () => {
+    const g = applyRoll(at(0), 0, 3);
+    expect(legalDie(g, 0)).toBe(0);
+    expect(legalDie(g, 1)).toBe(1);
+    const same = applyRoll(g, 0, 2);
+    expect(same.R.total).toBe(5);
+    expect(same.R.hands[1]).toBe(g.R.hands[1]); // wire cube and twin cubes still in hand
+    expect(same.R.free).toBe(-1);
+    const other = applyRoll(g, 1, 2);
+    expect(other.R.hands[1]).toBe(g.R.hands[1] & ~2);
+  });
+  it("landing on 7 without a three gives no same-die choice", () => {
+    expect(applyRoll(at(2), 1, 5).R.free).toBe(-1);
+  });
+  it("a three on the last die still forces that die", () => {
+    const g = at(0); g.R.hands[1] = 1;
+    const n = applyRoll(g, 0, 3);
+    expect(n.R.forced).toBe(0);
+    expect(n.R.free).toBe(-1);
   });
   it("landing on 7 rolls again", () => {
     const g = applyRoll(at(2), 1, 5);
@@ -55,7 +76,7 @@ describe("turns", () => {
     expect(g.R.msg).toBe("The total lands on 7. You roll again.");
   });
   it("a three onto 7 says both", () => {
-    expect(applyRoll(at(4), 1, 3).R.msg).toBe("A three, and the total is 7. You roll again.");
+    expect(applyRoll(at(4), 1, 3).R.msg).toBe("A three, and the total is 7. You roll again: another die, or the wire cube again.");
   });
   it("a three with the last die rolls the same die again", () => {
     let g = at(0, [bit(1), ALL]);

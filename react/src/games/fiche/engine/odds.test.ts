@@ -16,7 +16,7 @@ function at(total: number, hands: [number, number], turn: Player = 1, forced = -
 function exact(g: Game, me: Player, memo = new Map<string, number>()): number {
   const R = g.R;
   if (R.over) return R.over.winner === 0 ? 0.5 : R.over.winner === me ? 1 : 0;
-  const key = `${R.total}|${R.hands[1]}|${R.hands[2]}|${R.turn}|${R.forced}|${me}`;
+  const key = `${R.total}|${R.hands[1]}|${R.hands[2]}|${R.turn}|${R.forced}|${R.free}|${me}`;
   const hit = memo.get(key);
   if (hit !== undefined) return hit;
   let best = R.turn === me ? -1 : 2;
@@ -55,6 +55,21 @@ describe("the coach's odds", () => {
       const g = at(total, [0, ho], 1, d);
       expect(chanceOf(total, 0, ho, 0, d)).toBeCloseTo(rollExact(g, d, 1, new Map()), 12);
     }
+  });
+  it("match brute force after a three, when the same die may be rolled again", () => {
+    let checked = 0;
+    for (const total of [3, 4, 6, 8, 11, 14, 17]) for (const hp of [1, 2, 3, 4, 5, 6]) for (const ho of HANDS)
+      for (const free of [0, 1, 2] as Die[]) {
+        if (hp & bit(free)) continue; // the die that showed the three is already spent
+        const g = at(total, [hp, ho]); g.R.free = free;
+        for (const d of [0, 1, 2] as Die[]) {
+          if (!(hp & bit(d)) && d !== free) continue;
+          expect(chanceOf(total, hp, ho, d, -1, free)).toBeCloseTo(rollExact(g, d, 1, new Map()), 12);
+          checked++;
+        }
+        expect(V(total, hp, ho, -1, free)).toBeCloseTo(exact(g, 1), 12);
+      }
+    expect(checked).toBeGreaterThan(300);
   });
   it("trivial positions", () => {
     expect(V(0, 0, 0, -1)).toBe(0.5); // nothing left to roll: drawn

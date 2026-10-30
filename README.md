@@ -140,7 +140,7 @@ A day is eight pans. Each pan ends with a summary of gold kept, washed out and l
 **Rules**
 
 - Take turns. Pick one of your dice and roll it; its number goes onto the shared total. Each die is used once a round.
-- Roll a **three** on any die and you roll again, with another die if you have one, or the same one if it was your last.
+- Roll a **three** on any die and you roll again: pick another die, or roll the same die again and keep your other dice for later. If it was your last die, roll it again. (The classic page in `classic/fiche/` keeps the old rule: another die if you have one.)
 - Land the total on **7** and you roll again. Land on **9** and your opponent takes the round. Land on **12** and the round is drawn.
 - Land on **20** to take the round. Go over 20 and you lose it.
 - If all six dice are used up short of 20, the round is drawn. Whoever rolled last starts the next round.
