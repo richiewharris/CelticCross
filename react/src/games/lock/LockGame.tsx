@@ -4,6 +4,8 @@ import { TIERS, looseEnds } from "./engine/knot";
 import { Dial, Example } from "./components/Dial";
 import { VariantNav } from "./components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "./components/Ledger";
+import { AttemptControls } from "./components/AttemptControls";
+import { touched } from "./engine/attempt";
 import { useLock } from "./useLock";
 
 export function LockGame() {
@@ -27,13 +29,13 @@ export function LockGame() {
       <div className="game">
         <section className="box" aria-label="Puzzle box">
           <div className={`status ${s.msgKind}`} role="status" aria-live="polite">{s.msg}</div>
-          <Dial tier={s.tier} cur={s.cur} sol={s.sol} phi={L.drawnPhi} anim={L.anim} open={s.open} svgOpen={L.svgOpen} cheat={cheat}
+          <Dial tier={s.tier} cur={s.cur} sol={s.sol} phi={L.drawnPhi} anim={L.anim} open={s.open} svgOpen={L.svgOpen} cheat={cheat} locked={s.failed}
             domRef={L.dom} {...L.handlers} />
           <div className="controls">
             <button className="btn icon" type="button" aria-label="Spin anticlockwise" onClick={() => L.spinBy(-1)}>⟲</button>
             <button className="btn icon" type="button" aria-label="Spin clockwise" onClick={() => L.spinBy(1)}>⟳</button>
-            <button className={`btn${s.open ? "" : " primary"}`} type="button" disabled={s.open} onClick={L.tryOpen}>Try the lock</button>
-            <button className={`btn${s.open ? " primary" : ""}`} type="button" onClick={L.newOrNext}>{s.open ? "Next lock" : "New lock"}</button>
+            <AttemptControls open={s.open} failed={s.failed} canStartOver={touched(s)} tryLabel="Try the lock" newLabel="New lock" nextLabel="Next lock"
+              onTry={L.tryOpen} onNew={L.newOrNext} onRetry={L.retry} onScramble={L.scramble} onStartOver={L.startOver} />
             <button className="btn cheat" type="button" aria-pressed={cheat} onClick={L.toggleCheat}>{cheat ? "Cheat on" : "Cheat"}</button>
           </div>
           <p className="hintbox" aria-live="polite">{hint}</p>
@@ -50,7 +52,8 @@ export function LockGame() {
               <li>Drag the disc, or use ⟲ ⟳, to spin it. Spinning is free. You can also spin it by dragging the center.</li>
               <li>The lock is solved when the knot has no loose ends anywhere on the disc. A loose end shows as a round knob.</li>
               <li>Stones with corner rivets are crossings. They're fixed and can't turn.</li>
-              <li>Press the center of the dial to try the lock. If the knot is whole, the shield slides away, the pins drop into their slots and the disc spins free. If it's broken anywhere, the stones scramble and your turns refill.</li>
+              <li>Press the center of the dial to try the lock. If the knot is whole, the shield slides away, the pins drop into their slots and the disc spins free. If it's broken anywhere, the dial jolts and you choose: retry this lock exactly as it was dealt, or scramble it for a fresh start on the same knot. Either way your turns refill.</li>
+              <li>Start over puts the stones back as this lock was dealt, with all its turns, at any time.</li>
             </ul>
             <div className="examples">
               <figure><Example kind="good" /><figcaption>Joined</figcaption></figure>

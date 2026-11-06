@@ -6,7 +6,7 @@ import { geom, norm, snapPhi, visible } from "../engine/dial";
 import { NEW_PROFILE, type Profile, type TierId } from "../engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "../components/Dial";
 import { useLockRecord } from "../record";
-import { current, dealStack, layerSolved, press, resetStack, stackSkillGain, stranded, turnStone, type Layer, type Stack } from "./engine";
+import { current, dealStack, failStack, layerSolved, press, resetStack, retryStack, stackSkillGain, stackTouched, stranded, turnStone, type Layer, type Stack } from "./engine";
 
 export interface StackState { st: Stack; msg: string; msgKind: "" | "good" | "bad"; cheated: boolean }
 /** The disc that just opened, drawn over the next one while it lifts away. */
@@ -108,25 +108,44 @@ export function useStack() {
     svg.classList.remove("shake"); void svg.getBoundingClientRect(); svg.classList.add("shake");
   };
 
-  /** Out of turns with a broken knot: the attempt ends and the whole stack resets. */
+  /** Out of turns with a broken knot: the attempt ends, and the player chooses Retry or a fresh stack. */
   const runDry = () => {
     const S = sRef.current, n = S.st.at + 1;
-    busy.current = true;
     const P = pRef.current, np = { ...P, attempts: P.attempts + 1 };
     pRef.current = np; setProfile(np);
     rec.end(S.st.tier, "failed", S.cheated);
-    const why = `Out of turns with ${ord(n)}'s knot still broken.`;
-    commit({ ...S, msg: `${why} The stack resets…`, msgKind: "bad" });
+    commit({ ...S, st: failStack(S.st), msg: `Out of turns with ${ord(n)}'s knot still broken. Retry this lock from the top disc, or take a fresh stack.`, msgKind: "bad" });
     shake();
-    wait(1300, () => {
-      const fresh: StackState = { st: resetStack(S.st, np.skill), msg: `${why} The whole stack has reset: fresh discs and a fresh purse.`, msgKind: "bad", cheated: cheatRef.current };
-      spinSwap(fresh, () => { busy.current = false; });
-    });
+  };
+
+  /** Back to the deal: Retry after running dry, or Start over mid-attempt (which drops the attempt unrecorded). */
+  const restart = (mid: boolean) => {
+    const S = sRef.current;
+    if (busy.current || S.st.open || (mid ? S.st.failed || !stackTouched(S.st) : !S.st.failed)) return;
+    if (mid) rec.drop();
+    busy.current = true;
+    setLift(null);
+    const st = retryStack(S.st);
+    const lead = mid ? "Started over." : "The stack spins back.";
+    // Cheat seen on this deal stays with it: the same stones again are still a practice stack.
+    const next: StackState = { st, cheated: S.cheated || cheatRef.current, msgKind: "",
+      msg: `${lead} Every disc is just as it was dealt, from the top, with the full purse of ${st.purse} turns.` };
+    spinSwap(next, () => { busy.current = false; });
+  };
+  const retry = () => restart(false);
+  const startOver = () => restart(true);
+  /** After running dry: fresh discs and a fresh purse, as the stack used to reset. */
+  const freshStack = () => {
+    const S = sRef.current;
+    if (busy.current || !S.st.failed) return;
+    busy.current = true;
+    const fresh: StackState = { st: resetStack(S.st, pRef.current.skill), msg: "Fresh discs and a fresh purse.", msgKind: "", cheated: cheatRef.current };
+    spinSwap(fresh, () => { busy.current = false; });
   };
 
   const turn = (k: number, ccw: boolean) => {
     const S = sRef.current;
-    if (busy.current || S.st.open) return;
+    if (busy.current || S.st.open || S.st.failed) return;
     const L = current(S.st), g = geom(L.tier);
     if (L.cur[k] === 15 || !visible(g, k, anim.current.phi)) return;
     if (S.st.left <= 0) return;
@@ -152,7 +171,7 @@ export function useStack() {
 
   const liftKey = useRef(0);
   const tryOpen = () => {
-    if (busy.current || isOpen()) return;
+    if (busy.current || isOpen() || sRef.current.st.failed) return;
     busy.current = true;
     pressHub(() => {
       const S = sRef.current, P = pRef.current;
@@ -274,7 +293,7 @@ export function useStack() {
 
   return {
     s, profile, cheat, svgOpen, drawnPhi, anim: anim.current, dom, lift, reduce,
-    spinBy, tryOpen, newOrNext, toggleCheat, pickTier,
+    spinBy, tryOpen, newOrNext, toggleCheat, pickTier, retry, freshStack, startOver,
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<SVGSVGElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<SVGSVGElement>) => endDrag(e, true), onKeyDown },
   };
 }

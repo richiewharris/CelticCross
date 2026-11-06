@@ -37,6 +37,8 @@ body.gm-lock .cube-scene.home .cube-pins-lift { transform: none; filter: brightn
 body.gm-lock .cube-scene.open .cube-floor { background: radial-gradient(closest-side, rgb(243 207 106 / .4), rgb(243 207 106 / 0)); transition: background .6s; }
 body.gm-lock .cube-scene.clunk { animation: clunk-cube .22s ease-out; }
 @keyframes clunk-cube { 30% { transform: translateY(4px) scale(.99); } 100% { transform: none; } }
+body.gm-lock .cube-scene.shake { animation: shake-cube .45s; }
+@keyframes shake-cube { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
 body.gm-lock .cube-turns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 body.gm-lock .cube-turns .btn.icon { min-width: 46px; }
 body.gm-lock button.btn.boss { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px; }
@@ -48,6 +50,6 @@ body.gm-lock .examples svg { max-width: 140px; }
   body.gm-lock .cube-turns .btn.icon { min-width: 42px; padding: 8px 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  body.gm-lock .cube-scene.clunk { animation: none; }
+  body.gm-lock .cube-scene.clunk, body.gm-lock .cube-scene.shake { animation: none; }
   body.gm-lock .cube-pins-lift { transition: none; }
 }

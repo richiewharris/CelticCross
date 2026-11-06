@@ -2,17 +2,18 @@
 // snapping to a face-square orientation), and the try / open / scramble animations.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
-import { NEW_PROFILE, openedMessage, rotCCW, rotCW, skillGain, type Profile, type TierId } from "../engine/knot";
+import { NEW_PROFILE, openedMessage, skillGain, type Profile, type TierId } from "../engine/knot";
+import { FAILED_MSG, failAttempt, retryAttempt, startAttempt, touched, turnInAttempt, type Attempt } from "../engine/attempt";
 import {
   CUBE_TIERS, ORIENTATIONS, cubeGeom, cubeTransform, deal, dragCube, faceLight, frontFace, makeKnot, qaxis, qmul, qnorm,
-  qslerp, snapQuat, solved, turnCube, visibleFaces, type CubeTurn, type Quat,
+  qslerp, snapQuat, solved, turnCube, visibleFaces, type CubeTurn, type Deal, type Quat,
 } from "./engine";
 import { emptyCubeDom, type CubeDom } from "./CubeView";
 import { useLockRecord } from "../record";
 
-export interface CubeState {
-  tier: TierId; sol: number[]; cur: number[];
-  turnsLeft: number; budget: number; open: boolean;
+/** The cube in play: the attempt (stones, turns, how it was dealt, failed) and the rest of the page. */
+export interface CubeState extends Attempt<Deal> {
+  tier: TierId; sol: number[]; open: boolean;
   msg: string; msgKind: "" | "good" | "bad"; cheated: boolean;
 }
 
@@ -22,7 +23,7 @@ const newMsg = (tier: TierId) => CUBE_TIERS[tier].obscured
 
 function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: CubeState["msgKind"] = "") {
   const d = deal(tier, sol, skill);
-  const s: CubeState = { tier, sol, cur: d.cur, turnsLeft: d.budget, budget: d.budget, open: false, msg, msgKind, cheated: cheat };
+  const s: CubeState = { ...startAttempt(d), tier, sol, open: false, msg, msgKind, cheated: cheat };
   return { s, q: ORIENTATIONS[d.orient] };
 }
 
@@ -135,12 +136,13 @@ export function useCube() {
 
   const turn = (k: number, ccw: boolean) => {
     const S = sRef.current;
-    if (busy.current || S.open || !turnable(k)) return;
-    if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the triskele to try the lock.", msgKind: "bad" }); return; }
-    const cur = S.cur.slice(); cur[k] = ccw ? rotCCW(cur[k]) : rotCW(cur[k]);
-    const left = S.turnsLeft - 1;
+    if (busy.current || S.open || S.failed || !turnable(k)) return;
+    if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the triskele to try the lock, or start over.", msgKind: "bad" }); return; }
+    const next = turnInAttempt(S, k, ccw);
+    if (!next) return;
+    const left = next.turnsLeft;
     rec.begin(S.tier);
-    commit({ ...S, cur, turnsLeft: left, msg: left === 0 ? "That was your last turn. Press the triskele." : "", msgKind: "" });
+    commit({ ...next, msg: left === 0 ? "That was your last turn. Press the triskele." : "", msgKind: "" });
     if (!reduce) {
       // the stone and its pin swing round into place
       dom.current.body?.querySelectorAll<SVGGElement>(`[data-tile="${k}"]`).forEach(el =>
@@ -153,8 +155,53 @@ export function useCube() {
     el.classList.remove("clunk"); void el.getBoundingClientRect(); el.classList.add("clunk");
   };
 
+  const shake = () => {
+    const el = dom.current.scene; if (!el || reduce) return;
+    el.classList.remove("shake"); void el.getBoundingClientRect(); el.classList.add("shake");
+  };
+
+  /** The cube tumbles to `next`'s dealt orientation, and the stones change halfway through. */
+  const tumble = (next: CubeState, done: () => void) => {
+    stopTween.current?.(); aim.current = null;
+    const start = snapQuat(q.current).q, target = ORIENTATIONS[next.dealt.orient];
+    let swapped = false;
+    setMoving(true);
+    tween(1500, t => {
+      if (!swapped && t >= .5) { swapped = true; commit(next); }
+      q.current = qnorm(qmul(qaxis([0, 1, 0], 360 * t), qslerp(start, target, t))); apply();
+    }, () => {
+      if (!swapped) commit(next);
+      q.current = target; apply(); setMoving(false); done();
+    }, easeInOut);
+  };
+
+  /** Back to the deal: Retry after a failed try, or Start over mid-attempt (which drops the attempt unrecorded). */
+  const restart = (mid: boolean) => {
+    const S = sRef.current;
+    if (busy.current || S.open || (mid ? S.failed || !touched(S) : !S.failed)) return;
+    if (mid) rec.drop();
+    busy.current = true;
+    // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
+    const next: CubeState = {
+      ...S, ...retryAttempt(S), cheated: S.cheated || cheatRef.current, msgKind: "",
+      msg: mid ? "Started over. The stones are back as this lock was dealt, with all its turns."
+        : "The cube tumbles back. The stones are just as this lock was dealt, with all its turns.",
+    };
+    tumble(next, () => { busy.current = false; });
+  };
+  const retry = () => restart(false);
+  const startOver = () => restart(true);
+  /** After a failed try: a new deal of the same knot, turns refilled. */
+  const scramble = () => {
+    const S = sRef.current;
+    if (busy.current || !S.failed) return;
+    busy.current = true;
+    const fresh = freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, "The cube tumbles and the stones scramble. A fresh try at the same knot.");
+    tumble(fresh.s, () => { busy.current = false; });
+  };
+
   const tryOpen = () => {
-    if (busy.current || sRef.current.open) return;
+    if (busy.current || sRef.current.open || sRef.current.failed) return;
     busy.current = true;
     stopTween.current?.(); aim.current = null;
     const S = sRef.current, g = cubeGeom(CUBE_TIERS[S.tier].N), P = pRef.current;
@@ -178,22 +225,12 @@ export function useCube() {
         });
       });
     } else {
-      // The cube tumbles and the stones fall back to a new random state; turns refill.
+      // The cube jolts and stays as it is: the player chooses Retry (the same deal) or Scramble.
       const np = { ...P, attempts: P.attempts + 1 };
       pRef.current = np; setProfile(np);
       rec.end(S.tier, "failed", S.cheated);
-      const fresh = freshLock(S.tier, S.sol, np.skill, cheatRef.current, "The knot was broken. The cube tumbles and the stones scramble.", "bad");
-      commit({ ...S, msg: "The knot was broken…", msgKind: "bad" });
-      const target = fresh.q;
-      let swapped = false;
-      setMoving(true);
-      tween(1500, t => {
-        if (!swapped && t >= .5) { swapped = true; commit(fresh.s); }
-        q.current = qnorm(qmul(qaxis([0, 1, 0], 360 * t), qslerp(start, target, t))); apply();
-      }, () => {
-        if (!swapped) commit(fresh.s);
-        q.current = target; apply(); setMoving(false); busy.current = false;
-      }, easeInOut);
+      commit({ ...failAttempt(S), msg: FAILED_MSG, msgKind: "bad" });
+      glideTo(start, 200, () => { shake(); busy.current = false; });
     }
   };
 
@@ -247,7 +284,7 @@ export function useCube() {
 
   return {
     s, profile, cheat, home, moving, view, q, dom,
-    turnBy, tryOpen, newOrNext, toggleCheat, pickTier, onKeyDown,
+    turnBy, tryOpen, newOrNext, toggleCheat, pickTier, onKeyDown, retry, scramble, startOver,
     handlers: {
       onPointerDown, onPointerMove,
       onPointerUp: (e: PointerEvent<HTMLDivElement>) => endDrag(e, false),

@@ -6,6 +6,8 @@ import { CubeView, Example, Triskele } from "./CubeView";
 import { VariantNav } from "../components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "../components/Ledger";
 import { shadeOf, useCube } from "./useCube";
+import { AttemptControls } from "../components/AttemptControls";
+import { touched } from "../engine/attempt";
 
 export function CubeGame() {
   const L = useCube();
@@ -13,7 +15,7 @@ export function CubeGame() {
   const T = CUBE_TIERS[s.tier], g = cubeGeom(T.N);
   const ends = looseEnds(g, s.cur);
   const reveal = FACES.map((_, f) => !T.obscured || f === view.front || cheat || s.open);
-  const live = FACES.map((_, f) => !s.open && reveal[f] && view.vis.includes(f));
+  const live = FACES.map((_, f) => !s.open && !s.failed && reveal[f] && view.vis.includes(f));
   const unseen = ends.filter(([k]) => !view.vis.includes(g.face[k])).length;
   const hint = !cheat || s.open ? ""
     : ends.length ? `Every face shows its knot. Badges show which way each stone needs turning. ${ends.length} loose end${ends.length === 1 ? "" : "s"} left${unseen ? `, ${unseen} round the back` : ""}.`
@@ -43,8 +45,9 @@ export function CubeGame() {
             <button className="btn icon" type="button" aria-label="Roll the cube clockwise" title="Roll clockwise (E)" onClick={() => L.turnBy("roll")}>⟳</button>
           </div>
           <div className="controls">
-            <button className={`btn boss${s.open ? "" : " primary"}`} type="button" disabled={s.open} onClick={L.tryOpen}><Triskele />Try the lock</button>
-            <button className={`btn${s.open ? " primary" : ""}`} type="button" onClick={L.newOrNext}>{s.open ? "Next lock" : "New lock"}</button>
+            <AttemptControls open={s.open} failed={s.failed} canStartOver={touched(s)} tryLabel={<><Triskele />Try the lock</>} tryClass="boss"
+              newLabel="New lock" nextLabel="Next lock"
+              onTry={L.tryOpen} onNew={L.newOrNext} onRetry={L.retry} onScramble={L.scramble} onStartOver={L.startOver} />
             <button className="btn cheat" type="button" aria-pressed={cheat} onClick={L.toggleCheat}>{cheat ? "Cheat on" : "Cheat"}</button>
           </div>
           <p className="hintbox" aria-live="polite">{hint}</p>
@@ -62,7 +65,8 @@ export function CubeGame() {
               <li>The knot runs over the edges from face to face. The lock is solved when it has no loose ends anywhere on the cube. A loose end shows as a round knob.</li>
               <li>Stones with corner rivets are crossings. They're fixed and can't turn.</li>
               <li>On Gold and Ogham locks only the face toward you shows its knot. The others are bare stone until you turn them to the front.</li>
-              <li>Press the triskele to try the lock. If the knot is whole, the pins drop home and the cube spins free. If it's broken anywhere, the stones scramble and your turns refill.</li>
+              <li>Press the triskele to try the lock. If the knot is whole, the pins drop home and the cube spins free. If it's broken anywhere, the cube jolts and you choose: retry this lock exactly as it was dealt, or scramble it for a fresh start on the same knot. Either way your turns refill.</li>
+              <li>Start over puts the stones back as this lock was dealt, with all its turns, at any time.</li>
             </ul>
             <div className="examples">
               <figure><Example kind="good" /><figcaption>Joined over an edge</figcaption></figure>

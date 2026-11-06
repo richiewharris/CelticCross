@@ -91,6 +91,8 @@ body.gm-lock-v1 button.btn {
   border: 1px solid var(--gold); background: transparent; color: var(--gold);
 }
 body.gm-lock-v1 button.btn.primary { background: var(--gold); color: var(--oak); }
+body.gm-lock-v1 button.btn.minor { padding: 7px 13px; font-size: .88rem; font-weight: 500; border-color: var(--line); color: var(--muted); }
+body.gm-lock-v1 button.btn.minor:not(:disabled):hover { color: var(--ink); border-color: var(--gold); }
 body.gm-lock-v1 button.btn:hover { filter: brightness(1.12); }
 body.gm-lock-v1 button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 body.gm-lock-v1 button.btn:disabled { opacity: .4; cursor: not-allowed; }

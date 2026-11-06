@@ -71,6 +71,17 @@ export function startState(cur: number[], sol: number[], joins: Join[], start: n
   return { cur: cur.slice(), pool: start, paid: joins.map(j => isMade(cur, sol, j)), start, earned: 0, used: 0 };
 }
 
+/**
+ * The same lock again exactly as it was dealt: the dealt stones, the dealt starting turns, and the
+ * paid flags as at the deal (only joins whole at the deal count as paid), so the run replays exactly.
+ */
+export function retryEarn(dealt: { cur: readonly number[]; start: number }, sol: number[], joins: Join[]): EarnState {
+  return startState(dealt.cur.slice(), sol, joins, dealt.start);
+}
+
+/** Has a turn been spent since the deal? */
+export const earnTouched = (st: EarnState) => st.used > 0;
+
 export interface TurnResult { state: EarnState; made: number[]; gain: number }
 
 /** Give stone k a quarter turn. Null if it can't turn (a crossing, or no turns left). */

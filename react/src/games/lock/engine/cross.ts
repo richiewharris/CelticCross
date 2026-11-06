@@ -102,6 +102,14 @@ export function dealCross(tiles: Tile[], tier: TierId, skill: number, rng: Rng =
   return { arr, budget: minSwaps(arr) + spareMoves(skill, tier, rng) };
 }
 
+/** The same lock again, exactly as dealt: the dealt arrangement and the whole move budget. */
+export function retryCross(d: CrossDeal): { arr: number[]; movesLeft: number; budget: number } {
+  return { arr: d.arr.slice(), movesLeft: d.budget, budget: d.budget };
+}
+/** Has a move been made since the deal? */
+export const crossTouched = (s: { arr: readonly number[]; movesLeft: number; budget: number; dealt: CrossDeal }) =>
+  s.movesLeft !== s.budget || s.arr.some((t, i) => t !== s.dealt.arr[i]);
+
 /* ---------- Cheat / training aids ---------- */
 export function brokenEdges(tiles: Tile[], arr: number[], i: number): Dir[] {
   const t = tiles[arr[i]], out: Dir[] = [];

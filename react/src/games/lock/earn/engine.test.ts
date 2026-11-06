@@ -3,7 +3,7 @@ import { BITS, E, N, OPP, S_, TIERS, TIER_IDS, W, makeKnot, nb, pop, rotCCW, rot
 import { mulberry32 } from "../engine/testkit";
 import {
   EARN_TIERS, MAX_JOIN_COST, REWARD, START_MAX, START_MIN, bestFinish, canFinish, earnDeal, earnScramble, fairDeal, isMade,
-  joinCost, joinsWithinReach, knotJoins, need, plan, startState, turnStone, type EarnState, type Join,
+  earnTouched, joinCost, joinsWithinReach, knotJoins, need, plan, retryEarn, startState, turnStone, type EarnState, type Join,
 } from "./engine";
 
 const rotations = (m: number) => [0, 1, 2, 3].map(i => { let x = m; for (let j = 0; j < i; j++) x = rotCW(x); return x; });
@@ -260,3 +260,53 @@ describe("strategy matters", () => {
 });
 
 void BITS; void rotCCW;
+
+describe("retrying a lock", () => {
+  for (const t of TIER_IDS) it(`${TIERS[t].name}: Retry restores the dealt stones and starting turns, and resets the joins that paid`, () => {
+    const T = TIERS[t];
+    for (let seed = 1; seed <= 10; seed++) {
+      const rng = mulberry32(seed * 17 + t);
+      const sol = makeKnot(T, rng), joins = knotJoins(sol, T.rings, T.sectors), d = earnDeal(t, sol, rng);
+      const dealtCur = d.cur.slice();
+      const fresh = startState(d.cur, sol, joins, d.start);
+      // Play the good order part way: some joins pay.
+      const order = plan({ cur: d.cur, sol, joins, pool: d.start, paid: fresh.paid })!;
+      let st: EarnState = fresh;
+      const log: number[] = [];
+      for (const k of order.slice(0, Math.max(1, order.length - 1))) {
+        const s = signedSteps(st.cur[k], sol[k]);
+        for (let i = 0; i < Math.abs(s); i++) { const r = turnStone(st, sol, joins, k, s < 0)!; st = r.state; log.push(r.gain); }
+      }
+      expect(earnTouched(st)).toBe(true);
+      const r = retryEarn(d, sol, joins);
+      expect(r.cur).toEqual(dealtCur);
+      expect(r.pool).toBe(d.start);
+      expect(r.start).toBe(d.start);
+      expect(r.earned).toBe(0);
+      expect(r.used).toBe(0);
+      expect(r.paid).toEqual(fresh.paid);
+      expect(earnTouched(r)).toBe(false);
+      expect(d.cur).toEqual(dealtCur);
+      // The run replays exactly: the same turns pay the same again.
+      let st2 = r;
+      const log2: number[] = [];
+      for (const k of order.slice(0, Math.max(1, order.length - 1))) {
+        const s = signedSteps(st2.cur[k], sol[k]);
+        for (let i = 0; i < Math.abs(s); i++) { const x = turnStone(st2, sol, joins, k, s < 0)!; st2 = x.state; log2.push(x.gain); }
+      }
+      expect(log2).toEqual(log);
+      expect(st2).toEqual(st);
+    }
+  });
+  it("Scramble deals a fair new arrangement of the same knot", () => {
+    const rng = mulberry32(77), T = TIERS[3];
+    const sol = makeKnot(T, rng), joins = knotJoins(sol, T.rings, T.sectors), solCopy = sol.slice();
+    for (let i = 0; i < 10; i++) {
+      const d = earnDeal(3, sol, rng);
+      expect(sol).toEqual(solCopy);
+      expect(solved(d.cur, T.rings, T.sectors)).toBe(false);
+      expect(fairDeal(d.cur, sol, joins, d.start, T.rings, T.sectors)).toBe(true);
+      d.cur.forEach((m, k) => expect(rotations(sol[k])).toContain(m));
+    }
+  });
+});

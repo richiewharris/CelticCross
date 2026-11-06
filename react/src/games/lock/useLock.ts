@@ -4,23 +4,27 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Keyboar
 import { useStoredState } from "../../kit/useStoredState";
 import { geom, norm, snapPhi, visible } from "./engine/dial";
 import {
-  NEW_PROFILE, TIERS, deal, makeKnot, openedMessage, rotCCW, rotCW, skillGain, solved, type Profile, type TierId,
+  NEW_PROFILE, TIERS, deal, makeKnot, openedMessage, skillGain, solved, type Deal, type Profile, type TierId,
 } from "./engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "./components/Dial";
 import { useLockRecord } from "./record";
+import { FAILED_MSG, failAttempt, retryAttempt, startAttempt, touched, turnInAttempt, type Attempt } from "./engine/attempt";
 
-export interface LockState {
-  tier: TierId; sol: number[]; cur: number[];
-  turnsLeft: number; budget: number; open: boolean;
+/** The lock in play: the attempt (stones, turns, how it was dealt, failed) and the rest of the page. */
+export interface LockState extends Attempt<Deal> {
+  tier: TierId; sol: number[]; open: boolean;
   msg: string; msgKind: "" | "good" | "bad"; cheated: boolean;
 }
 
 function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: LockState["msgKind"] = "") {
   const d = deal(tier, sol, skill);
-  const s: LockState = { tier, sol, cur: d.cur, turnsLeft: d.budget, budget: d.budget, open: false, msg, msgKind, cheated: cheat };
+  const s: LockState = { ...startAttempt(d), tier, sol, open: false, msg, msgKind, cheated: cheat };
   return { s, phi: d.phi };
 }
 const NEW_MSG = "Spin the disc to see the rest of the knot.";
+const RETRY_MSG = "The dial spins back. The stones are just as this lock was dealt, with all its turns.";
+const START_OVER_MSG = "Started over. The stones are back as this lock was dealt, with all its turns.";
+const SCRAMBLE_MSG = "The dial spins and the stones scramble. A fresh try at the same knot.";
 
 const easeIn = (t: number) => t * t * t;
 
@@ -93,14 +97,15 @@ export function useLock() {
 
   const turn = (k: number, ccw: boolean) => {
     const S = sRef.current;
-    if (busy.current || S.open) return;
+    if (busy.current || S.open || S.failed) return;
     const g = geom(S.tier);
     if (S.cur[k] === 15 || !visible(g, k, anim.current.phi)) return;
-    if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the center.", msgKind: "bad" }); return; }
-    const cur = S.cur.slice(); cur[k] = ccw ? rotCCW(cur[k]) : rotCW(cur[k]);
-    const left = S.turnsLeft - 1;
+    if (S.turnsLeft <= 0) { commit({ ...S, msg: "No turns left. Press the center, or start over.", msgKind: "bad" }); return; }
+    const next = turnInAttempt(S, k, ccw);
+    if (!next) return;
+    const left = next.turnsLeft;
     rec.begin(S.tier);
-    commit({ ...S, cur, turnsLeft: left, msg: left === 0 ? "That was your last turn. Press the center." : "", msgKind: "" });
+    commit({ ...next, msg: left === 0 ? "That was your last turn. Press the center." : "", msgKind: "" });
     redraw();
     dom.current.disc?.querySelector<SVGElement>(`[data-k="${k}"]`)?.focus({ preventScroll: true });
   };
@@ -114,9 +119,49 @@ export function useLock() {
     const svg = dom.current.svg; if (!svg) return;
     svg.classList.remove("clunk"); void svg.getBoundingClientRect(); svg.classList.add("clunk");
   };
+  const shake = () => {
+    const svg = dom.current.svg; if (!svg || reduce) return;
+    svg.classList.remove("shake"); void svg.getBoundingClientRect(); svg.classList.add("shake");
+  };
+
+  /** The dial spins a full turn or more to `next`'s dealt spin, and the stones change halfway round. */
+  const spinSwap = (next: LockState, done: () => void) => {
+    const from = anim.current.phi, phi = next.dealt.phi;
+    const target = phi + 360 * Math.ceil((from + 360 - phi) / 360);
+    let swapped = false;
+    tween(from, target, 1500, v => {
+      if (!swapped && v >= (from + target) / 2) { swapped = true; commit(next); setDrawnPhi(v); }
+      spinSet(v);
+    }, () => {
+      if (!swapped) commit(next);
+      anim.current.phi = target; setDrawnPhi(target); apply();
+      done();
+    });
+  };
+
+  /** Back to the deal: Retry after a failed try, or Start over mid-attempt (which drops the attempt unrecorded). */
+  const restart = (mid: boolean) => {
+    const S = sRef.current;
+    if (busy.current || S.open || (mid ? S.failed || !touched(S) : !S.failed)) return;
+    if (mid) rec.drop();
+    busy.current = true;
+    // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
+    const next: LockState = { ...S, ...retryAttempt(S), cheated: S.cheated || cheatRef.current, msg: mid ? START_OVER_MSG : RETRY_MSG, msgKind: "" };
+    spinSwap(next, () => { busy.current = false; });
+  };
+  const retry = () => restart(false);
+  const startOver = () => restart(true);
+  /** After a failed try: a new deal of the same knot, turns refilled. */
+  const scramble = () => {
+    const S = sRef.current;
+    if (busy.current || !S.failed) return;
+    busy.current = true;
+    const fresh = freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, SCRAMBLE_MSG);
+    spinSwap(fresh.s, () => { busy.current = false; });
+  };
 
   const tryOpen = () => {
-    if (busy.current || sRef.current.open) return;
+    if (busy.current || sRef.current.open || sRef.current.failed) return;
     busy.current = true;
     pressHub(() => {
       const S = sRef.current, g = geom(S.tier), P = pRef.current;
@@ -142,23 +187,13 @@ export function useLock() {
           }, easeIn));
         }))));
       } else {
-        // The dial spins and the stones fall back to a new random state.
+        // The dial jolts and stays as it is: the player chooses Retry (the same deal) or Scramble.
         const np = { ...P, attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
         rec.end(S.tier, "failed", S.cheated);
-        const from = anim.current.phi;
-        const fresh = freshLock(S.tier, S.sol, np.skill, cheatRef.current, "The knot was broken. The dial spins and the stones scramble.", "bad");
-        commit({ ...S, msg: "The knot was broken…", msgKind: "bad" });
-        const target = fresh.phi + 360 * Math.ceil((from + 360 - fresh.phi) / 360);
-        let swapped = false;
-        tween(from, target, 1500, v => {
-          if (!swapped && v >= (from + target) / 2) { swapped = true; commit(fresh.s); setDrawnPhi(v); }
-          spinSet(v);
-        }, () => {
-          if (!swapped) commit(fresh.s);
-          anim.current.phi = target; setDrawnPhi(target); apply();
-          busy.current = false;
-        });
+        commit({ ...failAttempt(S), msg: FAILED_MSG, msgKind: "bad" });
+        shake();
+        busy.current = false;
       }
     });
   };
@@ -221,7 +256,7 @@ export function useLock() {
 
   return {
     s, profile, cheat, svgOpen, drawnPhi, anim: anim.current, dom,
-    spinBy, tryOpen, newOrNext, toggleCheat, pickTier,
+    spinBy, tryOpen, newOrNext, toggleCheat, pickTier, retry, scramble, startOver,
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<SVGSVGElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<SVGSVGElement>) => endDrag(e, true), onKeyDown },
   };
 }

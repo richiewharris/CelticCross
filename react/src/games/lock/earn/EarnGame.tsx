@@ -6,7 +6,8 @@ import { looseEnds } from "../engine/knot";
 import { Dial, Example } from "../components/Dial";
 import { VariantNav } from "../components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "../components/Ledger";
-import { EARN_DESC } from "./engine";
+import { EARN_DESC, earnTouched } from "./engine";
+import { AttemptControls } from "../components/AttemptControls";
 import { JoinGlow, Purse } from "./EarnParts";
 import { useEarn } from "./useEarn";
 
@@ -33,7 +34,7 @@ export function EarnGame() {
       <div className="game">
         <section className="box" aria-label="Puzzle box">
           <div className={`status ${s.msgKind}`} role="status" aria-live="polite">{s.msg}</div>
-          <Dial tier={s.tier} cur={st.cur} sol={s.sol} phi={L.drawnPhi} anim={L.anim} open={s.open} svgOpen={L.svgOpen} cheat={cheat}
+          <Dial tier={s.tier} cur={st.cur} sol={s.sol} phi={L.drawnPhi} anim={L.anim} open={s.open} svgOpen={L.svgOpen} cheat={cheat} locked={s.failed}
             domRef={L.dom} {...L.handlers}
             overlay={flash && !s.open
               ? <JoinGlow key={flash.key} tier={s.tier} sol={s.sol} joins={s.joins} made={flash.joins} k={flash.k} gain={flash.gain} phi={L.drawnPhi} flashKey={flash.key} />
@@ -42,8 +43,8 @@ export function EarnGame() {
           <div className="controls">
             <button className="btn icon" type="button" aria-label="Spin anticlockwise" onClick={() => L.spinBy(-1)}>⟲</button>
             <button className="btn icon" type="button" aria-label="Spin clockwise" onClick={() => L.spinBy(1)}>⟳</button>
-            <button className={`btn${s.open ? "" : " primary"}`} type="button" disabled={s.open} onClick={L.tryOpen}>Try the lock</button>
-            <button className={`btn${s.open ? " primary" : ""}`} type="button" onClick={L.newOrNext}>{s.open ? "Next lock" : "New lock"}</button>
+            <AttemptControls open={s.open} failed={s.failed} canStartOver={earnTouched(st)} tryLabel="Try the lock" newLabel="New lock" nextLabel="Next lock"
+              onTry={L.tryOpen} onNew={L.newOrNext} onRetry={L.retry} onScramble={L.scramble} onStartOver={L.startOver} />
             <button className="btn cheat" type="button" aria-pressed={cheat} onClick={L.toggleCheat}>{cheat ? "Cheat on" : "Cheat"}</button>
           </div>
           <p className="hintbox" aria-live="polite">{hint}</p>
@@ -61,7 +62,8 @@ export function EarnGame() {
               <li>Each join pays once. Joins already whole when the lock is dealt pay nothing, and breaking a join and making it again pays nothing more.</li>
               <li>So order matters. Set a stone right next to one that is already right and it pays at once. Set one right between two wrong stones and it pays nothing until they're fixed too.</li>
               <li>No join ever needs more than three turns. There's always an order that gets you through, but a careless one can run you dry.</li>
-              <li>Press the center to try the lock. If the knot is whole, the box opens, and turns left over add to your skill. If it's broken, the stones scramble and you get a fresh start of three to five turns.</li>
+              <li>Press the center to try the lock. If the knot is whole, the box opens, and turns left over add to your skill. If it's broken, the dial jolts and you choose: retry this lock exactly as it was dealt (the same stones, the same starting turns, every join ready to pay again), or scramble it for a fresh start of three to five turns.</li>
+              <li>Start over replays this lock from the deal at any time.</li>
             </ul>
             <div className="examples">
               <figure><Example kind="good" /><figcaption>Joined</figcaption></figure>

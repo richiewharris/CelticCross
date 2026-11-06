@@ -28,7 +28,13 @@ export interface Stack {
   open: boolean;
   /** Presses on a broken knot during this stack. */
   broken: number;
+  /** How the stack was dealt (every disc's stones and spin, and the purse), for Retry and Start over. */
+  dealt: StackDealt;
+  /** The purse ran dry with a knot still broken: the attempt is over, waiting for Retry or a fresh stack. */
+  failed: boolean;
 }
+
+export interface StackDealt { readonly cur: readonly (readonly number[])[]; readonly phi: readonly number[]; readonly purse: number }
 
 /** Starting spin: a sector centred in the window (as the dial's deal()). */
 function startPhi(t: TierId, rng: Rng) { const da = 360 / TIERS[t].sectors; return WC - (rnd(TIERS[t].sectors, rng) + .5) * da; }
@@ -55,7 +61,8 @@ export function dealStack(tier: TierId, skill: number, rng: Rng = Math.random): 
   const layers = STACKS[tier].layers.map(t => dealLayer(t, rng));
   const need = layers.reduce((n, l) => n + layerNeed(l), 0);
   const purse = need + stackSpare(skill, tier, layers.length, rng);
-  return { tier, layers, at: 0, purse, left: purse, open: false, broken: 0 };
+  const dealt: StackDealt = { cur: layers.map(l => l.cur.slice()), phi: layers.map(l => l.phi), purse };
+  return { tier, layers, at: 0, purse, left: purse, open: false, broken: 0, dealt, failed: false };
 }
 
 export const current = (st: Stack) => st.layers[st.at];
@@ -65,7 +72,7 @@ export const layerSolved = (l: Layer) => { const T = TIERS[l.tier]; return solve
 /** Give stone k of the top disc a quarter turn. Unchanged if it can't turn (crossing, empty purse, box open). */
 export function turnStone(st: Stack, k: number, ccw: boolean): Stack {
   const L = current(st);
-  if (st.open || st.left <= 0 || L.cur[k] === undefined || L.cur[k] === 15) return st;
+  if (st.open || st.failed || st.left <= 0 || L.cur[k] === undefined || L.cur[k] === 15) return st;
   const cur = L.cur.slice(); cur[k] = ccw ? rotCCW(cur[k]) : rotCW(cur[k]);
   const layers = st.layers.slice(); layers[st.at] = { ...L, cur };
   return { ...st, layers, left: st.left - 1 };
@@ -92,7 +99,20 @@ export function press(st: Stack, rng: Rng = Math.random): { kind: PressKind; st:
 /** Out of turns with the top disc's knot still broken: the attempt is over and the stack resets. */
 export const stranded = (st: Stack) => !st.open && st.left <= 0 && !layerSolved(current(st));
 
-/** A fresh stack and a fresh purse after running dry (or on New stack). */
+/** Running dry ends the attempt: the discs stay as they are and nothing more can be turned. */
+export const failStack = (st: Stack): Stack => ({ ...st, failed: true });
+
+/** The same stack again, exactly as it was dealt: every disc's stones and spin, from the top disc, with the first purse. */
+export function retryStack(st: Stack): Stack {
+  const d = st.dealt;
+  const layers = st.layers.map((l, i) => ({ ...l, cur: d.cur[i].slice(), phi: d.phi[i] }));
+  return { ...st, layers, at: 0, purse: d.purse, left: d.purse, open: false, broken: 0, failed: false };
+}
+
+/** Has anything been played since the deal (a turn, a press, a disc opened)? */
+export const stackTouched = (st: Stack) => st.failed || st.left !== st.purse || st.at > 0 || st.broken > 0;
+
+/** A fresh stack and a fresh purse (Fresh stack after running dry, or New stack). */
 export const resetStack = (st: Stack, skill: number, rng: Rng = Math.random) => dealStack(st.tier, skill, rng);
 
 /* ---------- Skill ---------- */

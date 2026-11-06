@@ -80,6 +80,8 @@ export interface DialProps {
   /** The loose stones are hidden once the pins have dropped home. */
   svgOpen: boolean;
   cheat: boolean;
+  /** No stone can be turned just now (a failed try waiting for Retry or Scramble). */
+  locked?: boolean;
   /** Extra marks drawn on the spinning disc above the pins, in disc coordinates (variants use it). */
   overlay?: ReactNode;
   domRef?: MutableRefObject<DialDom>;
@@ -116,9 +118,9 @@ export function Dial(p: DialProps) {
       <path key={`f${k}`} d={out6} fill={url("stoneGrad")} stroke="#2a2620" strokeWidth=".6" />,
       <path key={`fi${k}`} d={out14} fill="none" stroke="rgb(255 248 230 / .1)" strokeWidth=".5" />,
     );
-    const live = vis && m !== 15;
+    const live = vis && m !== 15 && !p.locked;
     stones.push(
-      <path key={`t${k}`} className={`tile${vis ? "" : " hidden"}`} data-k={k} d={out6} fill={url("stoneGrad")} stroke="#2a2620" strokeWidth=".6"
+      <path key={`t${k}`} className={`tile${live || (vis && m === 15) ? "" : " hidden"}`} data-k={k} d={out6} fill={url("stoneGrad")} stroke="#2a2620" strokeWidth=".6"
         tabIndex={live ? 0 : undefined} role={live ? "button" : undefined}
         aria-label={live ? `${label}. Enter turns clockwise, Shift+Enter anticlockwise.` : undefined} />,
       <path key={`ti${k}`} d={out14} fill="none" stroke="rgb(255 248 230 / .1)" strokeWidth=".5" pointerEvents="none" />,

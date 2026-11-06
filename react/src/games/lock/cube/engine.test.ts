@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BITS, E, N, OPP, S_, W, minTurns, pop, rotCCW, rotCW, signedSteps } from "../engine/knot";
 import { mulberry32 } from "../engine/testkit";
+import { failAttempt, retryAttempt, startAttempt, turnInAttempt } from "../engine/attempt";
 import {
   CUBE_TIERS, FACES, ORIENTATIONS, QID, TURNS, backOf, countLoops, cross, cubeGeom, deal, dot, dragCube, faceFacing, frontFace,
   knotFromColours, looseEnds, makeKnot, nbOf, qaxis, qmat, qmul, qnorm, qrot, sideVec, snapQuat, solved, turnCube, visibleFaces,
@@ -203,6 +204,30 @@ describe("turning the cube", () => {
     for (let f = 0; f < 6; f++) for (const b of [N, E, S_, W]) {
       // turning a side clockwise about the outward normal gives the next side
       expect(qrot(qaxis(FACES[f].n, 90), sideVec(f, b)).map(x => Math.round(x) + 0)).toEqual(nz(sideVec(f, rotCW(b))));
+    }
+  });
+});
+
+describe("retrying a cube", () => {
+  for (const t of TIERS) it(`tier ${t}: Retry restores exactly the dealt stones, budget and orientation; Scramble deals the same knot afresh`, () => {
+    const T = CUBE_TIERS[t], g = cubeGeom(T.N);
+    for (let seed = 1; seed <= 8; seed++) {
+      const rng = mulberry32(seed * 31 + t);
+      const sol = makeKnot(T, rng), d = deal(t, sol, 30, rng), dealtCur = d.cur.slice();
+      let a = startAttempt(d);
+      const ks = a.cur.map((m, k) => (m === 15 ? -1 : k)).filter(k => k >= 0);
+      for (let i = 0; a.turnsLeft > 0; i++) a = turnInAttempt(a, ks[(i * 5) % ks.length], i % 3 === 0)!;
+      a = failAttempt(a);
+      expect(turnInAttempt(a, ks[0], false)).toBeNull();
+      const r = retryAttempt(a);
+      expect(r.cur).toEqual(dealtCur);
+      expect(r.turnsLeft).toBe(d.budget);
+      expect(r.dealt.orient).toBe(d.orient);
+      expect(r.failed).toBe(false);
+      const s = startAttempt(deal(t, sol, 30, rng));
+      expect(solved(g, s.cur)).toBe(false);
+      s.cur.forEach((m, k) => { if (sol[k] === 15) expect(m).toBe(15); else expect(pop(m)).toBe(pop(sol[k])); });
+      expect(s.budget).toBeGreaterThan(minTurns(s.cur, sol));
     }
   });
 });

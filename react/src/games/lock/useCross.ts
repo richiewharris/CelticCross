@@ -1,7 +1,8 @@
 // State for the classic version: dealing, swapping (drag, tap or keyboard), trying the lock, Cheat aids.
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useStoredState } from "../../kit/useStoredState";
-import { CROSS_TIERS, brokenEdges, dealCross, makeLock, misplaced, nextSwap, solved, type Tile } from "./engine/cross";
+import { CROSS_TIERS, brokenEdges, crossTouched, dealCross, makeLock, misplaced, nextSwap, retryCross, solved, type CrossDeal, type Tile } from "./engine/cross";
+import { FAILED_MSG } from "./engine/attempt";
 import { NEW_PROFILE, openedMessage, skillGain, type Profile, type TierId } from "./engine/knot";
 import type { CellLook } from "./components/CrossBoard";
 import { useLockRecord } from "./record";
@@ -10,11 +11,15 @@ export interface CrossState {
   tier: TierId; tiles: Tile[]; arr: number[];
   movesLeft: number; budget: number; open: boolean; sel: number | null;
   msg: string; msgKind: "" | "good" | "bad"; cheated: boolean;
+  /** How this lock was dealt (arrangement and budget), for Retry and Start over. */
+  dealt: CrossDeal;
+  /** The last try failed: waiting for Retry or Scramble. */
+  failed: boolean;
 }
 
 function dealState(tiles: Tile[], tier: TierId, skill: number, cheat: boolean, msg: string, msgKind: CrossState["msgKind"] = ""): CrossState {
   const d = dealCross(tiles, tier, skill);
-  return { tier, tiles, arr: d.arr, movesLeft: d.budget, budget: d.budget, open: false, sel: null, msg, msgKind, cheated: cheat };
+  return { tier, tiles, ...retryCross(d), dealt: d, failed: false, open: false, sel: null, msg, msgKind, cheated: cheat };
 }
 const newMsg = (tier: TierId) => `A ${CROSS_TIERS[tier].name.toLowerCase()} lock. Rejoin the knotwork.`;
 
@@ -52,8 +57,28 @@ export function useCross() {
 
   const newLock = (tier: TierId) => { rec.drop(); update(dealState(makeLock(tier), tier, profile.skill, cheat, newMsg(tier))); };
 
+  /** Swap in a new arrangement (Retry, Start over, Scramble), flashing the stones that move. */
+  const rearrange = (next: CrossState) => {
+    const moved = new Set(next.arr.map((t, i) => (t !== S.arr[i] ? i : -1)).filter(i => i >= 0));
+    update(next);
+    setFlash(f => f.map((n, i) => (moved.has(i) ? n + 1 : n)));
+    setFlashed(moved);
+  };
+  /** Back to the deal: Retry after a failed try, or Start over mid-attempt (which drops the attempt unrecorded). */
+  const restart = (mid: boolean) => {
+    if (S.open || (mid ? S.failed || !crossTouched(S) : !S.failed)) return;
+    if (mid) rec.drop();
+    // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
+    rearrange({ ...S, ...retryCross(S.dealt), failed: false, sel: null, cheated: S.cheated || cheat, msgKind: "",
+      msg: mid ? "Started over. The stones are back as this lock was dealt, with all its moves." : "The stones go back just as this lock was dealt, with all its moves." });
+  };
+  const scrambleAgain = () => {
+    if (!S.failed) return;
+    rearrange(dealState(S.tiles, S.tier, profile.skill, cheat, "The stones scramble again. A fresh try at the same knot."));
+  };
+
   const swap = (a: number, b: number) => {
-    if (S.open || a === b) return;
+    if (S.open || S.failed || a === b) return;
     if (S.movesLeft <= 0) { update({ ...S, msg: "No moves left. Try the lock.", msgKind: "bad", sel: null }); return; }
     const arr = S.arr.slice(); [arr[a], arr[b]] = [arr[b], arr[a]];
     const left = S.movesLeft - 1;
@@ -65,7 +90,7 @@ export function useCross() {
   };
 
   const tryLock = () => {
-    if (S.open) return;
+    if (S.open || S.failed) return;
     if (solved(S.tiles, S.arr)) {
       const gain = skillGain(profile.skill, S.tier, S.movesLeft, S.cheated);
       rec.end(S.tier, "opened", S.cheated);
@@ -74,13 +99,14 @@ export function useCross() {
     } else {
       setProfile({ ...profile, attempts: profile.attempts + 1 });
       rec.end(S.tier, "failed", S.cheated);
-      update(dealState(S.tiles, S.tier, profile.skill, cheat, "The tumblers fall. The stones scramble again.", "bad"));
+      // The tumblers fall and the stones stay as they are: the player chooses Retry or Scramble.
+      update({ ...S, failed: true, sel: null, msg: FAILED_MSG, msgKind: "bad" });
       setShakes(n => n + 1);
     }
   };
 
   const tap = (i: number) => {
-    if (S.open) return;
+    if (S.open || S.failed) return;
     if (S.sel === null) update({ ...S, sel: i });
     else if (S.sel === i) update({ ...S, sel: null });
     else swap(S.sel, i);
@@ -97,7 +123,7 @@ export function useCross() {
   const cellOf = (el: Element | null) => (el?.closest?.(".cell") as HTMLElement | null) ?? null;
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     const cell = cellOf(e.target as Element);
-    if (!cell || S.open || e.button > 0) return;
+    if (!cell || S.open || S.failed || e.button > 0) return;
     drag.current = { from: +cell.dataset.i!, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, over: null };
     cell.setPointerCapture(e.pointerId);
   };
@@ -161,6 +187,7 @@ export function useCross() {
   return {
     S, profile, cheat, look, flash, flashed, hintText, ghost, ghostEl, boardEl,
     tryLock, toggleCheat, newLock: () => newLock(S.tier), pickTier: newLock,
+    retry: () => restart(false), startOver: () => restart(true), scramble: scrambleAgain, canStartOver: crossTouched(S),
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<HTMLDivElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<HTMLDivElement>) => endDrag(e, true), onKeyDown },
   };
 }

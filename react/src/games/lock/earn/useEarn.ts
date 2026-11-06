@@ -6,11 +6,16 @@ import { geom, norm, snapPhi, visible } from "../engine/dial";
 import { NEW_PROFILE, TIERS, makeKnot, openedMessage, skillGain, solved, type Profile, type TierId } from "../engine/knot";
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "../components/Dial";
 import { useLockRecord } from "../record";
-import { canFinish, earnDeal, isMade, knotJoins, need, startState, turnStone, type EarnState, type Join } from "./engine";
+import { canFinish, earnDeal, earnTouched, isMade, knotJoins, need, retryEarn, startState, turnStone, type EarnDeal, type EarnState, type Join } from "./engine";
+import { FAILED_MSG } from "../engine/attempt";
 
 export type MsgKind = "" | "good" | "bad";
 export interface EarnLock {
   tier: TierId; sol: number[]; joins: Join[]; st: EarnState;
+  /** How this lock was dealt (stones, starting turns, spin), for Retry and Start over. */
+  dealt: EarnDeal;
+  /** The last try broke the knot: waiting for Retry or Scramble. */
+  failed: boolean;
   open: boolean; msg: string; msgKind: MsgKind; cheated: boolean;
   /** Has the status line explained why a turn paid nothing yet? */
   told: boolean;
@@ -29,7 +34,7 @@ const turnsWord = (n: number) => `${n} turn${n === 1 ? "" : "s"}`;
 function freshLock(tier: TierId, sol: number[], cheat: boolean, msg: string, msgKind: MsgKind = "") {
   const d = earnDeal(tier, sol);
   const T = TIERS[tier], joins = knotJoins(sol, T.rings, T.sectors);
-  const s: EarnLock = { tier, sol, joins, st: startState(d.cur, sol, joins, d.start), open: false, msg, msgKind, cheated: cheat, told: false, paidHere: new Set() };
+  const s: EarnLock = { tier, sol, joins, st: startState(d.cur, sol, joins, d.start), dealt: d, failed: false, open: false, msg, msgKind, cheated: cheat, told: false, paidHere: new Set() };
   return { s, phi: d.phi };
 }
 
@@ -45,8 +50,8 @@ export function turnMessage(L: EarnLock, k: number, made: number[], gain: number
     const lead = made.length === 1 ? "Joined!" : made.length === 2 ? "Two joins!" : made.length === 3 ? "Three joins!" : "Four joins!";
     return { msg: `${lead} +${turnsWord(gain)}${stuck ? ", but not enough to finish now." : "."}`, msgKind: stuck ? "bad" : "good" };
   }
-  if (st.pool === 0) return { msg: "Out of turns. Press the center for a fresh start.", msgKind: "bad" };
-  if (stuck) return { msg: "Not enough turns left to set every stone right. Press the center to start again.", msgKind: "bad" };
+  if (st.pool === 0) return { msg: "Out of turns. Start over, or press the center to try the lock.", msgKind: "bad" };
+  if (stuck) return { msg: "Not enough turns left to set every stone right. Start over to replay this lock from the deal.", msgKind: "bad" };
   // A turn that pays nothing. Say why the first time (the same whether or not the stone is now
   // right, so the message gives nothing away); after that, only when a remade join pays nothing.
   if (!L.told) return { msg: "No join made. A join pays once the stones on both its sides are right.", msgKind: "" };
@@ -136,10 +141,10 @@ export function useEarn() {
 
   const turn = (k: number, ccw: boolean) => {
     const S = sRef.current;
-    if (busy.current || S.open) return;
+    if (busy.current || S.open || S.failed) return;
     const g = geom(S.tier);
     if (S.st.cur[k] === 15 || !visible(g, k, anim.current.phi)) return;
-    if (S.st.pool <= 0) { commit({ ...S, msg: "No turns left. Press the center for a fresh start.", msgKind: "bad" }); return; }
+    if (S.st.pool <= 0) { commit({ ...S, msg: "No turns left. Start over, or press the center to try the lock.", msgKind: "bad" }); return; }
     const r = turnStone(S.st, S.sol, S.joins, k, ccw);
     if (!r) return;
     rec.begin(S.tier);
@@ -162,8 +167,56 @@ export function useEarn() {
     svg.classList.remove("clunk"); void svg.getBoundingClientRect(); svg.classList.add("clunk");
   };
 
+  const shake = () => {
+    const svg = dom.current.svg; if (!svg || reduce) return;
+    svg.classList.remove("shake"); void svg.getBoundingClientRect(); svg.classList.add("shake");
+  };
+
+  /** The dial spins a full turn or more to `phi`, and the stones change to `next` halfway round. */
+  const spinSwap = (next: EarnLock, phi: number, done: () => void) => {
+    const from = anim.current.phi;
+    const target = phi + 360 * Math.ceil((from + 360 - phi) / 360);
+    let swapped = false;
+    tween(from, target, 1500, v => {
+      if (!swapped && v >= (from + target) / 2) { swapped = true; commit(next); setDrawnPhi(v); }
+      spinSet(v);
+    }, () => {
+      if (!swapped) commit(next);
+      anim.current.phi = target; setDrawnPhi(target); apply();
+      done();
+    });
+  };
+
+  /** Back to the deal: Retry after a failed try, or Start over mid-attempt (which drops the attempt unrecorded). */
+  const restart = (mid: boolean) => {
+    const S = sRef.current;
+    if (busy.current || S.open || (mid ? S.failed || !earnTouched(S.st) : !S.failed)) return;
+    if (mid) rec.drop();
+    busy.current = true;
+    clearFlash();
+    const st = retryEarn(S.dealt, S.sol, S.joins);
+    const lead = mid ? "Started over." : "The dial spins back.";
+    // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
+    const next: EarnLock = {
+      ...S, st, failed: false, paidHere: new Set(), cheated: S.cheated || cheatRef.current,
+      msg: `${lead} The stones are just as this lock was dealt: ${turnsWord(st.start)}, and no join has paid yet.`, msgKind: "",
+    };
+    spinSwap(next, S.dealt.phi, () => { busy.current = false; });
+  };
+  const retry = () => restart(false);
+  const startOver = () => restart(true);
+  /** After a failed try: a new scramble of the same knot and a fresh start of 3–5 turns. */
+  const scramble = () => {
+    const S = sRef.current;
+    if (busy.current || !S.failed) return;
+    busy.current = true;
+    const fresh = freshLock(S.tier, S.sol, cheatRef.current, "");
+    fresh.s.msg = `The dial spins and the stones scramble. Fresh start: ${turnsWord(fresh.s.st.start)}.`;
+    spinSwap(fresh.s, fresh.phi, () => { busy.current = false; });
+  };
+
   const tryOpen = () => {
-    if (busy.current || sRef.current.open) return;
+    if (busy.current || sRef.current.open || sRef.current.failed) return;
     busy.current = true;
     clearFlash();
     pressHub(() => {
@@ -189,24 +242,13 @@ export function useEarn() {
           }, easeIn));
         }))));
       } else {
-        // The dial spins, the stones fall back to a new scramble of the same knot, and a fresh purse.
+        // The dial jolts and stays as it is: the player chooses Retry (the same deal) or Scramble.
         const np = { ...P, attempts: P.attempts + 1 };
         pRef.current = np; setProfile(np);
         rec.end(S.tier, "failed", S.cheated);
-        const from = anim.current.phi;
-        const fresh = freshLock(S.tier, S.sol, cheatRef.current, "", "bad");
-        fresh.s.msg = `The knot was broken. The stones scramble. Fresh start: ${turnsWord(fresh.s.st.start)}.`;
-        commit({ ...S, msg: "The knot was broken…", msgKind: "bad" });
-        const target = fresh.phi + 360 * Math.ceil((from + 360 - fresh.phi) / 360);
-        let swapped = false;
-        tween(from, target, 1500, v => {
-          if (!swapped && v >= (from + target) / 2) { swapped = true; commit(fresh.s); setDrawnPhi(v); }
-          spinSet(v);
-        }, () => {
-          if (!swapped) commit(fresh.s);
-          anim.current.phi = target; setDrawnPhi(target); apply();
-          busy.current = false;
-        });
+        commit({ ...S, failed: true, msg: FAILED_MSG, msgKind: "bad" });
+        shake();
+        busy.current = false;
       }
     });
   };
@@ -269,7 +311,7 @@ export function useEarn() {
 
   return {
     s, profile, cheat, svgOpen, drawnPhi, anim: anim.current, dom, flash, reduce,
-    spinBy, tryOpen, newOrNext, toggleCheat, pickTier,
+    spinBy, tryOpen, newOrNext, toggleCheat, pickTier, retry, scramble, startOver,
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<SVGSVGElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<SVGSVGElement>) => endDrag(e, true), onKeyDown },
   };
 }

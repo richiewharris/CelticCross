@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CELLS, CROSS_TIERS, DIRS, brokenEdges, dealCross, describe as describeTile, makeLock, minSwaps, misplaced, neighbor,
+  CELLS, CROSS_TIERS, DIRS, brokenEdges, crossTouched, dealCross, retryCross, describe as describeTile, makeLock, minSwaps, misplaced, neighbor,
   nextSwap, scramble, sig, solved, spareMoves, type Tile,
 } from "./cross";
 import { TIER_IDS } from "./knot";
@@ -98,5 +98,27 @@ describe("aids and text", () => {
     expect(spareMoves(20, 2, () => 0)).toBe(2);   // round(1.5 + 1.25 - 1)
     expect(spareMoves(0, 5, () => 0)).toBe(1);
     expect(spareMoves(100, 1, () => .99)).toBe(Math.round(1.5 + 6.25 - .5 + .99));
+  });
+});
+
+describe("retrying a lock", () => {
+  for (const t of TIER_IDS) it(`${CROSS_TIERS[t].name}: Retry restores exactly the dealt arrangement and moves; Scramble re-deals the same stones`, () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const rng = mulberry32(seed * 3 + t);
+      const tiles = makeLock(t, rng), d = dealCross(tiles, t, 30, rng), dealtArr = d.arr.slice();
+      let s = { ...retryCross(d), dealt: d };
+      expect(crossTouched(s)).toBe(false);
+      const arr = s.arr.slice(); [arr[0], arr[5]] = [arr[5], arr[0]];
+      s = { ...s, arr, movesLeft: s.movesLeft - 1 };
+      expect(crossTouched(s)).toBe(true);
+      const r = retryCross(s.dealt);
+      expect(r.arr).toEqual(dealtArr);
+      expect(r.movesLeft).toBe(d.budget);
+      expect(r.budget).toBe(d.budget);
+      expect(d.arr).toEqual(dealtArr);
+      const again = dealCross(tiles, t, 30, rng);
+      expect(solved(tiles, again.arr)).toBe(false);
+      expect([...again.arr].sort((a, b) => a - b)).toEqual(ident());
+    }
   });
 });

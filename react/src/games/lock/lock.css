@@ -66,6 +66,9 @@ body.gm-lock button.btn {
   border: 1px solid var(--gold); background: transparent; color: var(--gold);
 }
 body.gm-lock button.btn.primary { background: var(--gold); color: var(--oak); }
+/* Start over: a quiet button beside New lock. */
+body.gm-lock button.btn.minor { padding: 6px 12px; font-size: .88rem; font-weight: 500; border-color: var(--line); color: var(--muted); }
+body.gm-lock button.btn.minor:not(:disabled):hover { color: var(--ink); border-color: var(--gold); }
 body.gm-lock button.btn.icon { padding: 8px 14px; font-size: 1.1rem; line-height: 1.2; }
 body.gm-lock button.btn:hover { filter: brightness(1.12); }
 body.gm-lock button.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

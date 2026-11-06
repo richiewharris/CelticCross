@@ -5,6 +5,7 @@ import { CrossBoard, TileSvg } from "./components/CrossBoard";
 import { VariantNav } from "./components/VariantNav";
 import { SkillPanel, TierPanel, TurnsPanel } from "./components/Ledger";
 import { useCross } from "./useCross";
+import { AttemptControls } from "./components/AttemptControls";
 
 /** The three strand kinds, as drawn in the key under the rules. */
 export function StrandKey() {
@@ -36,8 +37,8 @@ export function CrossGame() {
           <div className={`status ${S.msgKind}`} role="status" aria-live="polite">{S.msg}</div>
           <CrossBoard tiles={S.tiles} arr={S.arr} open={S.open} look={X.look} flash={X.flash} flashed={X.flashed} boardRef={X.boardEl} {...X.handlers} />
           <div className="actions">
-            <button className={`btn${S.open ? "" : " primary"}`} type="button" disabled={S.open} onClick={X.tryLock}>Try the lock</button>
-            <button className={`btn${S.open ? " primary" : ""}`} type="button" onClick={X.newLock}>{S.open ? "Next lock" : "New lock"}</button>
+            <AttemptControls open={S.open} failed={S.failed} canStartOver={X.canStartOver} tryLabel="Try the lock" newLabel="New lock" nextLabel="Next lock"
+              onTry={X.tryLock} onNew={X.newLock} onRetry={X.retry} onScramble={X.scramble} onStartOver={X.startOver} />
             <button className="btn cheat" type="button" aria-pressed={cheat} onClick={X.toggleCheat}>{cheat ? "Cheat on" : "Cheat"}</button>
           </div>
           <p className="hintbox" aria-live="polite">{X.hintText}</p>
@@ -52,7 +53,8 @@ export function CrossGame() {
             <ul className="how">
               <li>Drag a stone onto another to swap them. You can also tap one stone, then another. Each swap uses a move.</li>
               <li>The lock opens when every strand meets a strand of the same kind on the next stone, and no strand runs off the edge of the cross.</li>
-              <li>Try the lock whenever you think it's done. If it isn't, the tumblers fall: the stones scramble again and your moves refill.</li>
+              <li>Try the lock whenever you think it's done. If it isn't, the tumblers fall and you choose: retry this lock exactly as it was dealt, or scramble the stones for a fresh try. Either way your moves refill.</li>
+              <li>Start over puts the stones back as this lock was dealt, with all its moves, at any time.</li>
               <li>Higher skill gives you more spare moves.</li>
               <li>Stuck? Turn on Cheat to see broken joins (red notches), stones out of place (red tint) and the next swap to make. A lock opened with Cheat on is practice and doesn't raise your skill.</li>
             </ul>

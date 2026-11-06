@@ -3,8 +3,8 @@ import { TIERS, TIER_IDS, WC, minTurns, signedSteps, solved, type TierId } from 
 import { geom, snapPhi } from "../engine/dial";
 import { mulberry32 } from "../engine/testkit";
 import {
-  STACKS, current, dealStack, isLast, layerNeed, layerSolved, needFrom, press, resetStack, stackSkillGain, stackSpare,
-  stranded, turnStone, type Stack,
+  STACKS, current, dealStack, failStack, isLast, layerNeed, layerSolved, needFrom, press, resetStack, retryStack, stackSkillGain,
+  stackSpare, stackTouched, stranded, turnStone, type Stack,
 } from "./engine";
 
 /** Turn every stone of the top disc the short way back to its knot (as the Cheat badges say). */
@@ -204,5 +204,63 @@ describe("skill", () => {
     expect(stackSkillGain(99, 5, 4, 10, false)).toBe(1);
     expect(stackSkillGain(100, 5, 4, 10, false)).toBe(0);
     expect(stackSkillGain(95, 1, 2, 0, false)).toBe(1);
+  });
+});
+
+describe("retrying a stack", () => {
+  for (const t of TIER_IDS) it(`${STACKS[t].desc} Retry after running dry restores every disc as dealt and the first purse`, () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const rng = mulberry32(seed * 23 + t);
+      const st0 = dealStack(t, 30, rng);
+      const dealtCur = st0.layers.map(l => l.cur.slice()), dealtPhi = st0.layers.map(l => l.phi);
+      expect(stackTouched(st0)).toBe(false);
+      // Open the top disc, press a broken knot on the next one (it re-scrambles), then run dry.
+      let st = solveTop(st0);
+      st = press(st, rng).st;
+      expect(st.at).toBe(1);
+      const k = turnable(st);
+      st = turnStone(st, k, false);
+      while (layerSolved(current(st))) st = turnStone(st, k, false);
+      const b = press(st, rng);
+      expect(b.kind).toBe("broken");
+      st = b.st;
+      while (!stranded(st)) st = turnStone(st, turnable(st), false);
+      st = failStack(st);
+      expect(stackTouched(st)).toBe(true);
+      // Nothing turns once the attempt has failed.
+      expect(turnStone({ ...st, left: 3 }, turnable(st), false).left).toBe(3);
+      const r = retryStack(st);
+      expect(r.at).toBe(0);
+      expect(r.left).toBe(st0.purse);
+      expect(r.purse).toBe(st0.purse);
+      expect(r.broken).toBe(0);
+      expect(r.open).toBe(false);
+      expect(r.failed).toBe(false);
+      expect(r.layers.map(l => l.cur)).toEqual(dealtCur);
+      expect(r.layers.map(l => l.phi)).toEqual(dealtPhi);
+      expect(r.layers.map(l => l.sol)).toEqual(st0.layers.map(l => l.sol));
+      expect(r.layers.map(l => l.tier)).toEqual(st0.layers.map(l => l.tier));
+      expect(stackTouched(r)).toBe(false);
+      // and the deal itself was never changed by play
+      expect(st0.dealt.cur).toEqual(dealtCur);
+    }
+  });
+  it("a broken press re-scrambles that disc but keeps the purse and the deal", () => {
+    const rng = mulberry32(44);
+    let st = dealStack(3, 20, rng);
+    st = turnStone(st, turnable(st), false);
+    const r = press(layerSolved(current(st)) ? turnStone(st, turnable(st), false) : st, rng);
+    expect(r.kind).toBe("broken");
+    expect(r.st.left).toBeLessThan(r.st.purse);
+    expect(r.st.dealt).toBe(st.dealt);
+    expect(stackTouched(r.st)).toBe(true);
+  });
+  it("a fresh stack has its own deal and isn't failed", () => {
+    const rng = mulberry32(45);
+    const st = failStack({ ...dealStack(2, 20, rng), left: 0 });
+    const r = resetStack(st, 20, rng);
+    expect(r.failed).toBe(false);
+    expect(r.dealt.cur).toEqual(r.layers.map(l => l.cur));
+    expect(r.dealt.purse).toBe(r.purse);
   });
 });
