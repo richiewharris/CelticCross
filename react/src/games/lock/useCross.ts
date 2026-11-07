@@ -1,11 +1,12 @@
 // State for the classic version: dealing, swapping (drag, tap or keyboard), trying the lock, Cheat aids.
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { useStoredState } from "../../kit/useStoredState";
 import { CROSS_TIERS, brokenEdges, crossTouched, dealCross, makeLock, misplaced, nextSwap, retryCross, solved, type CrossDeal, type Tile } from "./engine/cross";
 import { FAILED_MSG } from "./engine/attempt";
 import { NEW_PROFILE, openedMessage, skillGain, type Profile, type TierId } from "./engine/knot";
 import type { CellLook } from "./components/CrossBoard";
 import { useLockRecord } from "./record";
+import { RACE_MSG, type RaceLink } from "./race/link";
 
 export interface CrossState {
   tier: TierId; tiles: Tile[]; arr: number[];
@@ -17,15 +18,25 @@ export interface CrossState {
   failed: boolean;
 }
 
-function dealState(tiles: Tile[], tier: TierId, skill: number, cheat: boolean, msg: string, msgKind: CrossState["msgKind"] = ""): CrossState {
-  const d = dealCross(tiles, tier, skill);
+/** A lock in play from a given deal. */
+function stateFrom(tiles: Tile[], tier: TierId, d: CrossDeal, cheat: boolean, msg: string, msgKind: CrossState["msgKind"] = ""): CrossState {
   return { tier, tiles, ...retryCross(d), dealt: d, failed: false, open: false, sel: null, msg, msgKind, cheated: cheat };
 }
+function dealState(tiles: Tile[], tier: TierId, skill: number, cheat: boolean, msg: string, msgKind: CrossState["msgKind"] = ""): CrossState {
+  return stateFrom(tiles, tier, dealCross(tiles, tier, skill), cheat, msg, msgKind);
+}
+const SCRAMBLE_MSG = "The stones scramble again. A fresh try at the same knot.";
 const newMsg = (tier: TierId) => `A ${CROSS_TIERS[tier].name.toLowerCase()} lock. Rejoin the knotwork.`;
 
-export function useCross() {
+/** The classic cross. With a race link it plays the race's locks instead (see race/link.ts). */
+export function useCross(race?: RaceLink<Tile[], CrossDeal>) {
   const [profile, setProfile] = useStoredState<Profile>("lock-react-v1-profile", NEW_PROFILE);
-  const [S, setS] = useState<CrossState>(() => dealState(makeLock(2), 2, profile.skill, false, newMsg(2)));
+  const [S, setS] = useState<CrossState>(() => race ? stateFrom(race.first.knot, race.tier, race.first.deal, false, RACE_MSG.first)
+    : dealState(makeLock(2), 2, profile.skill, false, newMsg(2)));
+  const raceRef = useRef(race); raceRef.current = race;
+  // The race's automatic scramble after a failed try waits a moment; cancel it if the lock goes away.
+  const autoScramble = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (autoScramble.current) clearTimeout(autoScramble.current); }, []);
   const [cheat, setCheat] = useState(false);
   const rec = useLockRecord("classic");
   const [flash, setFlash] = useState<number[]>(() => S.arr.map(() => 0));
@@ -58,8 +69,8 @@ export function useCross() {
   const newLock = (tier: TierId) => { rec.drop(); update(dealState(makeLock(tier), tier, profile.skill, cheat, newMsg(tier))); };
 
   /** Swap in a new arrangement (Retry, Start over, Scramble), flashing the stones that move. */
-  const rearrange = (next: CrossState) => {
-    const moved = new Set(next.arr.map((t, i) => (t !== S.arr[i] ? i : -1)).filter(i => i >= 0));
+  const rearrange = (next: CrossState, prev: CrossState = S) => {
+    const moved = new Set(next.arr.map((t, i) => (t !== prev.arr[i] ? i : -1)).filter(i => i >= 0));
     update(next);
     setFlash(f => f.map((n, i) => (moved.has(i) ? n + 1 : n)));
     setFlashed(moved);
@@ -67,14 +78,26 @@ export function useCross() {
   /** Back to the deal: Retry after a failed try, or Start over mid-attempt (which drops the attempt unrecorded). */
   const restart = (mid: boolean) => {
     if (S.open || (mid ? S.failed || !crossTouched(S) : !S.failed)) return;
-    if (mid) rec.drop();
+    if (mid && !raceRef.current) rec.drop();
     // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
     rearrange({ ...S, ...retryCross(S.dealt), failed: false, sel: null, cheated: S.cheated || cheat, msgKind: "",
       msg: mid ? "Started over. The stones are back as this lock was dealt, with all its moves." : "The stones go back just as this lock was dealt, with all its moves." });
   };
   const scrambleAgain = () => {
     if (!S.failed) return;
-    rearrange(dealState(S.tiles, S.tier, profile.skill, cheat, "The stones scramble again. A fresh try at the same knot."));
+    const R = raceRef.current;
+    rearrange(R ? stateFrom(S.tiles, S.tier, R.nextDeal(), cheat, SCRAMBLE_MSG) : dealState(S.tiles, S.tier, profile.skill, cheat, SCRAMBLE_MSG));
+  };
+
+  /** Race: put the race's next lock in play straight away. */
+  const loadLock = (tiles: Tile[], d: CrossDeal, msg: string) => {
+    if (autoScramble.current) { clearTimeout(autoScramble.current); autoScramble.current = null; }
+    update(stateFrom(tiles, S.tier, d, cheat, msg));
+  };
+  /** Race test aid: put every stone home (the moves are not spent). */
+  const solveNow = () => {
+    if (S.open || S.failed) return;
+    update({ ...S, arr: S.tiles.map((_, i) => i), sel: null });
   };
 
   const swap = (a: number, b: number) => {
@@ -82,7 +105,7 @@ export function useCross() {
     if (S.movesLeft <= 0) { update({ ...S, msg: "No moves left. Try the lock.", msgKind: "bad", sel: null }); return; }
     const arr = S.arr.slice(); [arr[a], arr[b]] = [arr[b], arr[a]];
     const left = S.movesLeft - 1;
-    rec.begin(S.tier);
+    if (!raceRef.current) rec.begin(S.tier);
     rememberFocus();
     setS({ ...S, arr, movesLeft: left, sel: null, msg: left === 0 ? "That was your last move. Try the lock." : "", msgKind: "" });
     setFlash(f => f.map((n, i) => (i === a || i === b ? n + 1 : n)));
@@ -91,6 +114,27 @@ export function useCross() {
 
   const tryLock = () => {
     if (S.open || S.failed) return;
+    const R = raceRef.current;
+    if (R) {
+      // A race: a short "Opened!" beat (the race loads the next lock), or a failed try.
+      if (solved(S.tiles, S.arr)) {
+        update({ ...S, open: true, sel: null, msg: RACE_MSG.opened, msgKind: "good" });
+        R.opened();
+        return;
+      }
+      const failed: CrossState = { ...S, failed: true, sel: null, msg: R.freeResets ? RACE_MSG.failedFree : RACE_MSG.autoScramble, msgKind: "bad" };
+      update(failed);
+      setShakes(n => n + 1);
+      R.failed();
+      if (!R.freeResets) {
+        const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+        autoScramble.current = setTimeout(() => {
+          autoScramble.current = null;
+          rearrange(stateFrom(failed.tiles, failed.tier, R.nextDeal(), cheat, SCRAMBLE_MSG), failed);
+        }, reduce ? 0 : 450);
+      }
+      return;
+    }
     if (solved(S.tiles, S.arr)) {
       const gain = skillGain(profile.skill, S.tier, S.movesLeft, S.cheated);
       rec.end(S.tier, "opened", S.cheated);
@@ -187,7 +231,7 @@ export function useCross() {
   return {
     S, profile, cheat, look, flash, flashed, hintText, ghost, ghostEl, boardEl,
     tryLock, toggleCheat, newLock: () => newLock(S.tier), pickTier: newLock,
-    retry: () => restart(false), startOver: () => restart(true), scramble: scrambleAgain, canStartOver: crossTouched(S),
+    retry: () => restart(false), startOver: () => restart(true), scramble: scrambleAgain, canStartOver: crossTouched(S), loadLock, solveNow,
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<HTMLDivElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<HTMLDivElement>) => endDrag(e, true), onKeyDown },
   };
 }

@@ -10,6 +10,7 @@ import {
 } from "./engine";
 import { emptyCubeDom, type CubeDom } from "./CubeView";
 import { useLockRecord } from "../record";
+import { RACE_MSG, type RaceLink } from "../race/link";
 
 /** The cube in play: the attempt (stones, turns, how it was dealt, failed) and the rest of the page. */
 export interface CubeState extends Attempt<Deal> {
@@ -21,11 +22,15 @@ const newMsg = (tier: TierId) => CUBE_TIERS[tier].obscured
   ? "Only the face toward you shows its knot. Turn the cube to read the rest."
   : "Turn the cube to see the rest of the knot.";
 
-function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: CubeState["msgKind"] = "") {
-  const d = deal(tier, sol, skill);
+/** A cube in play from a given deal. */
+function lockFrom(tier: TierId, sol: number[], d: Deal, cheat: boolean, msg: string, msgKind: CubeState["msgKind"] = "") {
   const s: CubeState = { ...startAttempt(d), tier, sol, open: false, msg, msgKind, cheated: cheat };
   return { s, q: ORIENTATIONS[d.orient] };
 }
+function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: CubeState["msgKind"] = "") {
+  return lockFrom(tier, sol, deal(tier, sol, skill), cheat, msg, msgKind);
+}
+const SCRAMBLE_MSG = "The cube tumbles and the stones scramble. A fresh try at the same knot.";
 
 /** Which faces show and which can be touched, for the cube turned to q. */
 interface View { front: number; vis: number[] }
@@ -35,10 +40,13 @@ export const shadeOf = (q: Quat) => faceLight(q).map(l => +((1 - l) * .6).toFixe
 
 const easeInOut = (t: number) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function useCube() {
+/** The cube. With a race link it plays the race's locks instead (see race/link.ts). */
+export function useCube(race?: RaceLink<number[], Deal>) {
+  const raceRef = useRef(race); raceRef.current = race;
   const [profile, setProfile] = useStoredState<Profile>("lock-react-cube-profile", NEW_PROFILE);
   const first = useRef<{ s: CubeState; q: Quat } | null>(null);
-  if (!first.current) first.current = freshLock(2, makeKnot(CUBE_TIERS[2]), profile.skill, false, newMsg(2));
+  if (!first.current) first.current = race ? lockFrom(race.tier, race.first.knot, race.first.deal, false, RACE_MSG.first)
+    : freshLock(2, makeKnot(CUBE_TIERS[2]), profile.skill, false, newMsg(2));
   const [s, setS] = useState<CubeState>(first.current.s);
   const [view, setView] = useState<View>(() => viewOf(first.current!.q));
   const [cheat, setCheatState] = useState(false);
@@ -141,7 +149,7 @@ export function useCube() {
     const next = turnInAttempt(S, k, ccw);
     if (!next) return;
     const left = next.turnsLeft;
-    rec.begin(S.tier);
+    if (!raceRef.current) rec.begin(S.tier);
     commit({ ...next, msg: left === 0 ? "That was your last turn. Press the triskele." : "", msgKind: "" });
     if (!reduce) {
       // the stone and its pin swing round into place
@@ -166,7 +174,7 @@ export function useCube() {
     const start = snapQuat(q.current).q, target = ORIENTATIONS[next.dealt.orient];
     let swapped = false;
     setMoving(true);
-    tween(1500, t => {
+    tween(raceRef.current ? 650 : 1500, t => {
       if (!swapped && t >= .5) { swapped = true; commit(next); }
       q.current = qnorm(qmul(qaxis([0, 1, 0], 360 * t), qslerp(start, target, t))); apply();
     }, () => {
@@ -179,7 +187,7 @@ export function useCube() {
   const restart = (mid: boolean) => {
     const S = sRef.current;
     if (busy.current || S.open || (mid ? S.failed || !touched(S) : !S.failed)) return;
-    if (mid) rec.drop();
+    if (mid && !raceRef.current) rec.drop();
     busy.current = true;
     // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
     const next: CubeState = {
@@ -196,16 +204,52 @@ export function useCube() {
     const S = sRef.current;
     if (busy.current || !S.failed) return;
     busy.current = true;
-    const fresh = freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, "The cube tumbles and the stones scramble. A fresh try at the same knot.");
+    const R = raceRef.current;
+    const fresh = R ? lockFrom(S.tier, S.sol, R.nextDeal(), cheatRef.current, SCRAMBLE_MSG) : freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, SCRAMBLE_MSG);
     tumble(fresh.s, () => { busy.current = false; });
+  };
+
+  /** Race: put the race's next lock in play straight away (no tumble). */
+  const loadLock = (sol: number[], d: Deal, msg: string) => {
+    stopTween.current?.(); aim.current = null;
+    const f = lockFrom(sRef.current.tier, sol, d, cheatRef.current, msg);
+    q.current = f.q;
+    commit(f.s); setHome(false); setMoving(false); apply();
+    busy.current = false;
+  };
+  /** Race test aid: put every stone right (the turns are not spent). */
+  const solveNow = () => {
+    const S = sRef.current;
+    if (busy.current || S.open || S.failed) return;
+    commit({ ...S, cur: S.sol.slice() });
   };
 
   const tryOpen = () => {
     if (busy.current || sRef.current.open || sRef.current.failed) return;
     busy.current = true;
     stopTween.current?.(); aim.current = null;
-    const S = sRef.current, g = cubeGeom(CUBE_TIERS[S.tier].N), P = pRef.current;
+    const S = sRef.current, g = cubeGeom(CUBE_TIERS[S.tier].N), P = pRef.current, R = raceRef.current;
     const start = snapQuat(q.current).q;
+    if (R) {
+      // A race: a short "Opened!" beat (the race loads the next lock), or a failed try.
+      if (solved(g, S.cur)) {
+        commit({ ...S, open: true, msg: RACE_MSG.opened, msgKind: "good" });
+        glideTo(start, 160, () => { setHome(true); clunk(); });
+        R.opened();
+        return; // busy until the next lock is loaded
+      }
+      commit({ ...failAttempt(S), msg: R.freeResets ? RACE_MSG.failedFree : RACE_MSG.autoScramble, msgKind: "bad" });
+      R.failed();
+      glideTo(start, 160, () => {
+        shake();
+        if (R.freeResets) { busy.current = false; return; }
+        wait(450, () => {
+          const cur = sRef.current;
+          tumble(lockFrom(cur.tier, cur.sol, R.nextDeal(), cheatRef.current, SCRAMBLE_MSG).s, () => { busy.current = false; });
+        });
+      });
+      return;
+    }
     if (solved(g, S.cur)) {
       // The pins are pushed home into their grooves, the cube settles with a clunk, then spins free.
       const gain = skillGain(P.skill, S.tier, S.turnsLeft, S.cheated);
@@ -284,7 +328,7 @@ export function useCube() {
 
   return {
     s, profile, cheat, home, moving, view, q, dom,
-    turnBy, tryOpen, newOrNext, toggleCheat, pickTier, onKeyDown, retry, scramble, startOver,
+    turnBy, tryOpen, newOrNext, toggleCheat, pickTier, onKeyDown, retry, scramble, startOver, loadLock, solveNow,
     handlers: {
       onPointerDown, onPointerMove,
       onPointerUp: (e: PointerEvent<HTMLDivElement>) => endDrag(e, false),

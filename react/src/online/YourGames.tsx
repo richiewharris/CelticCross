@@ -5,6 +5,8 @@ import { gameById } from "../games/registry";
 import { AccountLine } from "./AccountLine";
 import { inviteUrl, onlineHash } from "./route";
 import { isMyTurn, useMyGames, type MyGames } from "./useMyGames";
+import { useMyRaces } from "./useMyRaces";
+import { otherSeat, raceHash, raceLine, raceUrl, seatName as racerName, seatOf, type PlayedChallenge, type RaceSummary } from "./races";
 import type { OnlineGameSummary } from "./types";
 import "./online.css";
 
@@ -57,6 +59,62 @@ function Section({ title, games, uid, kind, empty }: { title: string; games: Onl
   );
 }
 
+/** One lock race: what state it's in, from this player's side. */
+function RaceRow({ r, uid }: { r: RaceSummary; uid: string | null }) {
+  const d = r.doc, me = seatOf(d, uid), them = me ? otherSeat(me) : "b";
+  const [copied, setCopied] = useState(false);
+  const mine = me ? d.runs[me] : null, theirs = d.runs[them];
+  let line: string, kind: "mine" | "theirs" | "open" | "done" = "theirs";
+  if (d.status === "open") { line = "Waiting for an opponent to join"; kind = "open"; }
+  else if (d.status === "ready") { line = me && !d.ready[me] ? "Press Ready to start" : `Waiting for ${racerName(d, them)} to be ready`; kind = me && !d.ready[me] ? "mine" : "theirs"; }
+  else if (d.status === "running") line = mine?.finished ? `Your run: ${mine.solves} opened · ${racerName(d, them)} still racing` : "Racing now";
+  else {
+    kind = "done";
+    const a = mine?.solves ?? 0, b = theirs.solves;
+    const res = !mine ? "Finished" : a !== b ? (a > b ? "You won" : "You lost") : mine.fails !== theirs.fails ? (mine.fails < theirs.fails ? "You won" : "You lost") : "Draw";
+    line = `${res} · ${a}–${b} against ${racerName(d, them)}`;
+  }
+  const copy = async () => { try { await navigator.clipboard.writeText(raceUrl(r.id)); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ } };
+  return (
+    <li className={`yg-row ${kind}`}>
+      <a className="yg-main" href={raceHash(r.id)}>
+        <span className="yg-title">Celtic Cross Lock<span className="yg-side"> · {raceLine(d.options)}</span></span>
+        <span className="yg-line">{line}</span>
+      </a>
+      <span className="yg-when">{ago(d.updatedAt)}</span>
+      {kind === "open" ? <button type="button" className="yg-copy" onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button>
+        : <a className="yg-open" href={raceHash(r.id)}>{kind === "mine" ? "Ready" : kind === "done" ? "View" : "Open"}</a>}
+    </li>
+  );
+}
+
+function ChallengeRow({ c }: { c: PlayedChallenge }) {
+  return (
+    <li className="yg-row done">
+      <a className="yg-main" href={raceHash(c.id)}>
+        <span className="yg-title">Celtic Cross Lock<span className="yg-side"> · challenge · {c.line}</span></span>
+        <span className="yg-line">{`Your score: ${c.solves} opened, ${c.fails} failed`}</span>
+      </a>
+      <span className="yg-when">{ago(c.at)}</span>
+      <a className="yg-open" href={raceHash(c.id)}>Board</a>
+    </li>
+  );
+}
+
+function RacesSection({ races, challenges, uid }: { races: RaceSummary[]; challenges: PlayedChallenge[]; uid: string | null }) {
+  const shown = races.slice(0, 12), ch = challenges.filter(c => !races.some(r => r.id === c.id)).slice(0, 12);
+  if (!shown.length && !ch.length) return null;
+  return (
+    <section className="yg-section" aria-label="Lock races">
+      <h2>Lock races<span className="yg-count">{shown.length + ch.length}</span></h2>
+      <ul>
+        {shown.map(r => <RaceRow key={r.id} r={r} uid={uid} />)}
+        {ch.map(c => <ChallengeRow key={c.id} c={c} />)}
+      </ul>
+    </section>
+  );
+}
+
 export function groupGames(v: MyGames) {
   const live = v.games.filter(g => g.doc.status !== "done");
   return {
@@ -70,13 +128,14 @@ export function groupGames(v: MyGames) {
 export function YourGames() {
   const v = useMyGames(true);
   const G = groupGames(v);
-  const none = v.state === "ready" && !v.games.length;
+  const R = useMyRaces(v.uid);
+  const none = v.state === "ready" && !v.games.length && !R.races.length && !R.challenges.length;
   return (
     <GameScope id="home">
       <div className="home yg online">
         <header>
           <h1>Your games</h1>
-          <p className="lede">Your online games of Monsiv, Cnoc and Fidchell. Pick one up where you left off.</p>
+          <p className="lede">Your online games of Monsiv, Cnoc and Fidchell, and your Celtic Cross Lock races. Pick one up where you left off.</p>
         </header>
         <AccountLine />
         {v.state === "loading" || v.state === "idle" ? <p className="yg-empty" aria-live="polite">Loading your games…</p> : null}
@@ -93,6 +152,7 @@ export function YourGames() {
             <Section title="Finished" games={G.done} uid={v.uid} kind="done" />
           </>
         ) : null}
+        {v.state === "ready" ? <RacesSection races={R.races} challenges={R.challenges} uid={v.uid} /> : null}
       </div>
     </GameScope>
   );

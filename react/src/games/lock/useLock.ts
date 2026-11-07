@@ -9,6 +9,7 @@ import {
 import { applyAnim, emptyDom, restingAnim, type Anim, type DialDom } from "./components/Dial";
 import { useLockRecord } from "./record";
 import { FAILED_MSG, failAttempt, retryAttempt, startAttempt, touched, turnInAttempt, type Attempt } from "./engine/attempt";
+import { RACE_MSG, type RaceLink } from "./race/link";
 
 /** The lock in play: the attempt (stones, turns, how it was dealt, failed) and the rest of the page. */
 export interface LockState extends Attempt<Deal> {
@@ -16,10 +17,13 @@ export interface LockState extends Attempt<Deal> {
   msg: string; msgKind: "" | "good" | "bad"; cheated: boolean;
 }
 
-function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: LockState["msgKind"] = "") {
-  const d = deal(tier, sol, skill);
+/** A lock in play from a given deal. */
+function lockFrom(tier: TierId, sol: number[], d: Deal, cheat: boolean, msg: string, msgKind: LockState["msgKind"] = "") {
   const s: LockState = { ...startAttempt(d), tier, sol, open: false, msg, msgKind, cheated: cheat };
   return { s, phi: d.phi };
+}
+function freshLock(tier: TierId, sol: number[], skill: number, cheat: boolean, msg: string, msgKind: LockState["msgKind"] = "") {
+  return lockFrom(tier, sol, deal(tier, sol, skill), cheat, msg, msgKind);
 }
 const NEW_MSG = "Spin the disc to see the rest of the knot.";
 const RETRY_MSG = "The dial spins back. The stones are just as this lock was dealt, with all its turns.";
@@ -28,10 +32,13 @@ const SCRAMBLE_MSG = "The dial spins and the stones scramble. A fresh try at the
 
 const easeIn = (t: number) => t * t * t;
 
-export function useLock() {
+/** The dial. With a race link it plays the race's locks instead (see race/link.ts). */
+export function useLock(race?: RaceLink<number[], Deal>) {
+  const raceRef = useRef(race); raceRef.current = race;
   const [profile, setProfile] = useStoredState<Profile>("lock-react-profile", NEW_PROFILE);
   const first = useRef<{ s: LockState; phi: number } | null>(null);
-  if (!first.current) first.current = freshLock(2, makeKnot(TIERS[2]), profile.skill, false, NEW_MSG);
+  if (!first.current) first.current = race ? lockFrom(race.tier, race.first.knot, race.first.deal, false, RACE_MSG.first)
+    : freshLock(2, makeKnot(TIERS[2]), profile.skill, false, NEW_MSG);
   const [s, setS] = useState<LockState>(first.current.s);
   const [drawnPhi, setDrawnPhi] = useState(first.current.phi);
   const [cheat, setCheatState] = useState(false);
@@ -104,7 +111,7 @@ export function useLock() {
     const next = turnInAttempt(S, k, ccw);
     if (!next) return;
     const left = next.turnsLeft;
-    rec.begin(S.tier);
+    if (!raceRef.current) rec.begin(S.tier);
     commit({ ...next, msg: left === 0 ? "That was your last turn. Press the center." : "", msgKind: "" });
     redraw();
     dom.current.disc?.querySelector<SVGElement>(`[data-k="${k}"]`)?.focus({ preventScroll: true });
@@ -129,7 +136,7 @@ export function useLock() {
     const from = anim.current.phi, phi = next.dealt.phi;
     const target = phi + 360 * Math.ceil((from + 360 - phi) / 360);
     let swapped = false;
-    tween(from, target, 1500, v => {
+    tween(from, target, raceRef.current ? 650 : 1500, v => {
       if (!swapped && v >= (from + target) / 2) { swapped = true; commit(next); setDrawnPhi(v); }
       spinSet(v);
     }, () => {
@@ -143,7 +150,7 @@ export function useLock() {
   const restart = (mid: boolean) => {
     const S = sRef.current;
     if (busy.current || S.open || (mid ? S.failed || !touched(S) : !S.failed)) return;
-    if (mid) rec.drop();
+    if (mid && !raceRef.current) rec.drop();
     busy.current = true;
     // Cheat seen on this deal stays with it: the same stones again are still a practice lock.
     const next: LockState = { ...S, ...retryAttempt(S), cheated: S.cheated || cheatRef.current, msg: mid ? START_OVER_MSG : RETRY_MSG, msgKind: "" };
@@ -156,15 +163,48 @@ export function useLock() {
     const S = sRef.current;
     if (busy.current || !S.failed) return;
     busy.current = true;
-    const fresh = freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, SCRAMBLE_MSG);
+    const R = raceRef.current;
+    const fresh = R ? lockFrom(S.tier, S.sol, R.nextDeal(), cheatRef.current, SCRAMBLE_MSG) : freshLock(S.tier, S.sol, pRef.current.skill, cheatRef.current, SCRAMBLE_MSG);
     spinSwap(fresh.s, () => { busy.current = false; });
+  };
+
+  /** Race: put the race's next lock in play straight away (no spin). */
+  const loadLock = (sol: number[], d: Deal, msg: string) => {
+    const f = lockFrom(sRef.current.tier, sol, d, cheatRef.current, msg);
+    anim.current = restingAnim(f.phi);
+    commit(f.s); setDrawnPhi(f.phi); setSvgOpen(false);
+    busy.current = false;
+  };
+  /** Race test aid: put every stone right (the turns are not spent). */
+  const solveNow = () => {
+    const S = sRef.current;
+    if (busy.current || S.open || S.failed) return;
+    commit({ ...S, cur: S.sol.slice() }); redraw();
   };
 
   const tryOpen = () => {
     if (busy.current || sRef.current.open || sRef.current.failed) return;
     busy.current = true;
     pressHub(() => {
-      const S = sRef.current, g = geom(S.tier), P = pRef.current;
+      const S = sRef.current, g = geom(S.tier), P = pRef.current, R = raceRef.current;
+      if (R) {
+        // A race: a short "Opened!" beat (the race loads the next lock), or a failed try.
+        if (solved(S.cur, g.R, g.C)) {
+          commit({ ...S, open: true, msg: RACE_MSG.opened, msgKind: "good" });
+          clunk();
+          R.opened();
+          return; // busy until the next lock is loaded
+        }
+        commit({ ...failAttempt(S), msg: R.freeResets ? RACE_MSG.failedFree : RACE_MSG.autoScramble, msgKind: "bad" });
+        shake();
+        R.failed();
+        if (R.freeResets) { busy.current = false; return; }
+        wait(450, () => {
+          const cur = sRef.current;
+          spinSwap(lockFrom(cur.tier, cur.sol, R.nextDeal(), cheatRef.current, SCRAMBLE_MSG).s, () => { busy.current = false; });
+        });
+        return;
+      }
       if (solved(S.cur, g.R, g.C)) {
         // The shield slides away, the pins are pushed home, then the disc spins free.
         const gain = skillGain(P.skill, S.tier, S.turnsLeft, S.cheated);
@@ -256,7 +296,7 @@ export function useLock() {
 
   return {
     s, profile, cheat, svgOpen, drawnPhi, anim: anim.current, dom,
-    spinBy, tryOpen, newOrNext, toggleCheat, pickTier, retry, scramble, startOver,
+    spinBy, tryOpen, newOrNext, toggleCheat, pickTier, retry, scramble, startOver, loadLock, solveNow,
     handlers: { onPointerDown, onPointerMove, onPointerUp: (e: PointerEvent<SVGSVGElement>) => endDrag(e, false), onPointerCancel: (e: PointerEvent<SVGSVGElement>) => endDrag(e, true), onKeyDown },
   };
 }

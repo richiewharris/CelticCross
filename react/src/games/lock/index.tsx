@@ -1,5 +1,7 @@
 // Celtic Cross Lock: #/lock plays the dial (a turning disc under a shield); #/lock/earn, #/lock/stack
-// and #/lock/cube are variants; #/lock/v1 is the classic version (swap stones on a ringed cross).
+// and #/lock/cube are variants; #/lock/v1 is the classic version (swap stones on a ringed cross);
+// #/lock/race sets up a race and #/lock/race/<id> is a race room.
+import { lazy, Suspense } from "react";
 import "./lock.css";
 import "./lock-v1.css";
 import { GameScope } from "../../kit/GameScope";
@@ -10,8 +12,12 @@ import { StackGame } from "./stack/StackGame";
 import { CubeGame } from "./cube/CubeGame";
 import { useVersion } from "./useVersion";
 
+// Races load their own code (and the online layer) only when opened.
+const RacePage = lazy(() => import("./race/RacePage"));
+
 export default function Page() {
   const v = useVersion();
+  if (v === "race") return <GameScope key="race" id="lock"><Suspense fallback={null}><RacePage /></Suspense></GameScope>;
   if (v === "v1") return <GameScope key="v1" id="lock-v1"><CrossGame /></GameScope>;
   const Game = v === "earn" ? EarnGame : v === "stack" ? StackGame : v === "cube" ? CubeGame : LockGame;
   return <GameScope key={v} id="lock"><Game /></GameScope>;

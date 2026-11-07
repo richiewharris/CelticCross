@@ -39,7 +39,7 @@ export function track(name: string, params?: Record<string, unknown>) {
 
 /** Hash routes don't change the page path, so report each one as a page view. */
 export function trackPageView() {
-  track("page_view", { page_location: window.location.href, page_path: "/" + window.location.hash.replace(/^#\/?/, "").replace(/\/play\/.+$/, "/play"), page_title: document.title });
+  track("page_view", { page_location: window.location.href, page_path: "/" + window.location.hash.replace(/^#\/?/, "").replace(/\/(play|race)\/.+$/, "/$1"), page_title: document.title });
 }
 
 export interface GameEventInfo { mode: "computer" | "friend" | "online" | "solo" | "puzzle"; result?: string; variant?: string; level?: string | number; score?: number; cheat?: boolean }

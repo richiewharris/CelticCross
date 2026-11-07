@@ -7,6 +7,13 @@ rules_version = '2';
 //   Players can only: take an empty seat, add exactly one move on their own turn, resign, or offer a
 //   rematch. Moves are checked against the game's rules by both players' browsers on replay.
 // stats/games: public "games played" tallies; anyone may add exactly 1 to one known game.
+// races/{id}: a two-player Celtic Cross Lock race. Only the creator creates it; one other player takes
+//   the empty seat once; each racer sets only their own Ready flag and writes only their own run, whose
+//   counts only grow, whose bonus and penalty must follow from them, and which freezes once finished,
+//   within a window from the server-stamped start. races/{id}/scores/{uid}: one challenge score per
+//   player (not the racers), begun at a server-stamped start, growing only within the same window, and
+//   frozen once finished. Clocks run in the browsers, so a racer could still report solves they didn't
+//   make: these rules bound what a report can say, not whether it is true.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -124,6 +131,158 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(tallied())
         && upByOne('monsiv') && upByOne('fidchell') && upByOne('lock') && upByOne('fiche')
         && upByOne('cnoc') && upByOne('cnoc-mor') && upByOne('fidchell-cups') && upByOne('goldmines');
+    }
+
+    // ---------- Lock races ----------
+    function diffKeys() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function raceOptionsOk(o) {
+      return o is map
+        && o.keys().hasAll(['minutes', 'kind', 'tier', 'resets', 'penalty', 'bonus'])
+        && o.keys().hasOnly(['minutes', 'kind', 'tier', 'resets', 'penalty', 'bonus'])
+        && o.minutes in [1, 3, 5, 10] && o.kind in ['dial', 'cube', 'cross'] && o.tier in [1, 2, 3, 4, 5]
+        && o.resets in ['free', 'none'] && o.penalty is bool && o.bonus is bool;
+    }
+    function nameOk(n) { return n == null || (n is string && n.size() <= 40); }
+    // Seconds lost per failed try (10 per minute of race) and gained per lock (race/engine.ts BONUS_TABLE).
+    function penaltyEach(o) { return o.penalty ? o.minutes * 10 : 0; }
+    function bonusEach(o) {
+      return o.bonus ? {'1': [1, 1, 2, 2, 3], '3': [1, 2, 2, 3, 4], '5': [2, 2, 3, 4, 5], '10': [2, 3, 4, 5, 5]}[string(o.minutes)][o.tier - 1] : 0;
+    }
+    // Total bonus after n locks, capped at the race's length (so a clock can at most double).
+    function bonusFor(o, n) { return n * bonusEach(o) <= o.minutes * 60 ? n * bonusEach(o) : o.minutes * 60; }
+    function runKeys() { return ['solves', 'fails', 'bonus', 'penalty', 'finished', 'finishedAt']; }
+    function zeroRun(r) { return r == {'solves': 0, 'fails': 0, 'bonus': 0, 'penalty': 0, 'finished': false, 'finishedAt': null}; }
+    // A run moves on: counts only grow, bonus and penalty follow from them, nothing changes after the finish.
+    function runGrows(o, old, nu) {
+      return old.finished == false
+        && nu.solves is int && nu.fails is int && nu.solves >= old.solves && nu.fails >= old.fails
+        && nu.solves <= 2000 && nu.fails <= 2000
+        && nu.bonus == bonusFor(o, nu.solves) && nu.penalty == nu.fails * penaltyEach(o)
+        && nu.finished is bool
+        && (nu.finished ? nu.finishedAt is int : nu.finishedAt == null);
+    }
+    // Runs can be reported until twice the race's length (the most a clock can hold) plus 5 minutes.
+    function inWindow(startedAt, o) { return request.time < startedAt + duration.value(o.minutes * 120 + 300, 's'); }
+
+    match /races/{raceId} {
+      function raceFields() {
+        return ['v', 'options', 'seed', 'creator', 'seats', 'players', 'names', 'status', 'ready', 'runs',
+                'startedAt', 'next', 'createdAt', 'updatedAt'];
+      }
+      function raceSeat(r) { return r.seats.a == me() ? 'a' : 'b'; }
+
+      allow get: if signedIn();
+      allow list: if signedIn() && me() in resource.data.players;
+      allow delete: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(raceFields())
+        && request.resource.data.keys().hasOnly(raceFields())
+        && request.resource.data.v == 1
+        && raceOptionsOk(request.resource.data.options)
+        && request.resource.data.seed is int && request.resource.data.seed >= 0
+        && request.resource.data.creator == me()
+        && request.resource.data.seats == {'a': me(), 'b': null}
+        && request.resource.data.players == [me()]
+        && request.resource.data.names.keys().hasOnly(['a', 'b'])
+        && nameOk(request.resource.data.names.a) && request.resource.data.names.get('b', null) == null
+        && request.resource.data.status == 'open'
+        && request.resource.data.ready == {'a': false, 'b': false}
+        && request.resource.data.runs.keys().hasOnly(['a', 'b'])
+        && zeroRun(request.resource.data.runs.a) && zeroRun(request.resource.data.runs.b)
+        && request.resource.data.startedAt == null
+        && request.resource.data.next == null
+        && request.resource.data.createdAt is int
+        && request.resource.data.updatedAt is int;
+
+      // The second racer takes seat b, once.
+      function joiningRace() {
+        let r = resource.data;
+        let d = request.resource.data;
+        return r.status == 'open' && r.seats.b == null && !(me() in r.players)
+          && diffKeys().hasOnly(['seats', 'players', 'names', 'status', 'updatedAt'])
+          && d.seats == {'a': r.seats.a, 'b': me()}
+          && d.players == r.players.concat([me()])
+          && d.names.a == r.names.a && nameOk(d.names.b)
+          && d.status == 'ready';
+      }
+
+      // A racer says they're ready (their own flag only). The second one starts the race, stamped with server time.
+      function readying() {
+        let r = resource.data;
+        let d = request.resource.data;
+        let s = raceSeat(r);
+        let both = d.ready.a == true && d.ready.b == true;
+        return r.status == 'ready' && me() in r.players
+          && diffKeys().hasOnly(['ready', 'status', 'startedAt', 'updatedAt'])
+          && d.ready.diff(r.ready).affectedKeys() == [s].toSet()
+          && d.ready[s] == true
+          && (both ? (d.status == 'running' && d.startedAt == request.time)
+                   : (d.status == 'ready' && d.startedAt == null));
+      }
+
+      // A racer reports their own run; a finished run may also close the race.
+      function racing() {
+        let r = resource.data;
+        let d = request.resource.data;
+        let s = raceSeat(r);
+        return r.status in ['running', 'done'] && me() in r.players
+          && inWindow(r.startedAt, r.options)
+          && diffKeys().hasOnly(['runs', 'status', 'updatedAt'])
+          && d.runs.diff(r.runs).affectedKeys().hasOnly([s])
+          && d.runs[s].keys().hasAll(runKeys()) && d.runs[s].keys().hasOnly(runKeys())
+          && runGrows(r.options, r.runs[s], d.runs[s])
+          && (d.status == r.status || (r.status == 'running' && d.status == 'done' && d.runs[s].finished == true));
+      }
+
+      // A racer whose own run is finished closes the race (e.g. the other racer went away).
+      function endingRace() {
+        let r = resource.data;
+        return r.status == 'running' && me() in r.players
+          && r.runs[raceSeat(r)].finished == true
+          && diffKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status == 'done';
+      }
+
+      function offeringRaceRematch() {
+        return resource.data.status == 'done'
+          && me() in resource.data.players
+          && resource.data.next == null
+          && diffKeys().hasOnly(['next', 'updatedAt'])
+          && request.resource.data.next is string;
+      }
+
+      allow update: if signedIn()
+        && request.resource.data.updatedAt is int
+        && (joiningRace() || readying() || racing() || endingRace() || offeringRaceRematch());
+
+      // A challenger's score for this race's locks: one per player, never by the two racers.
+      match /scores/{uid} {
+        function theRace() { return get(/databases/$(database)/documents/races/$(raceId)).data; }
+        function scoreKeys() { return ['uid', 'name', 'solves', 'fails', 'bonus', 'penalty', 'finished', 'finishedAt', 'startedAt', 'updatedAt']; }
+
+        allow get, list: if signedIn();
+        allow delete: if false;
+
+        allow create: if signedIn() && uid == me()
+          && request.resource.data.keys().hasAll(scoreKeys())
+          && request.resource.data.keys().hasOnly(scoreKeys())
+          && request.resource.data.uid == me()
+          && nameOk(request.resource.data.name)
+          && request.resource.data.solves == 0 && request.resource.data.fails == 0
+          && request.resource.data.bonus == 0 && request.resource.data.penalty == 0
+          && request.resource.data.finished == false && request.resource.data.finishedAt == null
+          && request.resource.data.startedAt == request.time
+          && request.resource.data.updatedAt is int
+          && theRace().status in ['running', 'done']
+          && !(me() in theRace().players);
+
+        allow update: if signedIn() && uid == me()
+          && diffKeys().hasOnly(['solves', 'fails', 'bonus', 'penalty', 'finished', 'finishedAt', 'updatedAt'])
+          && request.resource.data.updatedAt is int
+          && runGrows(theRace().options, resource.data, request.resource.data)
+          && inWindow(resource.data.startedAt, theRace().options);
+      }
     }
   }
 }
