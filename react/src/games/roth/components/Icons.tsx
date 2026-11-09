@@ -13,27 +13,36 @@ const ICONS: Record<string, ReactNode> = {
   Earth: <><P fill d="M2 20 9 7l4 7 3-4 6 10z" /></>,
   Water: <><P d="M2 9c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0" /><P d="M2 15c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0" /></>,
   // kinds
-  Weapon: <><P d="M5 19 17 7" /><P fill d="m15 3 6 0 0 6-3 0 0-3-3 0z" /><P d="M4 14l6 6" /><P d="M3 21l2-2" /></>,
+  Weapon: <><P d="M19.5 4.5 9 15" /><P fill d="M20.5 2.5 21.5 3.5 20 8 16 4z" /><P d="M6 12l6 6" /><P d="M9 15l-5.5 5.5" /><circle cx="3.5" cy="20.5" r="1.4" fill="currentColor" /></>,
   Feat: <><P fill d="M12 2l2.4 6.6L21 9l-5.2 4.3L17.6 21 12 17l-5.6 4 1.8-7.7L3 9l6.6-.4z" /></>,
   Ally: <><circle cx="8" cy="8" r="3" fill="currentColor" /><circle cx="16" cy="8" r="3" fill="currentColor" /><P d="M3 20c0-4 2.5-6 5-6s5 2 5 6" /><P d="M11 20c0-4 2.5-6 5-6s5 2 5 6" /></>,
-  Word: <><P d="M6 3h10a2 2 0 0 1 2 2v14a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2z" /><P d="M9 8h6M9 12h6M9 16h4" /></>,
+  // a Word is an ogham stone: a standing stone with notches cut along its edge
+  Word: <><P d="M8 21V7c0-3 2-5 4-5s4 2 4 5v14" /><P d="M5 21h14" /><P d="M16 7h3M16 10h3M16 13h3M5 9h3M5 12h3" /></>,
   // effects and stats
-  strike: <><P d="M4 20 15 9" /><P fill d="m13 4 7 0 0 7-2.5 0 0-4.5-4.5 0z" /></>,
-  heal: <><P fill d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z" /></>,
+  strike: <><P d="M5 19 13 11" /><P fill d="M21 3c-1 4.5-3.5 8-7.5 9.5L11.5 10.5C13 6.5 16.5 4 21 3z" /><P d="M3 21l2-2" /></>,
+  heal: <><P fill d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" /></>,
   shield: <><P fill d="M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" /></>,
   valour: <><P fill d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z" /></>,
   init: <><P fill d="M13 2 4 14h7l-1 8 9-12h-7z" /></>,
   // card types
   hero: <><P fill d="M12 2l3 4 4-2-1 6H6L5 4l4 2z" /><P d="M6 13h12M8 13v8h8v-8" /></>,
-  champion: <><P fill d="M12 2l7 3v6c0 5-3 9-7 11-4-2-7-6-7-11V5z" /><P d="M12 6v10M8 10h8" /></>,
+  // a champion: a round targe with a spear behind it
+  champion: <><P d="M4 20 20 4" /><P fill d="M20 4l-1 4.5-3.5-3.5z" /><circle cx="11" cy="13" r="6" fill="currentColor" /><circle cx="11" cy="13" r="2" fill="none" stroke="var(--ico-cut, #0003)" strokeWidth="1.4" /></>,
   geis: <><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.8" /><P d="M6 18 18 6" /></>,
-  oath: <><P d="M12 3v18M7 8h10" /><P d="M7 8l-2 2M17 8l2 2M12 21l-2-2M12 21l2-2" /></>,
+  // an oath is sworn through a holed stone
+  oath: <><P fill d="M6 22V9c0-4 3-7 6-7s6 3 6 7v13zM12 8.2a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z" /></>,
   omen: <><P fill d="M15 3a9 9 0 1 0 6 15.5A7 7 0 0 1 15 3z" /></>,
   global: <><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" /><P d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,
   targeted: <><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12" r="3" fill="currentColor" /><P d="M12 1v4M12 19v4M1 12h4M19 12h4" /></>,
-  yours: <><P fill d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6z" /></>,
-  pierce: <><P d="M3 12h15" /><P fill d="m16 7 6 5-6 5z" /><P d="M9 5v14" /></>,
+  // yours: a ring-fort (ráth) with its gate, your own ground
+  yours: <><P d="M7.5 5.2A8.5 8.5 0 1 0 16.5 5.2" /><P d="M9.6 9.2A4 4 0 1 0 14.4 9.2" /><P d="M12 2v8" /></>,
+  rest: <><P d="M4 14h16v4H4zM6 14V9h5v5" /><P d="M15 4h4l-4 5h4" /></>,
+  // pierce: a spear passing through a shield
+  pierce: <><P d="M10 4.5 15 6.5v5c0 3.5-2.2 6.3-5 7.5-2.8-1.2-5-4-5-7.5v-5z" /><P d="M1.5 12h18" /><P fill d="m18 8.5 4.5 3.5-4.5 3.5z" /></>,
 };
+
+/** An icon's drawing, for reuse inside a larger SVG (the card art). */
+export const iconBody = (name: string): ReactNode => ICONS[name] ?? null;
 
 export function Icon({ name, title, className }: { name: string; title?: string; className?: string }) {
   const body = ICONS[name];

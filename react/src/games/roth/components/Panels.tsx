@@ -4,6 +4,8 @@ import { Segmented } from "../../../kit/Segmented";
 import { FACTIONS, type CardDef, type Faction } from "../engine/cards";
 import type { Result, Side } from "../engine/engine";
 import { DECIDED, FACTION_TITLE, cardText, fighterStats, typeLine } from "../text";
+import { faceLines } from "../faceText";
+import { Rich } from "./Card";
 import type { Level, Setup } from "../useMatch";
 
 const LEVELS: { value: Level; label: string }[] = [
@@ -50,7 +52,11 @@ export function Inspector({ def }: { def: CardDef | null }) {
       <p className="i-name">{def.name}</p>
       <p className="i-type">{typeLine(def)}</p>
       {def.type === "hero" || def.type === "champion" ? <p className="i-stats">{fighterStats(def)}</p> : null}
-      <p className="i-text">{cardText(def)}</p>
+      <div className="i-face">
+        {faceLines(def).map((l, i) => (l.kind === "ability" ? <p key={i} className="i-ability">{l.text}</p> : <p key={i} className={`i-ln i-${l.kind}`}><Rich text={l.text} /></p>))}
+        {(def.type === "hero" || def.type === "champion") && def.tag ? <p className="i-ln">Geis: <b>{def.tag}</b>. A card that invokes {def.tag} costs this hero 2 Valour.</p> : null}
+      </div>
+      <p className="i-text"><span className="i-exact">Exact rule:</span> {cardText(def)}</p>
     </div>
   );
 }

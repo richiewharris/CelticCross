@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import "./roth.css";
 import { GameScope } from "../../kit/GameScope";
-import { ALL_DEFS, type CardDef } from "./engine/cards";
+import { ALL_DEFS, CHAMPIONS, GEASA, HEROES, OATHS, OMENS, SUPPORTS, type CardDef } from "./engine/cards";
 import { cloneState, nextDecision } from "./engine/engine";
 import { CardFace } from "./components/Card";
 import { Inspector } from "./components/Panels";
@@ -28,6 +28,15 @@ export default function Playground() {
           <div className="hand">{SAMPLE.map((id) => <CardFace key={id} def={ALL_DEFS[id]} owner="mine" onFocusCard={setFocus} />)}</div>
           <div className="hand">{SAMPLE.map((id) => <CardFace key={id} def={ALL_DEFS[id]} variant="compact" owner="theirs" />)}</div>
           <Inspector def={focus} />
+        </section>
+        <section className="pg-gallery">
+          <h2>Every card</h2>
+          {([["Heroes", HEROES], ["Champions", CHAMPIONS], ["Supports", SUPPORTS], ["Geasa", GEASA], ["Oaths", OATHS], ["Omens", OMENS]] as const).map(([title, group]) => (
+            <div key={title} className="gallery-group">
+              <h3 className="zone-label">{title}</h3>
+              <div className="hand gallery">{Object.values(group).map((d) => <CardFace key={d.id} def={d} owner="mine" onFocusCard={setFocus} />)}</div>
+            </div>
+          ))}
         </section>
         {views.map((v) => (
           <section key={v.id}>
