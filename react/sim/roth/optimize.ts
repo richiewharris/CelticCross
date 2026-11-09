@@ -73,7 +73,12 @@ if (process.argv.includes("--worker")) {
         const scores = await evalMany([best[f], ...tries]);
         cur = scores[0];
         const k = scores.slice(1).reduce((bi, v, j, a) => (v > a[bi] ? j : bi), 0);
-        if (scores[k + 1] > cur + 0.02) { best[f] = tries[k]; cur = scores[k + 1]; }
+        if (scores[k + 1] > cur + 0.03) {
+          // confirm on fresh seeds before keeping it, so noise alone can't walk the deck downhill
+          seedBase++;
+          const [b2, c2] = await evalMany([best[f], tries[k]]);
+          if (c2 > b2) { best[f] = tries[k]; cur = c2; }
+        }
       }
       console.log(`round ${round + 1} ${f}: ${(100 * cur).toFixed(1)}%  ${best[f].join(" ")}`);
       writeFileSync(new URL("../../src/games/roth/engine/computerDecks.json", import.meta.url), JSON.stringify(best, null, 1) + "\n");

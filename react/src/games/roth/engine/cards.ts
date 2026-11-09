@@ -190,7 +190,7 @@ export const HEROES: Record<string, HeroDef> = {
   // Sídhe (Tuatha Dé Danann): Wind and Word, many-skilled, healers
   lugh: hero("lugh", "Lugh Lámhfhada", "Sidhe", L, 4, 6, "Wind", "Fire", "Many skills", "Samildánach: every support counts as his Focus", { focusAny: true }),
   dagda: hero("dagda", "The Dagda", "Sidhe", R, 6, 1, "Earth", "Fire", "Plenty", "Cauldron: when he rests, Heal 2", { restHeal: 2 }),
-  morrigan: hero("morrigan", "The Morrígan", "Sidhe", R, 3, 4, "Wind", "Earth", "Prophecy", "Battle-crow: Strikes +1; once per match, change her Focus to any element at the start of a duel", { strikeAll: 1, shapeShift: true }),
+  morrigan: hero("morrigan", "The Morrígan", "Sidhe", R, 4, 4, "Wind", "Earth", "Prophecy", "Battle-crow: Strikes +1; once per match, change her Focus to any element at the start of a duel", { strikeAll: 1, shapeShift: true }),
   brigid: hero("brigid", "Brigid", "Sidhe", C, 4, 3, "Fire", "Water", "Forge", "Healer's well: her Heals +1", { healBonus: 1 }),
   // Fomóire: huge, slow, blighting
   balor: hero("balor", "Balor of the Evil Eye", "Fomoire", L, 5, 1, "Fire", "Water", "Evil eye", "Evil eye: his first Strike each duel +2", { firstStrike: 2 }),

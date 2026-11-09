@@ -69,7 +69,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     plan: [
       "Lugh has the **highest Initiative** in the game (6), and every support counts as his Focus: everything he uses gets **+1**.",
       "The Dagda is the tank: **Valour 6**, Initiative 1, and resting **heals him 2**. Dian Cécht's well and the druid's oath keep him topped up.",
-      "The Morrígan is the glass cannon: **Valour 3** but **Strikes +1**, and once per match she may change her Focus to any element at the start of her duel.",
+      "The Morrígan hits hard: **Valour 4** and **Strikes +1**, and once per match she may change her Focus to any element at the start of her duel.",
       "Brigid's Heals are **+1**; her Focus is {Fire} Fire, so Goibniu's forge and Raven's war-cry suit her.",
       "Fragarach **ignores Shield**; the tathlum is **Strike 3** against any hero printed with Valour 5 or more (Balor, Indech, Ferdiad, the Coomara).",
     ],
@@ -79,9 +79,9 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "Your own **Geis of the hosting** forbids rest to every hero, the Dagda included. Lay it when it costs the enemy more.",
       "Fomóire supports are **Unwilling** for Sídhe heroes.",
     ],
-    roles: { lugh: "Quick all-rounder", dagda: "Tank", morrigan: "Glass cannon", brigid: "Healer", nuada: "Shielded stand-in", ogma: "Opening blow" },
+    roles: { lugh: "Quick all-rounder", dagda: "Tank", morrigan: "Striker", brigid: "Healer", nuada: "Shielded stand-in", ogma: "Opening blow" },
     groups: {
-      hero: "The quickest hero, the biggest, the most fragile, and a healer.",
+      hero: "The quickest hero, the biggest, a battle-crow, and a healer.",
       champion: "Nuada steps in behind **Shield 1** with Valour 5; Ogma's first Strike is **+1**.",
       support: "Wind and Fire weapons and words, a legendary **Strike 3** spear, one that ignores Shield, and Heals.",
       geis: "The open door forbids rest and costs a **Hospitality** hero 2 Valour (Emer, Bres); the giant's portion forbids Allies and costs a big hero 2 Valour.",
