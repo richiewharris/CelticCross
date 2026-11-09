@@ -26,8 +26,9 @@ npx vitest run --config sim/roth/vitest.config.ts
 2. An Invoke cost when a geis is laid comes off the hero's starting Valour in its duel (as does the giant's portion). Invoke costs
    are direct Valour loss, not Strikes (Shields and Wards don't reduce them).
 3. +1 bonuses and Reinforcements apply to a support's first effect only.
-4. Strike order: base, +1 bonuses, hero qualities, Láeg's bonus, Debility; floor at 0; Truce cap 2;
-   Lugh −1 (first Strike against that hero each duel, even a 0); Shields soak.
+4. Strike order: base, +1 bonuses, hero qualities, Láeg's bonus, Debility; floor at 0; Truce cap (now 3);
+   Indech's cap; first-Strike reductions (Lugh, Fog, Culann's hound, Manannán), even on a 0; Shields soak unless the
+   Strike ignores Shield.
 5. Only the Morrígan's crow is a board geis that forbids (supports with a Heal). Breaking it lifts it
    for both players for the rest of the match. Debility, Truce and Mist are unbreakable modifiers.
 6. Debility hits Deorad heroes, so it hits Fergus.
@@ -53,9 +54,9 @@ npx vitest run --config sim/roth/vitest.config.ts
 21. An oath's vow uses the same "forbids" terms as a geis; breaking costs 2 (the oath-break-cost lever) and the boon
     ends at once for the rest of the match. Valour and Shield already granted stay.
 22. Cathbad's ignore works on an oath as on a geis. Emain's ward ignores geasa only, not your own oaths.
-23. Heals stop at the hero's starting Valour for that duel (printed + oath + omens, after Invoke and the giant's
-    portion) + 2.
-24. Wounds tie-break: for each duel, starting Valour (as in 23) minus ending Valour, floored at 0; a felled hero's
+23. Heals stop at printed Valour + oath + omens + 2. Invoke and the giant's portion lower the starting Valour
+    but not this cap, so a hero can heal back what they took.
+24. Wounds tie-break: for each duel, starting Valour (after Invoke and the giant's portion) minus ending Valour, floored at 0; a felled hero's
     whole start counts. The player who dealt more wounds wins the tie.
 25. Drain ("if it wounds, Heal n") needs at least 1 damage past Shield and a standing hero.
 26. "Ignores Shield" Strikes leave the Shield in place. Ward and hero first-Strike reductions still apply.
