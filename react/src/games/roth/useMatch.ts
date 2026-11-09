@@ -3,13 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStoredState } from "../../kit/useStoredState";
 import { DECKS, FACTIONS, type Faction } from "./engine/cards";
+import { BUILD_NOISE, buildDeck } from "./engine/builder";
+import { computerDeck } from "./engine/computerDecks";
+import { Rng } from "./engine/rng";
+import { loadSavedDecks, resolveDeck } from "./decks";
+import { FACTION_TITLE } from "./text";
 import { applyDecision, cloneState, newMatch, nextDecision, type Decision, type Side, type State } from "./engine/engine";
 import { cancelComputer, computerChoice } from "./aiClient";
 import { logLine } from "./text";
 
 export type Level = "novice" | "casual" | "skilled" | "expert";
-export interface Setup { mine: Faction; theirs: Faction | "random"; level: Level; seat: "first" | "second" | "random" }
-export const DEFAULT_SETUP: Setup = { mine: "ulster", theirs: "random", level: "casual", seat: "random" };
+/** mine: a faction (its starter deck) or "custom:<id>" (a saved deck). theirsDeck: the computer builds its own, or plays the starter. */
+export interface Setup { mine: string; theirs: Faction | "random"; theirsDeck?: "built" | "starter"; level: Level; seat: "first" | "second" | "random" }
+export const DEFAULT_SETUP: Setup = { mine: "ulster", theirs: "random", theirsDeck: "built", level: "casual", seat: "random" };
 
 interface Saved { v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: string[]; seed: number }
 
@@ -35,11 +41,16 @@ export function useMatch() {
     const seed = Math.floor(Math.random() * 1e9);
     const theirs = st.theirs === "random" ? FACTIONS[Math.floor(Math.random() * FACTIONS.length)] : st.theirs;
     const me: Side = st.seat === "first" ? 0 : st.seat === "second" ? 1 : (Math.random() < 0.5 ? 0 : 1);
-    const decks = me === 0 ? [DECKS[st.mine], DECKS[theirs]] : [DECKS[theirs], DECKS[st.mine]];
+    const mine = resolveDeck(st.mine, loadSavedDecks()) ?? resolveDeck("ulster", [])!;
+    const built = (st.theirsDeck ?? "built") === "built";
+    const theirDeck = !built ? DECKS[theirs]
+      : st.level === "skilled" || st.level === "expert" ? computerDeck(theirs, new Rng(seed ^ 0x5bd1e995))
+      : buildDeck({ factions: [theirs], noise: BUILD_NOISE[st.level] }, new Rng(seed ^ 0x5bd1e995));
+    const decks = me === 0 ? [mine.deck, theirDeck] : [theirDeck, mine.deck];
     const S0 = newMatch([decks[0], decks[1]], {}, seed, false);
     const { S } = settle(S0);
     setSetup(st);
-    setSaved({ v: 1, setup: st, S, me, theirs, log: [`New match: you play ${st.mine} as the ${me === 0 ? "first" : "second"} player against ${theirs} (${st.level}).`], seed });
+    setSaved({ v: 1, setup: st, S, me, theirs, log: [`New match: you play ${mine.label} as the ${me === 0 ? "first" : "second"} player against ${built ? (theirs === "ulster" ? "an" : "a") : "the"} ${FACTION_TITLE[theirs]} ${built ? "deck the computer built" : "starter deck"} (${st.level}).`], seed });
   }, [setup, setSetup, setSaved]);
 
   const play = useCallback((i: number) => {

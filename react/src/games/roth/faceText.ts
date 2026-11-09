@@ -1,7 +1,7 @@
 // Display-only words for the card faces: a short ability name, plain reminder text and, for cards with room,
 // a line of lore. Nothing here changes a rule; each entry restates what engine/cards.ts and engine/engine.ts do.
 // Markup: **word** is a keyword (bold), {name} is an inline icon from Icons.tsx.
-import type { CardDef, Effect, SupportDef } from "./engine/cards";
+import { HEROES, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
 
 export interface Face {
   /** The ability's name, set as a small heading above the text. */
@@ -95,6 +95,53 @@ export const FACE: Record<string, Face> = {
   soul_cage: { ability: "Drowned souls", text: "If its Strike wounds, {heal} **Heal 1**." },
   scuab: { lore: "Manannán's boat, that needs no sail or oar." },
 
+  // the second half of each pool
+  cruaidin: { lore: "Cú Chulainn's own sword, hard-hilted." },
+  beheading: { lore: "At the feast a churl offered his neck, if a hero would bare his own the next night." },
+  bricriu: { lore: "Bricriu's feast set the heroes of Ulster at each other's throats." },
+  athirne: { lore: "No king dared refuse Athirne the satirist." },
+  leborcham: { lore: "Leborcham, Conchobar's messenger, crossed Ireland in a day." },
+  sencha: { lore: "Sencha could still a quarrel of heroes with a word." },
+  grey_macha: { lore: "Cú Chulainn's horse wept tears of blood before his last fight." },
+  scathach: { lore: "Scáthach taught him every feat she knew, in her fortress in Alba." },
+  dubsainglend: { lore: "The second horse of Cú Chulainn's chariot." },
+  tain: { lore: "The cattle-raid of Cúailnge, greatest of the tales." },
+  fraech: { lore: "Fráech, Medb's champion, fell to the Hound in the ford." },
+  cruachan_gold: { lore: "Medb and Ailill counted their treasures, and quarrelled." },
+  mac_roth: { lore: "Mac Roth, Medb's herald, came to bargain with the Hound." },
+  gamanrad: { lore: "The Gamanrad, the warrior-band of Connacht." },
+  ferdiad_sword: { lore: "Medb's gifts brought Ferdiad to fight his foster-brother." },
+  medb_druids: { lore: "Medb's druids chanted against the men of Ulster." },
+  finnabair: { lore: "Medb promised her daughter to every champion who would face the Hound." },
+  fergus_shield: { lore: "An exile's shield, carried among strangers." },
+  cauldron: { lore: "No company ever left the Dagda's cauldron unsatisfied." },
+  dagda_club: { lore: "One end of the club kills; the other brings the dead to life." },
+  credne: { lore: "Credne the brazier made the rivets for the Tuatha Dé's spears." },
+  failinis: { lore: "No beast could escape Lugh's hound." },
+  ogham: { lore: "Ogma the strong devised the ogham letters." },
+  airmed: { lore: "Airmed gathered the herbs that grew from her brother's grave." },
+  morrigan_word: { lore: "Before the battle, the Morrígan foretold its end." },
+  bodb: { lore: "Bodb Derg, the Dagda's son, and his war-band." },
+  mound_song: { lore: "A song from the mounds can call a sailor into the hill." },
+  unlidded: { lore: "It took four men to lift the lid of Balor's eye." },
+  glare: { lore: "Where the eye falls, armies wither." },
+  tethra_host: { lore: "Tethra, king of the Fomóire, ruled the host of the sea." },
+  bres_tax: { lore: "Bres taxed the Tuatha Dé until their cows ran dry." },
+  cethlenn_spear: { lore: "Cethlenn, Balor's wife, wounded the Dagda at Mag Tuired." },
+  seawall: { lore: "Indech's host came against Ireland out of the sea." },
+  bitter_well: { lore: "The Fomóire filled the healing well with stones." },
+  sea_mist: { lore: "Mist rolls in from the northern sea." },
+  domnann: { lore: "The spearmen of the Domnann, from the western shore." },
+  tide_wrath: { lore: "The sea answers the merrow's call." },
+  enbarr: { lore: "Manannán's horse runs on the waves as on dry land." },
+  fand_tears: { lore: "Fand wept when Manannán shook his cloak between her and the Hound." },
+  wave_break: { lore: "Each wave breaks, and the next is already rising." },
+  net: { lore: "A fisherman's net can drown a fisherman." },
+  kelp: { lore: "Wrack and weed hide the merrow's road home." },
+  siren: { lore: "Sailors who hear it steer for the rocks." },
+  crane_bag: { lore: "The crane-bag held every treasure of the sea." },
+  roane_lament: { lore: "The seal-folk mourn on the strand at night." },
+
   // geasa: the first line (what it forbids) is built from the card's data; these add the rest
   g_door: { ability: "Invoke Hospitality", text: "A bound hero whose geis is **Hospitality** starts its duel **2 Valour** lower.", lore: "A guest's geis: never refuse a hearth's welcome." },
   g_hound: { ability: "Invoke Hound", text: "A bound hero whose geis is **Hound** starts its duel **2 Valour** lower.", lore: "Cú Chulainn's geis: never eat the flesh of a dog." },
@@ -108,7 +155,7 @@ export const FACE: Record<string, Face> = {
   o_darkness: { text: "In the first duel, the **lower** Initiative strikes first.", lore: "The Fomóire came out of the sea in darkness." },
   o_blight: { text: "Every Heal **−1**.", lore: "Under Bres the cows ran dry and the fields lay bare." },
   o_tide: { text: "Your Heals **+1**.", lore: "The tide brings back what it took." },
-  o_mist: { text: "Your hero strikes **first** in both duels. Two Mists cancel out.", lore: "A druid's mist hides the host from its foes." },
+  o_mist: { text: "Your hero strikes **first** in the **first duel**. Two Mists cancel out.", lore: "A druid's mist hides the host from its foes." },
   o_herolight: { text: "The chosen hero's Strikes **+1**.", lore: "The hero's light rose from Cú Chulainn's brow." },
   o_keen: { text: "The chosen hero's Strikes **−1**.", lore: "The bean sídhe cries: someone here will die." },
   o_sleep: { text: "The chosen hero's {init} **Initiative −3**.", lore: "A druid's sleep falls like snow." },
@@ -172,10 +219,31 @@ export function boonLine(b: { strike?: number; shield?: number; valour?: number;
 }
 const BREAK = "To break it, pay **2 Valour**.";
 
+/** An ability for a support with no hand-written words, from its data. */
+function autoSupport(d: SupportDef): Face {
+  if (d.forHero) { const h = HEROES[d.forHero.id]; const n = h ? h.name.replace(/,.*$/, "") : d.forHero.id; return { ability: `${n}'s own`, text: `**Strike ${d.forHero.n}** when ${n} uses it.` }; }
+  if (d.invoke) return { ability: `Invoke ${d.invoke}`, text: invoke(d.invoke) };
+  if (d.nextStrike) return { ability: "Follow-through", text: NEXT };
+  if (d.drain) return { ability: "Drink deep", text: "If its Strike wounds, {heal} **Heal 1**." };
+  if (d.firstBonus) return { ability: "Opening blow", text: `**+${d.firstBonus}** if no support has been used yet this duel.` };
+  if (d.vsBig) return { ability: "Giant-slayer", text: `**+${d.vsBig}** against ${BIG}.` };
+  if (d.selfLoss) return { ability: "The price", text: `Your hero loses **${d.selfLoss} Valour**.` };
+  return {};
+}
+/** The extra bite of a geis with no hand-written words, from its data. */
+function autoGeis(d: GeisDef): Face {
+  if (d.invoke) return { ability: `Invoke ${d.invoke}`, text: `A bound hero whose geis is **${d.invoke}** starts its duel **2 Valour** lower.` };
+  if (d.bigLoss) return { ability: "Fell the big ones", text: `If the bound hero is printed with Valour **5+**, it starts its duel **${d.bigLoss} Valour** lower.` };
+  if (d.initLoss) return { ability: "Slow hand", text: `The bound hero's {init} **Initiative −${d.initLoss}**.` };
+  return {};
+}
+
 /** The lines a card face shows, in order. `kind` sets how each is drawn. */
 export type FaceLine = { kind: "effect" | "ability" | "text" | "lore" | "rule" | "break"; text: string };
 export function faceLines(d: CardDef): FaceLine[] {
-  const f = FACE[d.id] ?? {};
+  const hand = FACE[d.id] ?? {};
+  const auto = d.type === "support" ? autoSupport(d) : d.type === "geis" ? autoGeis(d) : {};
+  const f: Face = hand.ability || hand.text ? hand : { ...auto, lore: hand.lore };
   const out: FaceLine[] = [];
   const push = (kind: FaceLine["kind"], text?: string) => { if (text) out.push({ kind, text }); };
   switch (d.type) {

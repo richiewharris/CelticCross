@@ -8,10 +8,11 @@ import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./com
 import { optionAt, selFilter, Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
 import { CardsGuide, DecksGuide } from "./codex/Codex";
+import { DeckBuilder } from "./DeckBuilder";
 import { FACTION_TITLE } from "./text";
 import { useMatch } from "./useMatch";
 
-type Tab = "play" | "puzzles" | "cards" | "decks";
+type Tab = "play" | "build" | "puzzles" | "cards" | "decks";
 
 export function RothGame() {
   const [tab, setTab] = useStoredState<Tab>("roth-react-tab", "play");
@@ -24,8 +25,8 @@ export function RothGame() {
         <p className="private-note">Private preview: only you can see this page.</p>
       </header>
       <Segmented label="Mode" value={tab} onChange={setTab} className="tabs"
-        options={[{ value: "play", label: "Play the computer" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
-      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
+        options={[{ value: "play", label: "Play the computer" }, { value: "build", label: "Build a deck" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
+      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );
 }
@@ -41,7 +42,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
     return (
       <div className="game">
         <section className="stage intro">
-          <p>Pick your deck and the computer's level, then start. Each deck is 24 cards: 4 heroes, 2 champions, 9 supports, 3 geasa, 2 oaths and 4 omens.</p>
+          <p>Pick your deck and the computer's level, then start. Play one of the five starter decks, or build your own from the pools under <b>Build a deck</b>. The computer builds its own deck too: the stronger the level, the better the deck.</p>
           <RulesPanel />
         </section>
         <aside><SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch={false} /></aside>

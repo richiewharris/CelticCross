@@ -7,6 +7,7 @@ import { DECIDED, FACTION_TITLE, cardText, fighterStats, typeLine } from "../tex
 import { faceLines } from "../faceText";
 import { Rich } from "./Card";
 import type { Level, Setup } from "../useMatch";
+import { deckProblems, defsOf, useSavedDecks } from "../decks";
 
 const LEVELS: { value: Level; label: string }[] = [
   { value: "novice", label: "Novice" }, { value: "casual", label: "Casual" }, { value: "skilled", label: "Skilled" }, { value: "expert", label: "Expert" },
@@ -18,15 +19,26 @@ export const LEVEL_NOTE: Record<Level, string> = {
   expert: "also plays each choice out many times; can take a few seconds",
 };
 
+const BUILD_NOTE: Record<Level, string> = {
+  novice: "Its deck is thrown together.",
+  casual: "Its deck is built by feel.",
+  skilled: "Its deck was tuned over thousands of games.",
+  expert: "Its deck was tuned over thousands of games.",
+};
+
 export function SetupPanel(props: { setup: Setup; onStart: (s: Setup) => void; inMatch: boolean; onChange: (s: Setup) => void }) {
   const s = props.setup;
   const set = (p: Partial<Setup>) => props.onChange({ ...s, ...p });
+  const [saved] = useSavedDecks();
+  const ready = saved.filter((d) => !deckProblems(defsOf(d.ids)).length);
+  const mineOk = (FACTIONS as readonly string[]).includes(s.mine) || ready.some((d) => `custom:${d.id}` === s.mine);
   return (
     <div className="panel">
       <p className="label">New match</p>
       <label className="field">Your deck
-        <select value={s.mine} onChange={(e) => set({ mine: e.target.value as Faction })}>
-          {FACTIONS.map((f) => <option key={f} value={f}>{FACTION_TITLE[f]}</option>)}
+        <select value={mineOk ? s.mine : "ulster"} onChange={(e) => set({ mine: e.target.value })}>
+          {ready.length ? <optgroup label="Your decks">{ready.map((d) => <option key={d.id} value={`custom:${d.id}`}>{d.name}</option>)}</optgroup> : null}
+          <optgroup label="Starter decks">{FACTIONS.map((f) => <option key={f} value={f}>{FACTION_TITLE[f]} starter</option>)}</optgroup>
         </select>
       </label>
       <label className="field">The computer's deck
@@ -35,8 +47,10 @@ export function SetupPanel(props: { setup: Setup; onStart: (s: Setup) => void; i
           {FACTIONS.map((f) => <option key={f} value={f}>{FACTION_TITLE[f]}</option>)}
         </select>
       </label>
+      <Segmented label="The computer's deck" value={s.theirsDeck ?? "built"} onChange={(v) => set({ theirsDeck: v })}
+        options={[{ value: "built", label: "Builds its own" }, { value: "starter", label: "Starter deck" }] as { value: "built" | "starter"; label: string }[]} />
       <Segmented label="Computer level" value={s.level} onChange={(v) => set({ level: v })} options={LEVELS} />
-      <p className="note">{LEVELS.find((l) => l.value === s.level)!.label}: {LEVEL_NOTE[s.level]}.</p>
+      <p className="note">{LEVELS.find((l) => l.value === s.level)!.label}: {LEVEL_NOTE[s.level]}.{(s.theirsDeck ?? "built") === "built" ? ` ${BUILD_NOTE[s.level]}` : ""}</p>
       <Segmented label="Your seat" value={s.seat} onChange={(v) => set({ seat: v })}
         options={[{ value: "first", label: "First" }, { value: "second", label: "Second" }, { value: "random", label: "Random" }] as { value: Setup["seat"]; label: string }[]} />
       <button type="button" className="btn primary" onClick={() => props.onStart(s)}>{props.inMatch ? "Start a new match" : "Start the match"}</button>
@@ -92,6 +106,7 @@ export function RulesPanel() {
     <details className="panel rules-panel">
       <summary className="label">How to play</summary>
       <ul className="rules">
+        <li><b>Decks.</b> 24 cards: 4–6 heroes, up to 2 champions, 8–12 supports, 2–6 geasa, up to 4 oaths, 4–6 omens. Common cards up to 2 copies, rare and legendary 1, at most 2 legendaries. Cards from at most two peoples; exiles go with Ulster or Connacht; unaligned supports, every geis and oath, and the omens not tied to one people go with anyone. Build one under <i>Build a deck</i>, or play a starter.</li>
         <li><b>Muster.</b> Draw to 12 cards in hand and fill four Omen spots, face down. You always hold at least 2 heroes and 4 supports.</li>
         <li><b>Drafting turn.</b> Six steps round the wheel. Each step, the first player then the second places a card in the spot in front of them: a hero, then two supports to fight with it, twice.</li>
         <li><b>Playing turn.</b> The wheel turns again and you face the enemy's spots. Each step choose one: turn an omen, bind the enemy hero with a geis, supplant an enemy support with one of yours (pick one that helps them least), swear an oath on one of your own heroes, or hold.</li>

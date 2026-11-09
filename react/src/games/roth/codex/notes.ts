@@ -50,7 +50,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     ],
     watch: [
       "Medb and Ferdiad are **weak to {Water} Water**: the Merrow and the Sídhe's tathlum.",
-      "The Fomóire's **Geis of Samhain night** and the Sídhe's **Morrígan's crow** shut off the Heals the deck leans on.",
+      "The Fomóire's **Geis of Samhain night** and the **Morrígan's crow** (in the Sídhe's pool) shut off the Heals the deck leans on.",
       "Ulster supports are **Unwilling** for Connacht heroes (but not for Fergus).",
     ],
     roles: { medb: "Kin-queen", ferdiad: "Shield-wall", fergus: "Exile bruiser", ailill: "Healer", loch: "Striker", nadcrantail: "Opening blow" },
@@ -76,7 +76,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     watch: [
       "Lugh and the Dagda are **weak to {Fire} Fire** (Ulster's feats, Balor's gaze); the Morrígan is weak to {Earth} Earth.",
       "The Fomóire's **Blight** invokes **Forge** (Brigid) and their **tribute** invokes **Plenty** (the Dagda): each costs that hero **2 Valour**.",
-      "Your own **Geis of the hosting** forbids rest to every hero, the Dagda included, and the **Morrígan's crow** forbids your Heals too. Turn them when they cost the enemy more.",
+      "Your own **Geis of the hosting** forbids rest to every hero, the Dagda included. Lay it when it costs the enemy more.",
       "Fomóire supports are **Unwilling** for Sídhe heroes.",
     ],
     roles: { lugh: "Quick all-rounder", dagda: "Tank", morrigan: "Glass cannon", brigid: "Healer", nuada: "Shielded stand-in", ogma: "Opening blow" },
@@ -86,7 +86,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       support: "Wind and Fire weapons and words, a legendary **Strike 3** spear, one that ignores Shield, and Heals.",
       geis: "The open door forbids rest and costs a **Hospitality** hero 2 Valour (Emer, Bres); the giant's portion forbids Allies and costs a big hero 2 Valour.",
       oath: "The druid's oath (**Heals +1, Shield 1**, no Weapons) suits the Dagda and Brigid; the champion's oath (**Strikes +1**, never rest) suits Lugh and the Morrígan.",
-      omen: "Mist of the druids lets your hero **strike first** in both duels; Keening takes **1** off one enemy hero's Strikes; Lugh's protection softens the first blow.",
+      omen: "Mist of the druids lets your hero **strike first** in the first duel; Druid's sleep takes **3 Initiative** from one hero; Keening takes **1** off one enemy hero's Strikes; Lugh's protection softens the first blow.",
     },
   },
   fomoire: {

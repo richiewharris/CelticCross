@@ -96,6 +96,29 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     boyhood deeds, champion timing) mean the first duel fought. Only the backwards round decides the result; if it
     is level too, the first-duel rule, then a draw.
 
+## Deck building (the pools)
+
+41. Each people has a pool about twice its starter deck: 17–18 supports (9 new each), its heroes and champions,
+    and the omens tied to it. Exiles (Deorad: Fergus, Caladbolg, Fergus's shield) are in Ulster's and Connacht's
+    pools. Unaligned supports, all 23 geasa, all 15 oaths and the omens tied to no people are open to every deck.
+42. A deck is 24 cards in the old ranges and rarity limits, drawing on at most two peoples: heroes, champions,
+    supports and people-bound omens all count, and exiles count only when no Ulaid or Connachta card is there.
+43. Omens tied to a people: Ulaid (Emain's ward, Culann's hound, the Red Branch), Connachta (the ráth, Cruachan's
+    plenty, the Debility), Sídhe (the Mist, Lugh's protection, the crow, the Brú), Fomóire (the Night, Tory's
+    tower, Samhain tribute), Merrow (the fog, the flood tide, the blessing of the ford). The rest are open.
+44. The Mist of the druids now works in the first duel only. Open to every deck in pool simulations it was worth
+    about 30 points of score on its own (`ablate.ts`). The Sídhe starter swaps the Morrígan's crow for Druid's
+    sleep to make up for it; the five starters then score 47–55% against each other at Skilled.
+45. New cards reuse existing mechanics only: printed effects, pierce, next-Strike, drain, first-support bonus,
+    big-hero bonus, a better number for one hero, and Invoke. New geasa invoke the tags no card invoked before
+    (Sea, Satire, Bounty, Feast, Evil eye, Many skills, Hoard); new oaths are boon/vow pairs.
+46. The computer builds its deck: Novice and Casual with `buildDeck` (a scored pick, blurred by level); Skilled
+    and Expert play the deck `optimize.ts` hill-climbed for each faction against the starters and each other
+    (`computerDecks.json`). The player can still set it to play the starter deck.
+47. Pool tools: `pool.ts --cards` (random built decks, each card's score lift over its faction's average),
+    `pool.ts --built` (strong built decks against the starters; `BVB=1` against each other), `ablate.ts <faction>`
+    (drop one card at a time and refill), `optimize.ts`.
+
 ## Puzzles
 
 Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where

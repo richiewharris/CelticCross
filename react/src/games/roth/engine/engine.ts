@@ -531,7 +531,8 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   }
   C.startV = sv;
   C.focusTodo = todo;
-  const mist = [fxOf(S, 0).some((e) => e.mist), fxOf(S, 1).some((e) => e.mist)];
+  // the Mist hides the host in the first duel only
+  const mist = d === 0 ? [fxOf(S, 0).some((e) => e.mist), fxOf(S, 1).some((e) => e.mist)] : [false, false];
   const dark = d === 0 && boardFx(S).some((e) => e.darkness);
   const [i0, i1] = dark ? [-C.init[0], -C.init[1]] : [C.init[0], C.init[1]];
   if (mist[0] !== mist[1]) C.first = mist[0] ? 0 : 1;

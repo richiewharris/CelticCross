@@ -2,7 +2,7 @@
 // does and when it's played, then the icons and how a blow's number is worked out. "Decks": the five decks.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
-import { ALL_DEFS, DECK_IDS, FACTIONS, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
+import { ALL_DEFS, DECK_IDS, FACTIONS, peopleOf, poolOf, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
 import { CardFace, Rich, Token } from "../components/Card";
 import { Emblem, Icon } from "../components/Icons";
 import { FACTION_TITLE } from "../text";
@@ -346,6 +346,9 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
   const unique = [...copies.keys()].map((id) => ALL_DEFS[id]);
   const sups = ids.map((id) => ALL_DEFS[id]).filter((d): d is SupportDef => d.type === "support");
   const fighters = unique.filter((d): d is FighterDef => d.type === "hero" || d.type === "champion");
+  const extra = poolOf(faction).filter((d) => !copies.has(d.id) && peopleOf(d) !== null);
+  const open = Object.values(ALL_DEFS).filter((d) => d.type !== "unknown" && peopleOf(d) === null);
+  const shared = { geis: open.filter((d) => d.type === "geis").length, oath: open.filter((d) => d.type === "oath").length, omen: open.filter((d) => d.type === "omen").length };
   return (
     <section id="cx-decks" className="cx-section">
       <Tags label="Deck" value={faction} onChange={setF}
@@ -395,6 +398,8 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
           </table>
         </div>
 
+        <h3 className="cx-sub">The starter deck</h3>
+        <p className="cx-small">The 24 cards you can play straight away. In <b>Build a deck</b> you can start from it and swap in cards from the rest of the pool.</p>
         {GROUPS.map((g) => {
           const cards = unique.filter((d) => d.type === g.type);
           if (!cards.length) return null;
@@ -406,6 +411,19 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
               <div className="hand">
                 {cards.map((d) => <CardFace key={d.id} def={d} owner="mine" onFocusCard={setFocus} badge={(copies.get(d.id) ?? 1) > 1 ? `×${copies.get(d.id)}` : undefined} />)}
               </div>
+            </div>
+          );
+        })}
+
+        <h3 className="cx-sub">The rest of the pool</h3>
+        <p className="cx-small">Cards of {FACTION_TITLE[faction]}'s people{faction === "ulster" || faction === "connacht" ? " and the exiles" : ""} that the starter deck leaves out. Every deck may also take any of the {shared.geis} geasa, {shared.oath} oaths and {shared.omen} omens open to all peoples, and a deck may draw on two peoples at once.</p>
+        {GROUPS.map((g) => {
+          const cards = extra.filter((d) => d.type === g.type);
+          if (!cards.length) return null;
+          return (
+            <div key={`x-${g.type}`} className="cx-group">
+              <h4><Icon name={g.type} /> {g.title} <span className="cx-count">{cards.length}</span></h4>
+              <div className="hand">{cards.map((d) => <CardFace key={d.id} def={d} owner="mine" onFocusCard={setFocus} />)}</div>
             </div>
           );
         })}
@@ -421,7 +439,7 @@ function sums(sups: SupportDef[]): string {
   return `Printed totals: Strike ${t.strike}, Heal ${t.heal}, Shield ${t.shield}${pierce ? `; ${pierce} ${pierce === 1 ? "card ignores" : "cards ignore"} Shield` : ""}.`;
 }
 
-function Bars({ label, rows, total }: { label: string; rows: { key: string; icon: string; n: number }[]; total: number }) {
+export function Bars({ label, rows, total }: { label: string; rows: { key: string; icon: string; n: number }[]; total: number }) {
   return (
     <div className="cx-bars" role="img" aria-label={`${label}: ${rows.filter((r) => r.n).map((r) => `${r.key} ${r.n}`).join(", ")}`}>
       <span className="cx-bars-label">{label}</span>
