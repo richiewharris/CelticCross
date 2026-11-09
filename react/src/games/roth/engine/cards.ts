@@ -285,7 +285,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   beheading: sup("beheading", "The beheading game", "Fire", "Word", "Ulaid", L, [S(3)], "Strike 3"),
   bricriu: sup("bricriu", "Bricriu's feast", "Fire", "Word", "Ulaid", C, [S(1)], "Strike 1; Invoke Feast", { invoke: "Feast" }),
   athirne: sup("athirne", "Athirne's satire", "Wind", "Word", "Ulaid", C, [S(1)], "Strike 1; Invoke Bounty", { invoke: "Bounty" }),
-  leborcham: sup("leborcham", "Leborcham's tidings", "Wind", "Word", "Ulaid", C, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
+  leborcham: sup("leborcham", "Leborcham's tidings", "Wind", "Word", "Ulaid", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
   sencha: sup("sencha", "Sencha's judgement", "Earth", "Word", "Ulaid", R, [H(1), Sh(1)], "Heal 1 + Shield 1"),
   grey_macha: sup("grey_macha", "The Grey of Macha", "Wind", "Ally", "Ulaid", R, [S(2)], "Strike 2; your next Strike +1", { nextStrike: 1 }),
   scathach: sup("scathach", "Scáthach's teaching", "Fire", "Feat", "Ulaid", R, [S(1)], "Strike 1; +2 against a hero of Valour 5 or more", { vsBig: 2 }),
@@ -309,6 +309,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   airmed: sup("airmed", "Airmed's herbs", "Earth", "Word", "Sidhe", C, [H(1), Sh(1)], "Heal 1 + Shield 1"),
   morrigan_word: sup("morrigan_word", "The Morrígan's prophecy", "Wind", "Word", "Sidhe", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
   bodb: sup("bodb", "Bodb Derg's war-band", "Wind", "Ally", "Sidhe", C, [S(2)], "Strike 2"),
+  sword_light: sup("sword_light", "Claíomh Solais, the sword of light", "Wind", "Weapon", "Sidhe", R, [S(3)], "Strike 3"),
   mound_song: sup("mound_song", "Song of the mounds", "Wind", "Word", "Sidhe", C, [S(1)], "Strike 1; Invoke Sea", { invoke: "Sea" }),
   // Fomóire
   unlidded: sup("unlidded", "The Evil Eye unlidded", "Fire", "Feat", "Fomoire", L, [S(3)], "Strike 3; ignores Shield", { pierce: true }),
@@ -318,6 +319,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   cethlenn_spear: sup("cethlenn_spear", "Cethlenn's spear", "Water", "Weapon", "Fomoire", R, [S(2)], "Strike 2; if it wounds, Heal 1", { drain: 1 }),
   seawall: sup("seawall", "Indech's sea-wall", "Earth", "Ally", "Fomoire", R, [S(2), Sh(2)], "Strike 2 + Shield 2"),
   bitter_well: sup("bitter_well", "The bitter well", "Water", "Word", "Fomoire", C, [S(2)], "Strike 2; Invoke Prophecy", { invoke: "Prophecy" }),
+  lochlann: sup("lochlann", "The host of Lochlann", "Water", "Ally", "Fomoire", R, [S(3)], "Strike 3"),
   sea_mist: sup("sea_mist", "Sea-mist of Lochlann", "Water", "Word", "Fomoire", C, [Sh(2)], "Shield 2"),
   domnann: sup("domnann", "Spears of the Domnann", "Earth", "Weapon", "Fomoire", C, [S(2)], "Strike 2; +1 if it is the first support used in the duel", { firstBonus: 1 }),
   // Merrow (still no Weapons)

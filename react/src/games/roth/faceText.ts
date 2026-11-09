@@ -122,6 +122,8 @@ export const FACE: Record<string, Face> = {
   airmed: { lore: "Airmed gathered the herbs that grew from her brother's grave." },
   morrigan_word: { lore: "Before the battle, the Morrígan foretold its end." },
   bodb: { lore: "Bodb Derg, the Dagda's son, and his war-band." },
+  sword_light: { lore: "Nuada's sword: no one escaped it once it was drawn." },
+  lochlann: { lore: "Out of Lochlann the Fomóire sailed with their host." },
   mound_song: { lore: "A song from the mounds can call a sailor into the hill." },
   unlidded: { lore: "It took four men to lift the lid of Balor's eye." },
   glare: { lore: "Where the eye falls, armies wither." },
