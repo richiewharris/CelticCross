@@ -1129,10 +1129,10 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       return;
     }
     case "attend": {
+      // calling an attendant is free: the same player then takes their action for this step
       const v = removeFrom(P.hand, o.uid);
       S.attendants = [...(S.attendants ?? []), v];
       if (st) st.actions.attend++;
-      advancePlay(S);
       return;
     }
     case "swear": {
