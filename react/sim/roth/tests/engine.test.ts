@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ALL_DEFS, CONNACHT, DECKS, DECK_IDS, deckErrors, defsFromIds, ULSTER } from "../cards";
 import {
   applyDecision, facedSpot, isHeroSpot, legalityError, newMatch, nextDecision, observe, playOut,
-  type Decision, type Side, type State,
+  type Decision, type Option, type Side, type State,
 } from "../engine";
 import { NovicePolicy } from "../ai";
 import { Rng } from "../rng";
@@ -29,7 +29,7 @@ describe("deck building", () => {
   it("rejects wrong size, too many copies, and more than two hero alignments", () => {
     expect(deckErrors(ULSTER.slice(1))).toContain("deck has 23 cards, needs 24");
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "thunder"))).join()).toMatch(/thunder x3/);
-    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "o_boyhood"))).join()).toMatch(/o_boyhood x2/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "o_emain"))).join()).toMatch(/o_emain x2/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "cu"))).join()).toMatch(/cu x2/);
     const three = replace(replace(ULSTER_IDS, "emer", "medb"), "conall", "morrigan");
     expect(deckErrors(defsFromIds(three)).join()).toMatch(/alignments/);
@@ -39,7 +39,7 @@ describe("deck building", () => {
   it("rarity: commons ×2, rares and legendaries ×1, at most 2 legendaries", () => {
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "warp"))).join()).toMatch(/warp x2 \(max 1\)/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "spear_assal"))).join()).toMatch(/legendaries 3/);
-    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "sling", "salmon")))).toEqual([]);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "sling", "cathbad")))).toEqual([]);
   });
   it("a Deorad hero counts as one of your alignments", () => {
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "fergus")))).toEqual([]);
@@ -175,9 +175,13 @@ describe("playing turn", () => {
     }
   });
   it("Bind lays a geis on the hero's quadrant; Supplant swaps and discards", () => {
-    const S = toPlay(11);
+    // find a deal where P1 holds a targeted geis at the first step
+    const targeted = (S: State, o: Option) => o.t === "bind" && (S.players[0].hand.find((c) => c.uid === o.uid)?.def as { scope?: string }).scope === "targeted";
+    let seed = 11;
+    while (!nextDecision(toPlay(seed))!.options.some((o) => targeted(toPlay(seed), o))) seed++;
+    const S = toPlay(seed);
     let d = nextDecision(S)!; // P1 faces 7
-    const b = d.options.findIndex((o) => o.t === "bind");
+    const b = d.options.findIndex((o) => targeted(S, o));
     expect(b).toBeGreaterThanOrEqual(0);
     const g = (d.options[b] as { uid: number }).uid;
     applyDecision(S, d, b);
@@ -211,12 +215,13 @@ describe("playing turn", () => {
     while (S.phase === "play") { const e = nextDecision(S)!; applyDecision(S, e, e.options.length - 1); }
     const d = nextDecision(S)!;
     expect(d.kind).toBe("late");
-    expect(d.options.length).toBe(5);
+    expect(new Set(d.options.filter((o) => o.t === "late").map((o) => (o as { uid: number }).uid)).size).toBe(4);
     applyDecision(S, d, 0);
-    applyDecision(S, nextDecision(S)!, 3); // lateDone for P1
+    const d1 = nextDecision(S)!;
+    applyDecision(S, d1, d1.options.findIndex((o) => o.t === "lateDone")); // lateDone for P1
     const d2 = nextDecision(S)!;
     expect(d2.player).toBe(1);
-    applyDecision(S, d2, 4);
+    applyDecision(S, d2, d2.options.findIndex((o) => o.t === "lateDone"));
     expect(S.phase).toBe("combat");
     expect(S.players.map((P) => P.omens.length)).toEqual([1, 0]);
   });

@@ -63,6 +63,13 @@ export interface HeroDef {
   tag: string | null;
   ab: HeroAb;
 }
+/** A champion stands in for a hero at the Ford: same shape as a hero, no Initiative or tag of its own. */
+export interface ChampionDef extends Omit<HeroDef, "type"> {
+  type: "champion";
+}
+/** Whoever is fighting a duel: a hero or the champion standing in for it. */
+export type FighterDef = HeroDef | ChampionDef;
+export type Scope = "global" | "targeted" | "yours";
 export interface Effect {
   type: "strike" | "heal" | "shield";
   n: number;
@@ -101,6 +108,8 @@ export interface GeisDef {
   id: string;
   name: string;
   rarity: Rarity;
+  /** targeted: laid on one enemy hero, binds its quadrant. global: binds every hero on the wheel. */
+  scope: "targeted" | "global";
   forbids: Forbids;
   invoke?: string;
   /** Modifying geasa: a bound hero of printed Valour 5+ starts its duel n lower. */
@@ -132,6 +141,8 @@ export interface OmenEffect {
   startValour?: { duel: 0 | 1; n: number }; // reinforcement
   strikeDuel?: { duel: 0 | 1; n: number }; // reinforcement: your hero in that duel Strikes +n
   shield?: number; // reinforcement: your Shields +n
+  strikeMod?: number; // targeted: the target's Strikes ±n
+  initMod?: number; // targeted: the target's Initiative ±n
   element?: { el: Element; n: number }; // reinforcement
   kind?: { kind: Kind; n: number }; // reinforcement
   heal?: number; // reinforcement: your Heals +n
@@ -141,7 +152,9 @@ export interface OmenDef {
   id: string;
   name: string;
   rarity: Rarity;
-  omenKind: "board" | "ward" | "reinforcement";
+  omenKind: "board" | "ward" | "reinforcement" | "targeted";
+  /** global: every hero; yours: your heroes; targeted: one hero chosen when it is turned. */
+  scope: Scope;
   fx: OmenEffect;
   text: string;
 }
@@ -150,7 +163,7 @@ export interface UnknownDef {
   id: "unknown";
   name: "?";
 }
-export type CardDef = HeroDef | SupportDef | GeisDef | OathDef | OmenDef | UnknownDef;
+export type CardDef = HeroDef | ChampionDef | SupportDef | GeisDef | OathDef | OmenDef | UnknownDef;
 
 export const UNKNOWN: UnknownDef = { type: "unknown", id: "unknown", name: "?" };
 
@@ -187,6 +200,24 @@ export const HEROES: Record<string, HeroDef> = {
   fand: hero("fand", "Fand", "Merrow", R, 3, 5, "Wind", "Fire", "Beauty", "Sea-glamour: Strikes +1", { strikeAll: 1 }),
   liban: hero("liban", "Lí Ban", "Merrow", C, 4, 3, "Water", "Wind", "Sea", "Salmon-shape: when she rests, Shield 2", { restShield: 2 }),
   coomara: hero("coomara", "The Coomara", "Merrow", R, 6, 1, "Feat", "Fire", "Feast", "Soul cages: when his Strike wounds, Heal 1", { drain: 1 }),
+};
+
+// ---------------------------------------------------------------- champions
+const champ = (
+  id: string, name: string, alignment: Alignment, rarity: Rarity, valour: number,
+  focus: Focus, weakness: Element, quality: string, ab: HeroAb,
+): ChampionDef => ({ type: "champion", id, name, alignment, rarity, valour, init: 0, focus, weakness, quality, tag: null, ab });
+export const CHAMPIONS: Record<string, ChampionDef> = {
+  loegaire: champ("loegaire", "Lóegaire Búadach", "Ulaid", C, 4, "Feat", "Water", "Victorious: his first Strike +1", { firstStrike: 1 }),
+  fiacha: champ("fiacha", "Fiacha mac Fir Febe", "Ulaid", R, 5, "Weapon", "Earth", "Shield-bearer: Shield 1 when he steps in", { shieldStart: 1 }),
+  loch: champ("loch", "Lóch Mór mac Mo Febis", "Connachta", R, 4, "Weapon", "Water", "Lóch's fury: Strikes +1", { strikeAll: 1 }),
+  nadcrantail: champ("nadcrantail", "Nad Crantail", "Connachta", C, 4, "Earth", "Fire", "Holly spears: his first Strike +1", { firstStrike: 1 }),
+  nuada: champ("nuada", "Nuada Airgetlám", "Sidhe", R, 5, "Weapon", "Wind", "Silver hand: Shield 1 when he steps in", { shieldStart: 1 }),
+  ogma: champ("ogma", "Ogma", "Sidhe", C, 4, "Word", "Earth", "Sun-face: his first Strike +1", { firstStrike: 1 }),
+  elatha: champ("elatha", "Elatha mac Delbaíth", "Fomoire", C, 5, "Water", "Wind", "Golden king: no special quality; he is simply big", {}),
+  tethra: champ("tethra", "Tethra", "Fomoire", R, 4, "Water", "Earth", "Sea-crow: when his Strike wounds, Heal 1", { drain: 1 }),
+  roane: champ("roane", "The Roane", "Merrow", C, 4, "Water", "Fire", "Seal-hide: Shield 1 when it steps in", { shieldStart: 1 }),
+  muirdris: champ("muirdris", "The Muirdris", "Merrow", R, 5, "Water", "Earth", "Sea-beast: no Strike against it above 3", { capTaken: 3 }),
 };
 
 // ---------------------------------------------------------------- supports
@@ -249,7 +280,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
 
 // ---------------------------------------------------------------- geasa
 const geis = (id: string, name: string, rarity: Rarity, forbids: Forbids, text: string, extra: Partial<GeisDef> = {}): GeisDef =>
-  ({ type: "geis", id, name, rarity, forbids, text, ...extra });
+  ({ type: "geis", id, name, rarity, scope: "targeted", forbids, text, ...extra });
 export const GEASA: Record<string, GeisDef> = {
   g_ford: geis("g_ford", "Geis of the ford", C, { element: "Water" }, "Forbids Water"),
   g_hearth: geis("g_hearth", "Geis of the hearth", C, { element: "Fire" }, "Forbids Fire"),
@@ -258,6 +289,9 @@ export const GEASA: Record<string, GeisDef> = {
   g_door: geis("g_door", "Geis of the open door", R, { rest: true }, "Forbids resting; Invoke Hospitality", { invoke: "Hospitality" }),
   g_hound: geis("g_hound", "Geis of the hound", R, { kind: "Feat" }, "Forbids Feats; Invoke Hound", { invoke: "Hound" }),
   g_giant: geis("g_giant", "Geis of the giant's portion", R, { kind: "Ally" }, "Forbids Allies; a hero of Valour 5 or more starts its duel 2 lower", { bigLoss: 2 }),
+  g_peace: geis("g_peace", "Geis of the king's peace", R, { kind: "Weapon" }, "Global: every hero is forbidden Weapons", { scope: "global" }),
+  g_hosting: geis("g_hosting", "Geis of the hosting", R, { rest: true }, "Global: every hero is forbidden to rest", { scope: "global" }),
+  g_samhain: geis("g_samhain", "Geis of Samhain night", R, { heal: true }, "Global: every hero is forbidden Heals", { scope: "global" }),
   g_slow: geis("g_slow", "Geis of the slow hand", R, { element: "Wind" }, "Forbids Wind; the hero's Initiative −3", { initLoss: 3 }),
 };
 
@@ -276,7 +310,7 @@ export const OATHS: Record<string, OathDef> = {
 
 // ---------------------------------------------------------------- omens
 const omen = (id: string, name: string, rarity: Rarity, omenKind: OmenDef["omenKind"], fx: OmenEffect, text: string): OmenDef =>
-  ({ type: "omen", id, name, rarity, omenKind, fx, text });
+  ({ type: "omen", id, name, rarity, omenKind, scope: omenKind === "board" ? "global" : omenKind === "targeted" ? "targeted" : "yours", fx, text });
 export const OMENS: Record<string, OmenDef> = {
   // board
   o_debility: omen("o_debility", "Debility of the Ulstermen", R, "board", { debility: "Ulaid" }, "Ulaid (and Deorad) heroes' Strikes −1"),
@@ -285,11 +319,16 @@ export const OMENS: Record<string, OmenDef> = {
   o_darkness: omen("o_darkness", "Night of the Fomóire", R, "board", { darkness: true }, "In the first duel, the lower Initiative strikes first"),
   o_blight: omen("o_blight", "Blighted harvest", C, "board", { healMod: -1 }, "Every Heal −1"),
   o_tide: omen("o_tide", "The flood tide", C, "reinforcement", { heal: 1 }, "Your Heals +1"),
-  o_mist: omen("o_mist", "Mist of the druids", R, "board", { mist: true }, "Your hero strikes first in both duels"),
+  o_mist: omen("o_mist", "Mist of the druids", R, "ward", { mist: true }, "Your hero strikes first in both duels (two Mists cancel)"),
+  // targeted: one hero, chosen when turned
+  o_herolight: omen("o_herolight", "The hero's light", C, "targeted", { strikeMod: 1 }, "Targeted: that hero's Strikes +1"),
+  o_keen: omen("o_keen", "Keening of the bean sídhe", C, "targeted", { strikeMod: -1 }, "Targeted: that hero's Strikes −1"),
+  o_sleep: omen("o_sleep", "Druid's sleep", C, "targeted", { initMod: -3 }, "Targeted: that hero's Initiative −3"),
+  o_mantle: omen("o_mantle", "Brigid's mantle", R, "targeted", { shieldStart: 1 }, "Targeted: that hero starts its duel with Shield 1"),
   // ward
   o_lugh: omen("o_lugh", "Lugh's protection", R, "ward", { firstHitSoak: 1 }, "The first Strike against each of your heroes each duel −1"),
   o_fog: omen("o_fog", "Fog of Manannán", C, "ward", { firstHitSoak: 1 }, "The first Strike against each of your heroes each duel −1"),
-  o_emain: omen("o_emain", "Emain's ward", R, "ward", { ignoreGeis: true }, "Your heroes may ignore the geis laid on them"),
+  o_emain: omen("o_emain", "Emain's ward", R, "ward", { ignoreGeis: true }, "Your heroes ignore geasa, targeted and global"),
   o_culann: omen("o_culann", "Culann's hound", C, "ward", { firstHitSoak: 1 }, "The first Strike against each of your heroes each duel −1"),
   o_rath: omen("o_rath", "The ráth of Cruachan", C, "ward", { shieldStart: 1 }, "Your heroes start each duel with Shield 1"),
   o_tory: omen("o_tory", "Tory's tower", C, "ward", { shieldStart: 1 }, "Your heroes start each duel with Shield 1"),
@@ -304,7 +343,7 @@ export const OMENS: Record<string, OmenDef> = {
   o_cruachan: omen("o_cruachan", "Cruachan's plenty", C, "reinforcement", { heal: 1 }, "Your Heals +1"),
 };
 
-export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS };
+export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS };
 
 export function defsFromIds(ids: string[]): CardDef[] {
   return ids.map((id) => {
@@ -315,42 +354,47 @@ export function defsFromIds(ids: string[]): CardDef[] {
 }
 
 // ---------------------------------------------------------------- the five decks
-// Each: 4 heroes, 10 supports, 3 geasa, 3 oaths, 4 omens = 24.
+// Each: 4 heroes, 2 champions, 9 supports, 3 geasa (1 global), 2 oaths, 4 omens (1 targeted) = 24.
 export const DECK_IDS: Record<Faction, string[]> = {
   ulster: [
     "cu", "conall", "conchobar", "emer",
-    "gae_bolga", "thunder", "thunder", "warp", "sling", "ochain", "laeg", "brown_bull", "cathbad", "salmon",
-    "g_spear", "g_hearth", "g_giant",
-    "v_champion", "v_first", "v_blood",
-    "o_boyhood", "o_culann", "o_emain", "o_redbranch",
+    "loegaire", "fiacha",
+    "gae_bolga", "thunder", "thunder", "warp", "sling", "ochain", "laeg", "brown_bull", "salmon",
+    "g_hosting", "g_hearth", "g_giant",
+    "v_champion", "v_blood",
+    "o_mantle", "o_culann", "o_emain", "o_redbranch",
   ],
   connacht: [
     "medb", "ferdiad", "fergus", "ailill",
-    "cet_spear", "cet_spear", "host", "horn_shield", "medb_chariot", "fedelm", "horn_shield", "finnbennach", "caladbolg", "barach",
-    "g_hound", "g_hearth", "g_slow",
-    "v_shieldwall", "v_hearthguard", "v_stone",
-    "o_debility", "o_truce", "o_cruachan", "o_rath",
+    "loch", "nadcrantail",
+    "cet_spear", "cet_spear", "host", "horn_shield", "medb_chariot", "fedelm", "finnbennach", "caladbolg", "barach",
+    "g_hound", "g_hosting", "g_slow",
+    "v_shieldwall", "v_stone",
+    "o_herolight", "o_truce", "o_cruachan", "o_rath",
   ],
   sidhe: [
     "lugh", "dagda", "morrigan", "brigid",
-    "spear_assal", "fragarach", "tathlum", "goibniu", "raven", "raven", "dian_cecht", "uaithne", "fe_fiada", "salmon",
-    "g_ford", "g_door", "g_giant",
-    "v_first", "v_druid", "v_champion",
-    "o_lugh", "o_crow", "o_mist", "o_brugh",
+    "nuada", "ogma",
+    "spear_assal", "fragarach", "tathlum", "goibniu", "raven", "raven", "dian_cecht", "uaithne", "fe_fiada",
+    "g_hosting", "g_door", "g_giant",
+    "v_druid", "v_champion",
+    "o_lugh", "o_crow", "o_mist", "o_keen",
   ],
   fomoire: [
     "balor", "bres", "cethlenn", "indech",
-    "gaze", "tower", "sea_raid", "sea_raid", "club", "galley", "tribute", "octriallach", "blight", "salmon",
-    "g_hearth", "g_silence", "g_slow",
-    "v_hearthguard", "v_stone", "v_blood",
-    "o_darkness", "o_blight", "o_tory", "o_tribute",
+    "elatha", "tethra",
+    "gaze", "tower", "sea_raid", "sea_raid", "club", "galley", "tribute", "octriallach", "blight",
+    "g_hearth", "g_samhain", "g_slow",
+    "v_stone", "v_blood",
+    "o_darkness", "o_sleep", "o_tory", "o_tribute",
   ],
   merrow: [
     "manannan", "fand", "liban", "coomara",
-    "cohuleen", "cliodhna", "undertow", "undertow", "riptide", "sealskin", "pearl", "soul_cage", "scuab", "salmon",
-    "g_door", "g_spear", "g_giant",
-    "v_shieldwall", "v_first", "v_druid",
-    "o_ford", "o_tide", "o_fog", "o_wave",
+    "roane", "muirdris",
+    "cohuleen", "cliodhna", "undertow", "undertow", "riptide", "sealskin", "pearl", "soul_cage", "scuab",
+    "g_door", "g_peace", "g_giant",
+    "v_shieldwall", "v_druid",
+    "o_ford", "o_tide", "o_fog", "o_keen",
   ],
 };
 export const DECKS: Record<string, CardDef[]> = Object.fromEntries(
@@ -375,12 +419,13 @@ export function deckErrors(deck: CardDef[]): string[] {
   const errs: string[] = [];
   if (deck.length !== 24) errs.push(`deck has ${deck.length} cards, needs 24`);
   const count = (t: CardDef["type"]) => deck.filter((d) => d.type === t).length;
-  const h = count("hero"), s = count("support"), g = count("geis"), v = count("oath"), o = count("omen");
+  const h = count("hero"), s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion");
   if (count("unknown") > 0) errs.push("unknown card");
   if (h < 4 || h > 6) errs.push(`heroes ${h} (4–6)`);
   if (s < 8 || s > 12) errs.push(`supports ${s} (8–12)`);
   if (g < 2 || g > 6) errs.push(`geasa ${g} (2–6)`);
   if (v > 4) errs.push(`oaths ${v} (0–4)`);
+  if (ch > 2) errs.push(`champions ${ch} (0–2)`);
   if (o < 4 || o > 6) errs.push(`omens ${o} (4–6)`);
   const copies: Record<string, number> = {};
   for (const d of deck) copies[d.id] = (copies[d.id] ?? 0) + 1;
@@ -388,7 +433,7 @@ export function deckErrors(deck: CardDef[]): string[] {
   for (const [id, n] of Object.entries(copies)) {
     const d = ALL_DEFS[id];
     if (!d || d.type === "unknown") continue;
-    const max = d.type === "hero" || d.type === "omen" ? 1 : RARITY_LIMIT[d.rarity];
+    const max = d.type === "hero" || d.type === "champion" || d.type === "omen" ? 1 : RARITY_LIMIT[d.rarity];
     if (n > max) errs.push(`${id} x${n} (max ${max})`);
     if (d.rarity === "legendary") legends += n;
   }

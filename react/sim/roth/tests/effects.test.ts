@@ -1,14 +1,16 @@
 // Combat rules, second draft: hero Valour and caps, supports, hero qualities, oaths, modifying geasa, omens,
 // Unwilling pairs, guests and the wounds tie-break. Every expected number is worked out in the comment beside it.
 import { describe, expect, it } from "vitest";
-import { combatResult, legalityError, nextDecision, type CombatState } from "../engine";
-import { act, actor, combatState, options, rest, use, V, type Spec } from "./helpers";
+import { combatResult, fighter, heroFx, legalityError, newCombat, nextDecision, type CombatState } from "../engine";
+import { act, actor, card, combatState, options, rest, use, V, type Spec } from "./helpers";
 
 const D2: [string, string, string] = ["emer", "salmon", "salmon"];
 const D2E: [string, string, string] = ["conall", "salmon", "salmon"];
 /** Board: P1 hero at 1 with supports 2,3; P2 hero at 7 with 8,9; a quiet second duel (Emer vs Conall). */
 const B = (h1: string, s2: string, s3: string, h7: string, s8: string, s9: string, d2 = D2, d2e = D2E) => [h1, s2, s3, ...d2, h7, s8, s9, ...d2e];
-const mk = (board: (string | null)[], extra: Omit<Spec, "board"> = {}) => combatState({ board, ...extra });
+// These effect tests were written with Initiative ties to the second player; they pin that rule so the
+// arithmetic below stays readable. The tie rule itself is tested under "duel order".
+const mk = (board: (string | null)[], extra: Omit<Spec, "board"> = {}) => combatState({ board, ...extra, rules: { initTie: "p2", ...(extra.rules ?? {}) } });
 const modes = (S: ReturnType<typeof combatState>, at: number) =>
   options(S).filter((o) => o.t === "duel" && o.guest < 0 && o.act === "use" && o.spot === at - 1).map((o) => (o as { mode: string }).mode);
 
@@ -17,6 +19,7 @@ const modes = (S: ReturnType<typeof combatState>, at: number) =>
 // Lí Ban has no kinship with Ulaid/Connachta/Sídhe supports and no Focus bonus from Fire/Earth/Wind.
 const plain = (s8: string, s9: string, s2 = "salmon", s3 = "salmon", extra: Omit<Spec, "board"> = {}) =>
   mk(B("fergus", s2, s3, "liban", s8, s9), extra);
+const asP1 = { rules: { initTie: "p1" as const } };
 
 describe("hero Valour and the Heal cap", () => {
   it("each hero starts its duel at its own Valour", () => {
@@ -347,5 +350,101 @@ describe("winning and tie-breaks", () => {
     const S = plain("thunder", "salmon");
     for (let d = nextDecision(S); d; d = nextDecision(S)) act(S, d.options[0]);
     expect(S.result).not.toBeNull();
+  });
+});
+
+describe("duel order", () => {
+  it("an Initiative tie goes to the first player", () => {
+    expect(actor(mk(B("fergus", "salmon", "salmon", "liban", "salmon", "salmon"), asP1))).toBe(0);
+    expect(actor(combatState({ board: B("fergus", "salmon", "salmon", "liban", "salmon", "salmon") }))).toBe(0); // the default rule
+  });
+});
+
+describe("global geasa", () => {
+  it("a global geis binds every hero, on both sides; each hero breaks it for itself", () => {
+    const S = mk(B("fergus", "caladbolg", "salmon", "liban", "salmon", "salmon"), asP1);
+    S.globalGeis = [card("g_peace", 1)];
+    expect(modes(S, 2)).toEqual(["break"]); // Fergus: Weapons forbidden
+    use(S, 2, "break"); // 5 − 2 = 3; Caladbolg 3 + 1 + 1 + 1 (Earth beats Water) = 6 → Lí Ban falls
+    expect(S.combat!.felled[0]).toEqual([false, true]);
+    const S2 = mk(B("fergus", "salmon", "salmon", "liban", "cet_spear", "salmon"), asP1);
+    S2.globalGeis = [card("g_peace", 0)];
+    rest(S2);
+    expect(modes(S2, 8)).toEqual(["break"]); // binds the layer's enemy and the layer's own heroes alike
+  });
+  it("a global geis forbidding rest, and Emain's ward ignoring it", () => {
+    const S = mk(B("fergus", "salmon", "salmon", "liban", "salmon", "salmon"), asP1);
+    S.globalGeis = [card("g_hosting", 0)];
+    expect(options(S).filter((o) => o.t === "duel" && o.act === "rest").map((o) => (o as { mode: string }).mode)).toEqual(["break"]);
+    const S2 = mk(B("fergus", "salmon", "salmon", "liban", "salmon", "salmon"), { ...asP1, omens: [["o_emain"], []] });
+    S2.globalGeis = [card("g_hosting", 1)];
+    expect(options(S2).filter((o) => o.t === "duel" && o.act === "rest").map((o) => (o as { mode: string }).mode)).toEqual(["normal"]);
+  });
+});
+
+describe("targeted omens", () => {
+  const withTarget = (id: string, owner: 0 | 1, target: number, board = B("fergus", "salmon", "salmon", "liban", "cet_spear", "salmon")) => {
+    const S = mk(board);
+    S.players[owner].omens = [{ card: card(id, owner), faceUp: true, target }];
+    S.combat = newCombat(S);
+    return S;
+  };
+  it("the keening: the targeted hero's Strikes −1 (and nobody else's)", () => {
+    const S = withTarget("o_keen", 0, 6); // P1 curses Lí Ban
+    use(S, 8); // Cet 2 − 1 = 1
+    expect(V(S)[0]).toBe(4);
+    const S2 = withTarget("o_keen", 0, 3);
+    use(S2, 8); // aimed at P1's second hero: no effect here
+    expect(V(S2)[0]).toBe(3);
+  });
+  it("druid's sleep: Initiative −3; Brigid's mantle: Shield 1 at the start", () => {
+    expect(actor(withTarget("o_sleep", 0, 6))).toBe(0);
+    expect(withTarget("o_mantle", 1, 0).combat!.shield).toEqual([1, 0]); // P2 may aim it at an enemy hero too
+  });
+});
+
+describe("champions", () => {
+  // Fergus (P1) vs Lí Ban (P2), ties to P1 under the default rule.
+  const champ = (extra: Omit<Spec, "board"> = {}, board = B("fergus", "salmon", "caladbolg", "liban", "cet_spear", "thunder")) =>
+    combatState({ board, hands: [["loegaire", "fiacha"], ["roane", "muirdris"]], ...extra });
+  it("the first player may call one in the first duel; the second player only in the second", () => {
+    const S = champ();
+    expect(actor(S)).toBe(0);
+    expect(options(S).filter((o) => o.t === "champion").length).toBe(2);
+    rest(S);
+    expect(options(S).some((o) => o.t === "champion")).toBe(false);
+    const roane = S.players[1].hand.find((c) => c.def.id === "roane")!.uid;
+    expect(legalityError(S, 1, { t: "champion", uid: roane })).toMatch(/second duel/);
+  });
+  it("a champion fights with its own Valour, uses the turn, and its fall counts as the hero's", () => {
+    const S = champ();
+    rest(S); // Fergus
+    use(S, 8); // Lí Ban: Cet 2 → Fergus 3
+    const fiacha = S.players[0].hand.find((c) => c.def.id === "fiacha")!.uid;
+    act(S, { t: "champion", uid: fiacha });
+    expect(V(S)[0]).toBe(5);
+    expect(S.combat!.shield[0]).toBe(1); // Shield-bearer
+    expect(S.combat!.startV[0][0]).toBe(7); // 2 lost already + 5
+    expect(S.players[0].hand.some((c) => c.uid === fiacha)).toBe(false);
+    use(S, 9); // Lí Ban: Thunder 2 ignores Shield → 3; four turns taken, the duel ends
+    expect(S.combat!.duel).toBe(1);
+    expect(S.combat!.endValour[0][0]).toBe(3);
+  });
+  it("a champion is bound by no geis or oath, and gets no oath boon", () => {
+    const S = champ({ geasa: ["g_spear", null, null, null], oaths: ["v_hearthguard", null, null, null] });
+    expect(V(S)[0]).toBe(7); // Fergus with Hearth-guard's oath
+    expect(modes(S, 3)).toEqual(["break"]);
+    const lo = S.players[0].hand.find((c) => c.def.id === "loegaire")!.uid;
+    act(S, { t: "champion", uid: lo });
+    expect(V(S)[0]).toBe(4);
+    rest(S);
+    expect(modes(S, 3)).toEqual(["normal"]); // the champion may use the Weapon freely
+  });
+  it("a champion keeps the side's omens and any omen targeted at the spot", () => {
+    const S = champ({ omens: [["o_redbranch"], []] });
+    const lo = S.players[0].hand.find((c) => c.def.id === "loegaire")!.uid;
+    act(S, { t: "champion", uid: lo });
+    expect(heroFx(S, S.combat!, 0).some((e) => e.kind?.kind === "Feat")).toBe(true);
+    expect(fighter(S, S.combat!, 0).id).toBe("loegaire");
   });
 });

@@ -1,9 +1,9 @@
 // AI players: Novice (random), Casual (rules of thumb), Skilled (static eval + exact duels),
 // Expert (Skilled + determinized Monte Carlo lookahead in drafting and the playing turn).
 
-import { unwillingPair, type CardDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
+import { unwillingPair, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
-  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, forbidsSupport, heroAt, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
+  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, fighter, forbidsSupport, heroAt, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
 import { Rng } from "./rng";
@@ -31,7 +31,7 @@ function argmax(xs: number[]): number {
   return b;
 }
 /** Base "biggest-looking" number of a support for a hero (Casual's eye). */
-function looks(s: SupportDef, h: HeroDef | null): number {
+function looks(s: SupportDef, h: FighterDef | null): number {
   if (h && unwillingPair(h.alignment, s.alignment)) return -5;
   let v = s.forHero && h?.id === s.forHero.id ? s.forHero.n : s.effects.reduce((a, e) => a + e.n, 0);
   if (s.cathbad) v = 0.5;
@@ -45,6 +45,7 @@ function looks(s: SupportDef, h: HeroDef | null): number {
 /** Casual's fixed liking for an omen: simple rule-of-thumb weights by effect. */
 function casualOmen(fx: OmenEffect): number {
   if (fx.startValour || fx.strikeDuel) return 8;
+  if (fx.strikeMod || fx.initMod) return 7;
   if (fx.shield) return 6;
   if (fx.firstHitSoak || fx.shieldStart) return 7;
   if (fx.element || fx.kind || fx.heal) return 6;
@@ -70,7 +71,7 @@ export class CasualPolicy implements Policy {
         return argmax(o.map((x) => rank((x as { uid: number }).uid)));
       }
       case "musterReturn": {
-        const val = (c: Card) => (c.def.type === "geis" || c.def.type === "oath" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? casualHero(c.def) : 0));
+        const val = (c: Card) => (c.def.type === "geis" || c.def.type === "oath" || c.def.type === "champion" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? casualHero(c.def) : 0));
         return argmax(o.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
       case "place": {
@@ -118,7 +119,19 @@ export class CasualPolicy implements Policy {
           if (!sups.some((s) => forbidsSupport(v.forbids, s))) return i;
         }
         const om = omenIdx();
-        return om >= 0 ? om : hold;
+        if (om >= 0) {
+          // a targeted omen: help your first hero, or hinder the enemy's
+          const x = o[om] as { t: "omen"; uid: number; target?: number };
+          if (x.target !== undefined) {
+            const d0 = ownOmen(V, me, x.uid)!.def;
+            const good = d0.type === "omen" && ((d0.fx.strikeMod ?? 0) > 0 || (d0.fx.initMod ?? 0) > 0 || !!d0.fx.shieldStart || !!d0.fx.firstHitSoak);
+            const want = good ? (me === 0 ? 0 : 6) : (me === 0 ? 6 : 0);
+            const j = o.findIndex((y) => y.t === "omen" && y.uid === x.uid && y.target === want);
+            if (j >= 0) return j;
+          }
+          return om;
+        }
+        return hold;
       }
       case "late":
         return 0;
@@ -126,7 +139,10 @@ export class CasualPolicy implements Policy {
         return 0;
       case "duel": {
         const C = V.combat!;
-        const h = heroAt(V, C.hs[me]);
+        const h = fighter(V, C, me);
+        // call a champion when the hero is nearly beaten
+        const ch = o.findIndex((x) => x.t === "champion");
+        if (ch >= 0 && C.valour[me] <= 2) return ch;
         let best = -1, bv = -Infinity;
         o.forEach((x, i) => {
           if (x.t !== "duel" || x.guest >= 0) return;
@@ -216,6 +232,7 @@ function omenStatic(def: CardDef, V: State, me: Side): number {
   let v = 0;
   if (fx.startValour) v += 1.2;
   if (fx.strikeDuel) v += 1.2;
+  if (fx.strikeMod || fx.initMod || fx.shieldStart) v += 1.0;
   if (fx.shield) v += 0.6 * n(mine, shields);
   if (fx.firstHitSoak) v += 1.5;
   if (fx.shieldStart) v += 1.5;
@@ -252,7 +269,7 @@ export class SkilledPolicy implements Policy {
       case "musterReturn": {
         const me = d.player;
         const heroes = V.players[me].deckList.filter((x): x is HeroDef => x.type === "hero");
-        const val = (c: Card) => c.def.type === "geis" || c.def.type === "oath" ? 1.2 : c.def.type === "hero" ? 2 + 0.5 * c.def.init + 0.3 * c.def.valour
+        const val = (c: Card) => c.def.type === "geis" || c.def.type === "oath" ? 1.2 : c.def.type === "champion" ? 1.5 + 0.3 * c.def.valour : c.def.type === "hero" ? 2 + 0.5 * c.def.init + 0.3 * c.def.valour
           : c.def.type === "support" ? Math.max(...heroes.map((h) => quickSupportValue(c.def as SupportDef, h, null))) : 0;
         return argmax(d.options.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
@@ -354,7 +371,10 @@ export function determinize(V: State, me: Side, rng: Rng): State {
   O.deck = [];
   O.musterQ = [];
   O.lost = [];
-  if (D.combat) { const g = D.combat.guests.slice(); g[o] = hand.filter((c) => c.def.type === "hero"); D.combat.guests = g; }
+  if (D.combat) {
+    const g = D.combat.guests.slice(); g[o] = hand.filter((c) => c.def.type === "hero"); D.combat.guests = g;
+    const ch = D.combat.champs.slice(); ch[o] = hand.filter((c) => c.def.type === "champion"); D.combat.champs = ch;
+  }
   D.hiddenSpots = D.hiddenSpots.filter((s) => D.board[s]?.owner !== o);
   return D;
 }
@@ -376,7 +396,7 @@ export class ExpertPolicy implements Policy {
     d.options.forEach((x, i) => {
       const uid = (x as { uid?: number }).uid;
       const c = uid !== undefined ? cardOf(V, me, uid) ?? ownOmen(V, me, uid) : undefined;
-      const key = x.t + ":" + (c ? c.def.id : "") + (x.t === "swear" ? ":" + x.spot : "");
+      const key = x.t + ":" + (c ? c.def.id : "") + (x.t === "swear" ? ":" + x.spot : "") + ((x.t === "omen" || x.t === "late") && x.target !== undefined ? ":" + x.target : "");
       if (!seen.has(key)) { seen.set(key, i); cands.push(i); }
     });
     if (cands.length === 1) return cands[0];

@@ -86,6 +86,7 @@ export function solveChoice(S: State, C: CombatState, me: Side, exact: boolean):
 /** Strip guests that the solving side cannot see (or that are unknown placeholders). */
 export function stripGuests(C: CombatState, keep: Side | null) {
   C.guests = [0, 1].map((p) => (keep === p ? C.guests[p].filter((g) => g.def.type === "hero") : []));
+  C.champs = [0, 1].map((p) => (keep === p ? C.champs[p].filter((g) => g.def.type === "champion") : []));
 }
 
 /**
@@ -103,7 +104,8 @@ export function boardKey(S: State, me: Side): string {
   for (const c of S.board) k += "|" + (c ? c.def.id + c.owner : "-");
   for (const c of S.quadGeis) k += "|" + (c ? c.def.id : "-");
   for (const c of S.quadOath) k += "|" + (c ? c.def.id : "-");
-  for (const P of S.players) { k += "#"; for (const o of P.omens) if (o.faceUp) k += o.card.def.id + ","; }
+  k += "|g" + S.globalGeis.map((c) => c.def.id).join(",");
+  for (const P of S.players) { k += "#"; for (const o of P.omens) if (o.faceUp) k += o.card.def.id + (o.target ?? "") + ","; }
   return k;
 }
 export function evalBoardCombat(S: State, me: Side): number {

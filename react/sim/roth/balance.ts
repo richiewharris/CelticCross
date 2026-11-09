@@ -102,6 +102,7 @@ async function main() {
   const act = all.reduce((a, r) => { for (const k of Object.keys(r.st.actions) as (keyof MatchStats["actions"])[]) a[k] = (a[k] ?? 0) + r.st.actions[k]; return a; }, {} as Record<string, number>);
   const actTot = Object.values(act).reduce((a, b) => a + b, 0);
   console.log(`Playing turn: ${Object.entries(act).map(([k, v]) => `${k} ${pct(v / actTot)}`).join(", ")}`);
+  console.log(`Champions called per match: P1 ${mean(all.map((r) => r.st.championsBySide[0])).toFixed(2)}, P2 ${mean(all.map((r) => r.st.championsBySide[1])).toFixed(2)}`);
   console.log(`Per match: geasa broken ${mean(all.map((r) => r.st.geisBroken)).toFixed(2)}, oaths broken ${mean(all.map((r) => r.st.oathBroken)).toFixed(2)}, unwilling uses ${mean(all.map((r) => r.st.unwilling)).toFixed(2)}, invokes ${mean(all.map((r) => r.st.invokes)).toFixed(2)}, guests ${mean(all.map((r) => r.st.guests)).toFixed(2)}`);
 
   // ---- heroes

@@ -65,3 +65,19 @@ npx vitest run --config sim/roth/vitest.config.ts
 28. Debility hits the named alignment and Deorad heroes, unless the hero is spared (Cú Chulainn).
 29. Unwilling pairs: Ulaid–Connachta and Sídhe–Fomóire. Merrow, Deorad and Unaligned are never Unwilling.
 30. Deck limits: commons ×2, rares ×1, legendaries ×1, at most 2 legendaries; heroes and omens ×1 each.
+
+## Rulings added in the third draft (champions, scopes)
+
+31. Initiative ties go to the first player (`initTie: "p1"`; the old rule is the lever `"p2"`).
+32. A global geis is laid with Bind while facing any enemy hero; it sits in the centre and binds all four heroes,
+    the layer's too. At most 4 global geasa. Each hero breaks a global geis for itself only (2 Valour). Its
+    modifiers and Invoke apply to every hero at the start of its duel. Emain's ward ignores global geasa too.
+33. A targeted omen is turned like any omen, naming one hero spot (either side's). It touches whoever fights from
+    that spot, including a champion. Global omens touch everyone; "yours" omens touch your fighters.
+34. Champions: called on your fighter's turn instead of using a support or resting (it uses the turn). The first
+    player may call in either duel, the second only in the second; one per side per duel. The champion fights with
+    its printed Valour (+ the Valour-bonus lever), Heal cap +2, its own Shield-start quality only (the hero's Shield
+    is lost), and no oath boon. No geis, global geis, crow or oath binds it. It has no tag. Its fall is the hero's.
+    Wounds: the Valour the hero lost before the swap still counts.
+35. Guests may heal a champion of the same alignment.
+36. Lever `champions: false` turns champions off (for the seat analysis).

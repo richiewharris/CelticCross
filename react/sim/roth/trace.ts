@@ -24,7 +24,8 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "musterOmen": return `${who} muster: ${cardName(S, o.uid)} to Reserve`;
     case "musterReturn": return `${who} muster check: ${cardName(S, o.uid)} to Reserve`;
     case "place": return `${who} places ${cardName(S, o.uid)} at spot ${d.spot! + 1}`;
-    case "omen": return `${who} (facing ${d.spot! + 1}) turns omen ${cardName(S, o.uid)}`;
+    case "omen": return `${who} (facing ${d.spot! + 1}) turns omen ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${S.board[o.target]?.def.name ?? "?"}` : ""}`;
+    case "champion": return `${who} calls champion ${cardName(S, o.uid)} to stand in for ${S.board[S.combat!.hs[d.player]]!.def.name}`;
     case "bind": return `${who} binds hero at ${d.spot! + 1} with ${cardName(S, o.uid)}`;
     case "supplant": return `${who} supplants ${S.board[d.spot!]!.def.name} at ${d.spot! + 1} with ${cardName(S, o.uid)}`;
     case "hold": return `${who} holds (facing ${d.spot! + 1})`;
@@ -53,6 +54,7 @@ export function traceMatch(S: State, policies: [Policy, Policy], rngs: [Rng, Rng
       if (S.phase === "combat" || S.phase === "end") {
         out.push(`-- board: ${S.board.map((c, i) => `${i + 1}:${c?.def.name ?? "-"}`).join(" | ")}`);
         out.push(`-- geasa: ${S.quadGeis.map((g, q) => `Q${q + 1}:${g?.def.name ?? "-"}`).join(" ")}`);
+        out.push(`-- global geasa: ${S.globalGeis.map((g) => g.def.name).join(", ") || "-"}`);
         out.push(`-- oaths: ${S.quadOath.map((g, q) => `Q${q + 1}:${g?.def.name ?? "-"}`).join(" ")}`);
         out.push(`-- omens up: P1 ${S.players[0].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}; P2 ${S.players[1].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}`);
       }

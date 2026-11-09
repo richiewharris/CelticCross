@@ -5,7 +5,7 @@
 
 import {
   beats, isElement, unwillingPair, ELEMENTS, UNKNOWN,
-  type CardDef, type Element, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
+  type CardDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { Rng } from "./rng";
 
@@ -25,16 +25,18 @@ export interface Rules {
   keepOmensUntilCombat: boolean;
   /** Lever: step-1 and step-4 heroes are placed face down and revealed together (no counter-pick). */
   blindHeroes: boolean;
-  /** Initiative tie-break: P2 (rules), P1, or a coin flip (analysis lever). */
+  /** Initiative tie-break: P1 (rules), P2 (first draft), or a coin flip (analysis lever). */
   initTie: "p2" | "p1" | "random";
+  /** Lever: champions may be called at the Ford. */
+  champions: boolean;
 }
 export const DEFAULT_RULES: Rules = {
   valourBonus: 0, capOver: 2, geisBreakCost: 2, oathBreakCost: 2, invokeLoss: 2, omenSpots: 4, handSize: 12,
-  keepOmensUntilCombat: false, blindHeroes: false, initTie: "p2",
+  keepOmensUntilCombat: false, blindHeroes: false, initTie: "p1", champions: true,
 };
 
 export interface Card { uid: number; def: CardDef; owner: Side }
-export interface OmenSlot { card: Card; faceUp: boolean }
+export interface OmenSlot { card: Card; faceUp: boolean; target?: number }
 export interface PlayerState {
   deckList: CardDef[]; // public knowledge
   deck: Card[];
@@ -73,9 +75,14 @@ export interface CombatState {
   cap: number[]; // Heal cap per side this duel
   init: number[]; // Initiative per side this duel
   hit: boolean[]; // side p has already made a Strike this duel
+  champ: (Card | null)[]; // the champion standing in for side p's hero this duel (copy-on-write)
+  champs: Card[][]; // champions side p still holds (copy-on-write)
 }
 export const CROW_BIT = 1 << 4;
 export const OATH_BIT = 1 << 5; // shifted by the quadrant: OATH_BIT << q
+/** Global geis i broken by the hero of quadrant q. */
+export const globalBit = (i: number, q: number) => 1 << (9 + 4 * i + q);
+export const MAX_GLOBAL_GEASA = 4;
 
 export interface Result {
   winner: Side | -1;
@@ -88,6 +95,8 @@ export interface Result {
 export interface MatchStats {
   exchanges: number[];
   actions: { omen: number; bind: number; supplant: number; hold: number; swear: number };
+  champions: number;
+  championsBySide: [number, number];
   geisBroken: number;
   oathBroken: number;
   unwilling: number;
@@ -109,6 +118,7 @@ export interface State {
   board: (Card | null)[];
   quadGeis: (Card | null)[];
   quadOath: (Card | null)[];
+  globalGeis: Card[];
   phase: Phase;
   musterP: Side;
   musterStage: "draw" | "check";
@@ -129,14 +139,15 @@ export type Option =
   | { t: "musterOmen"; uid: number }
   | { t: "musterReturn"; uid: number }
   | { t: "place"; uid: number }
-  | { t: "omen"; uid: number }
+  | { t: "omen"; uid: number; target?: number }
   | { t: "bind"; uid: number }
   | { t: "supplant"; uid: number }
   | { t: "swear"; uid: number; spot: number }
   | { t: "hold" }
-  | { t: "late"; uid: number }
+  | { t: "late"; uid: number; target?: number }
   | { t: "lateDone" }
   | { t: "focus"; el: Element | null }
+  | { t: "champion"; uid: number }
   | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode };
 export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
@@ -169,28 +180,46 @@ export function sameAlignment(a: string, b: string): boolean {
   return a === b || (a === "Deorad" && uc(b)) || (b === "Deorad" && uc(a));
 }
 /** Debility of an alignment hits that alignment and Deorad heroes, unless the hero is spared. */
-export const debilitated = (h: HeroDef, al: string) => !h.ab.sparedDebility && (h.alignment === al || (h.alignment === "Deorad" && (al === "Ulaid" || al === "Connachta")));
+export const debilitated = (h: FighterDef, al: string) => !h.ab.sparedDebility && (h.alignment === al || (h.alignment === "Deorad" && (al === "Ulaid" || al === "Connachta")));
 
 export function hasFaceUp(S: State, p: Side, id: string): boolean {
   for (const o of S.players[p].omens) if (o.faceUp && o.card.def.id === id) return true;
   return false;
 }
 export const anyFaceUp = (S: State, id: string) => hasFaceUp(S, 0, id) || hasFaceUp(S, 1, id);
-/** Face-up omen effects of side p. */
+/** Face-up "yours" omens of side p (wards, reinforcements, the Mist). */
 export function fxOf(S: State, p: Side): OmenEffect[] {
   const out: OmenEffect[] = [];
-  for (const o of S.players[p].omens) if (o.faceUp && o.card.def.type === "omen") out.push(o.card.def.fx);
+  for (const o of S.players[p].omens) if (o.faceUp && o.card.def.type === "omen" && o.card.def.scope === "yours") out.push(o.card.def.fx);
   return out;
 }
-export const boardFx = (S: State): OmenEffect[] => [...fxOf(S, 0), ...fxOf(S, 1)];
+/** Face-up global omens of both players (board geasa and modifiers). */
+export function boardFx(S: State): OmenEffect[] {
+  const out: OmenEffect[] = [];
+  for (const P of S.players) for (const o of P.omens) if (o.faceUp && o.card.def.type === "omen" && o.card.def.scope === "global") out.push(o.card.def.fx);
+  return out;
+}
+/** Face-up targeted omens (either player's) aimed at hero spot `spot`. */
+export function targetFx(S: State, spot: number): OmenEffect[] {
+  const out: OmenEffect[] = [];
+  for (const P of S.players) for (const o of P.omens) if (o.faceUp && o.target === spot && o.card.def.type === "omen") out.push(o.card.def.fx);
+  return out;
+}
+/** Everything touching side p's fighter in this duel: its side's own omens and omens targeted at its spot. */
+export const heroFx = (S: State, C: CombatState, p: Side): OmenEffect[] => [...fxOf(S, p), ...targetFx(S, C.hs[p])];
 const sumFx = (fx: OmenEffect[], f: (e: OmenEffect) => number | undefined) => fx.reduce((a, e) => a + (f(e) ?? 0), 0);
 export const crowActive = (S: State, C: CombatState) => boardFx(S).some((e) => e.noHeals) && !(C.broken & CROW_BIT);
 export const ignoresGeis = (S: State, p: Side) => fxOf(S, p).some((e) => e.ignoreGeis);
+/** The fighter of side a in the current duel: its champion if one stands in, else its hero. */
+export function fighter(S: State, C: CombatState, a: number): FighterDef {
+  const c = C.champ[a];
+  return c && c.def.type === "champion" ? c.def : heroAt(S, C.hs[a]);
+}
 /** The unbroken oath sworn on side a's current hero, if any. */
 export function activeOath(S: State, C: CombatState, a: Side): OathDef | null {
   const q = quadOf(C.hs[a]);
   const o = S.quadOath[q];
-  if (!o || o.def.type !== "oath" || C.broken & (OATH_BIT << q)) return null;
+  if (C.champ[a] || !o || o.def.type !== "oath" || C.broken & (OATH_BIT << q)) return null;
   return o.def;
 }
 
@@ -206,7 +235,7 @@ export const geisForbidsSupport = (g: GeisDef, s: SupportDef) => forbidsSupport(
 
 function emptyStats(): MatchStats {
   return {
-    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0 },
+    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0 }, champions: 0, championsBySide: [0, 0],
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
     placed: [], used: [], bound: [], sworn: [], omensTurned: [],
   };
@@ -223,7 +252,7 @@ export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = 
     return { deckList: list, deck, hand: [], reserve: [], omens: [], discard: [], lost: [], musterQ: [] } as PlayerState;
   }) as [PlayerState, PlayerState];
   return {
-    rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null],
+    rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null], globalGeis: [],
     phase: "muster", musterP: 0, musterStage: "draw", musterReturns: 0, pendingOmen: null,
     step: 1, sub: 0, hiddenSpots: [], tieCoin: [rng.int(2) as Side, rng.int(2) as Side],
     combat: null, result: null, stats: trackStats ? emptyStats() : null, nextUid: uid,
@@ -239,17 +268,18 @@ export function cloneCombat(C: CombatState): CombatState {
     // copy-on-write fields: never mutated in place (replaced on change)
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
+    champ: C.champ, champs: C.champs,
   };
 }
 function clonePlayer(P: PlayerState): PlayerState {
   return {
     deckList: P.deckList, deck: P.deck.slice(), hand: P.hand.slice(), reserve: P.reserve.slice(),
-    omens: P.omens.map((o) => ({ card: o.card, faceUp: o.faceUp })), discard: P.discard.slice(), lost: P.lost.slice(), musterQ: P.musterQ.slice(),
+    omens: P.omens.map((o) => ({ card: o.card, faceUp: o.faceUp, target: o.target })), discard: P.discard.slice(), lost: P.lost.slice(), musterQ: P.musterQ.slice(),
   };
 }
 export function cloneState(S: State): State {
   return {
-    ...S, players: [clonePlayer(S.players[0]), clonePlayer(S.players[1])], board: S.board.slice(), quadGeis: S.quadGeis.slice(), quadOath: S.quadOath.slice(),
+    ...S, players: [clonePlayer(S.players[0]), clonePlayer(S.players[1])], board: S.board.slice(), quadGeis: S.quadGeis.slice(), quadOath: S.quadOath.slice(), globalGeis: S.globalGeis.slice(),
     hiddenSpots: S.hiddenSpots.slice(), tieCoin: [S.tieCoin[0], S.tieCoin[1]], combat: S.combat ? cloneCombat(S.combat) : null,
     result: S.result ? { ...S.result } : null, stats: null,
   };
@@ -269,7 +299,10 @@ export function observe(S: State, p: Side): State {
   O.omens = O.omens.map((s) => (s.faceUp ? s : { card: unk(s.card), faceUp: false }));
   if (V.pendingOmen && V.pendingOmen.owner === o) V.pendingOmen = unk(V.pendingOmen);
   for (const s of V.hiddenSpots) { const c = V.board[s]; if (c && c.owner === o) V.board[s] = unk(c); }
-  if (V.combat) V.combat.guests = V.combat.guests.map((g, q) => (q === o ? g.map(unk) : g));
+  if (V.combat) {
+    V.combat.guests = V.combat.guests.map((g, q) => (q === o ? g.map(unk) : g));
+    V.combat.champs = V.combat.champs.map((g, q) => (q === o ? g.map(unk) : g));
+  }
   return V;
 }
 
@@ -356,10 +389,18 @@ function playDecision(S: State): Decision {
   const spot = facedSpot(S.step, p);
   const P = S.players[p];
   const options: Option[] = [];
-  for (const o of P.omens) if (!o.faceUp) options.push({ t: "omen", uid: o.card.uid });
+  for (const o of P.omens) if (!o.faceUp) {
+    if (o.card.def.type === "omen" && o.card.def.scope === "targeted") for (const t of [0, 3, 6, 9]) options.push({ t: "omen", uid: o.card.uid, target: t });
+    else options.push({ t: "omen", uid: o.card.uid });
+  }
   const seen = new Set<string>();
   if (isHeroSpot(spot)) {
-    if (!S.quadGeis[quadOf(spot)]) for (const c of P.hand) if (c.def.type === "geis" && !seen.has(c.def.id)) { seen.add(c.def.id); options.push({ t: "bind", uid: c.uid }); }
+    for (const c of P.hand) {
+      if (c.def.type !== "geis" || seen.has(c.def.id)) continue;
+      if (c.def.scope === "global" ? S.globalGeis.length >= MAX_GLOBAL_GEASA : !!S.quadGeis[quadOf(spot)]) continue;
+      seen.add(c.def.id);
+      options.push({ t: "bind", uid: c.uid });
+    }
   } else if (S.board[spot]) {
     for (const c of P.hand) if (c.def.type === "support" && !seen.has(c.def.id)) { seen.add(c.def.id); options.push({ t: "supplant", uid: c.uid }); }
   }
@@ -389,7 +430,12 @@ function lateDecision(S: State): Decision | null {
   const P = S.players[S.sub];
   const fd = P.omens.filter((o) => !o.faceUp);
   if (fd.length === 0) { advanceLate(S); return null; }
-  return { kind: "late", player: S.sub, options: [...fd.map((o) => ({ t: "late" as const, uid: o.card.uid })), { t: "lateDone" }] };
+  const opts: Option[] = [];
+  for (const o of fd) {
+    if (o.card.def.type === "omen" && o.card.def.scope === "targeted") for (const t of [0, 3, 6, 9]) opts.push({ t: "late", uid: o.card.uid, target: t });
+    else opts.push({ t: "late", uid: o.card.uid });
+  }
+  return { kind: "late", player: S.sub, options: [...opts, { t: "lateDone" }] };
 }
 function advanceLate(S: State) {
   if (S.sub === 0) S.sub = 1;
@@ -399,12 +445,13 @@ function advanceLate(S: State) {
 // ---------------------------------------------------------------- combat
 export function newCombat(S: State): CombatState {
   const guests = [0, 1].map((p) => S.players[p].hand.filter((c) => c.def.type === "hero"));
+  const champs = [0, 1].map((p) => S.players[p].hand.filter((c) => c.def.type === "champion"));
   const C: CombatState = {
     duel: 0, stage: "turns", hs: [0, 6], valour: [0, 0], shield: [0, 0], first: 1, turn: 0, used: 0, broken: 0,
     nextStrike: [0, 0], cathbad: [false, false], kingsDue: [false, false], supportsUsed: 0, struck: [false, false],
     guestUsed: [false, false], guests, focus: [null, null], focusTodo: [],
     felled: [[false, false], [false, false]], endValour: [[0, 0], [0, 0]], startV: [[0, 0], [0, 0]],
-    cap: [0, 0], init: [0, 0], hit: [false, false],
+    cap: [0, 0], init: [0, 0], hit: [false, false], champ: [null, null], champs,
   };
   startDuel(S, C, 0, S.stats);
   return C;
@@ -419,24 +466,25 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   C.hs = d === 0 ? [0, 6] : [3, 9];
   C.turn = 0; C.supportsUsed = 0;
   C.nextStrike = [0, 0]; C.cathbad = [false, false]; C.kingsDue = [false, false];
-  C.struck = [false, false]; C.hit = [false, false]; C.guestUsed = [false, false]; C.focus = [null, null];
+  C.struck = [false, false]; C.hit = [false, false]; C.guestUsed = [false, false]; C.focus = [null, null]; C.champ = [null, null];
   const todo: Side[] = [];
   const R = S.rules;
-  const h = [heroAt(S, C.hs[0]), heroAt(S, C.hs[1])];
+  const h = [fighter(S, C, 0), fighter(S, C, 1)];
   const sv = C.startV.slice();
   sv[d] = [0, 0];
   for (const p of [0, 1] as Side[]) {
-    const fx = fxOf(S, p);
+    const fx = heroFx(S, C, p);
     const oath = activeOath(S, C, p);
     let v = h[p].valour + R.valourBonus + (oath?.boon.valour ?? 0);
     for (const e of fx) if (e.startValour && e.startValour.duel === d) v += e.startValour.n;
     C.cap[p] = v + R.capOver;
-    let init = h[p].init + (oath?.boon.init ?? 0);
+    let init = h[p].init + (oath?.boon.init ?? 0) + sumFx(fx, (e) => e.initMod);
     const g = S.quadGeis[quadOf(C.hs[p])];
-    if (g && g.def.type === "geis" && !ignoresGeis(S, p)) {
-      if (g.def.invoke && g.def.invoke === h[p].tag) { v -= R.invokeLoss; if (stats) stats.invokes++; }
-      if (g.def.bigLoss && h[p].valour >= 5) v -= g.def.bigLoss;
-      if (g.def.initLoss) init -= g.def.initLoss;
+    const binding = [...(g && g.def.type === "geis" ? [g.def] : []), ...S.globalGeis.flatMap((x) => (x.def.type === "geis" ? [x.def] : []))];
+    if (!ignoresGeis(S, p)) for (const gd of binding) {
+      if (gd.invoke && gd.invoke === h[p].tag) { v -= R.invokeLoss; if (stats) stats.invokes++; }
+      if (gd.bigLoss && h[p].valour >= 5) v -= gd.bigLoss;
+      if (gd.initLoss) init -= gd.initLoss;
     }
     C.valour[p] = v;
     C.init[p] = init;
@@ -462,31 +510,37 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
 }
 
 export const actorOf = (C: CombatState): Side => (C.turn % 2 === 0 ? C.first : ((1 - C.first) as Side));
-export const focusOf = (C: CombatState, p: Side, h: HeroDef): Focus | null => C.focus[p] ?? h.focus;
+export const focusOf = (C: CombatState, p: Side, h: FighterDef): Focus | null => C.focus[p] ?? h.focus;
 
 /** Geasa forbidding support s for side a's hero: bit set of geasa (quadrant bit, CROW_BIT). */
 export function forbidMask(S: State, C: CombatState, a: Side, s: SupportDef): number {
+  if (C.champ[a]) return 0; // a champion is bound by no geis or oath
   let m = 0;
   const q = quadOf(C.hs[a]);
   const g = S.quadGeis[q];
-  if (g && g.def.type === "geis" && !(C.broken & (1 << q)) && !ignoresGeis(S, a) && geisForbidsSupport(g.def, s)) m |= 1 << q;
+  const free = ignoresGeis(S, a);
+  if (g && g.def.type === "geis" && !(C.broken & (1 << q)) && !free && geisForbidsSupport(g.def, s)) m |= 1 << q;
+  S.globalGeis.forEach((x, i) => { if (x.def.type === "geis" && !free && !(C.broken & globalBit(i, q)) && geisForbidsSupport(x.def, s)) m |= globalBit(i, q); });
   if (crowActive(S, C) && s.effects.some((e) => e.type === "heal")) m |= CROW_BIT;
   const o = activeOath(S, C, a);
   if (o && forbidsSupport(o.forbids, s)) m |= OATH_BIT << q;
   return m;
 }
 export function restForbidMask(S: State, C: CombatState, a: Side): number {
+  if (C.champ[a]) return 0;
   const q = quadOf(C.hs[a]);
   const g = S.quadGeis[q];
   let m = 0;
-  if (g && g.def.type === "geis" && g.def.forbids.rest && !(C.broken & (1 << q)) && !ignoresGeis(S, a)) m |= 1 << q;
+  const free = ignoresGeis(S, a);
+  if (g && g.def.type === "geis" && g.def.forbids.rest && !(C.broken & (1 << q)) && !free) m |= 1 << q;
+  S.globalGeis.forEach((x, i) => { if (x.def.type === "geis" && x.def.forbids.rest && !free && !(C.broken & globalBit(i, q))) m |= globalBit(i, q); });
   const o = activeOath(S, C, a);
   if (o && o.forbids.rest) m |= OATH_BIT << q;
   return m;
 }
 /** Valour cost of breaking the geasa/oaths in mask m. */
 export function breakCost(S: State, m: number): number {
-  const oaths = bitCount(m >>> 5);
+  const oaths = bitCount((m >>> 5) & 15);
   return S.rules.geisBreakCost * (bitCount(m) - oaths) + S.rules.oathBreakCost * oaths;
 }
 const bitCount = (m: number) => { let n = 0; while (m) { n += m & 1; m >>>= 1; } return n; };
@@ -496,7 +550,7 @@ export function usableSpots(S: State, C: CombatState, a: Side): { spot: number; 
   const hs = C.hs[a];
   const out: { spot: number; borrowed: boolean }[] = [];
   for (const s of [hs + 1, hs + 2]) if (S.board[s] && S.board[s]!.def.type === "support" && !(C.used & (1 << s))) out.push({ spot: s, borrowed: false });
-  if (heroAt(S, hs).ab.kingsDue && !C.kingsDue[a]) {
+  if (fighter(S, C, a).ab.kingsDue && !C.kingsDue[a]) {
     const other = heroSpotsOf(a).find((x) => x !== hs)!;
     for (const s of [other + 1, other + 2]) if (S.board[s] && S.board[s]!.def.type === "support" && !(C.used & (1 << s))) out.push({ spot: s, borrowed: true });
   }
@@ -504,7 +558,7 @@ export function usableSpots(S: State, C: CombatState, a: Side): { spot: number; 
 }
 
 export function duelActs(S: State, C: CombatState, a: Side): Option[] {
-  const h = heroAt(S, C.hs[a]);
+  const h = fighter(S, C, a);
   const acts: Option[] = [];
   for (const { spot } of usableSpots(S, C, a)) {
     const s = S.board[spot]!.def as SupportDef;
@@ -527,15 +581,18 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
 }
 export function eligibleGuests(S: State, C: CombatState, a: Side): Card[] {
   if (C.guestUsed[a] || crowActive(S, C)) return [];
-  const h = heroAt(S, C.hs[a]);
+  const h = fighter(S, C, a);
   return C.guests[a].filter((g) => g.def.type === "hero" && sameAlignment(g.def.alignment, h.alignment));
 }
+
+/** The first player may call a champion in either duel, the second player only in the second; one per duel. */
+export const canCallChampion = (C: CombatState, a: Side, on = true) => on && !C.champ[a] && (a === 0 || C.duel === 1) && C.champs[a].length > 0;
 
 export function combatDecision(S: State, C: CombatState): Decision | null {
   if (C.stage === "done") return null;
   if (C.stage === "focus") {
     const p = C.focusTodo[0];
-    const h = heroAt(S, C.hs[p]);
+    const h = fighter(S, C, p);
     const opts: Option[] = [{ t: "focus", el: null }];
     for (const el of ELEMENTS) if (el !== h.focus) opts.push({ t: "focus", el });
     return { kind: "focus", player: p, options: opts };
@@ -543,6 +600,10 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
   const a = actorOf(C);
   const acts = duelActs(S, C, a);
   const options = acts.slice();
+  if (canCallChampion(C, a, S.rules.champions)) {
+    const seenC = new Set<string>();
+    for (const c of C.champs[a]) if (c.def.type === "champion" && !seenC.has(c.def.id)) { seenC.add(c.def.id); options.push({ t: "champion", uid: c.uid }); }
+  }
   const seen = new Set<string>();
   for (const g of eligibleGuests(S, C, a)) {
     if (seen.has(g.def.id)) continue;
@@ -554,9 +615,9 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
 
 /** Heal side p by n plus every Heal modifier (hero, oath, own reinforcement, board, the enemy's blight). */
 export function heal(S: State, C: CombatState, p: Side, n: number) {
-  const h = heroAt(S, C.hs[p]);
-  const e = heroAt(S, C.hs[1 - p]);
-  n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(fxOf(S, p), (x) => x.heal)
+  const h = fighter(S, C, p);
+  const e = fighter(S, C, 1 - p);
+  n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
     + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0);
   if (n <= 0) return;
   C.valour[p] = Math.min(Math.max(C.cap[p], C.valour[p]), C.valour[p] + n);
@@ -564,8 +625,8 @@ export function heal(S: State, C: CombatState, p: Side, n: number) {
 
 export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0) {
   const b = (1 - a) as Side;
-  const h = heroAt(S, C.hs[a]);
-  const e = heroAt(S, C.hs[b]);
+  const h = fighter(S, C, a);
+  const e = fighter(S, C, b);
   const ab = h.ab;
   n += ab.strikeAll ?? 0;
   if (ab.rally && C.valour[a] <= ab.rally.at) n += ab.rally.n;
@@ -574,7 +635,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (ab.vsBig && e.valour >= 5) n += ab.vsBig;
   if (ab.vsTag && e.tag === ab.vsTag.tag) n += ab.vsTag.n;
   n += activeOath(S, C, a)?.boon.strike ?? 0;
-  for (const fx of fxOf(S, a)) if (fx.strikeDuel && fx.strikeDuel.duel === C.duel) n += fx.strikeDuel.n;
+  for (const fx of heroFx(S, C, a)) {
+    if (fx.strikeDuel && fx.strikeDuel.duel === C.duel) n += fx.strikeDuel.n;
+    if (fx.strikeMod) n += fx.strikeMod;
+  }
   n += C.nextStrike[a];
   C.nextStrike[a] = 0;
   C.hit[a] = true;
@@ -584,7 +648,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
   if (!C.struck[b]) {
     C.struck[b] = true;
-    n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - sumFx(fxOf(S, b), (x) => x.firstHitSoak));
+    n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - sumFx(heroFx(S, C, b), (x) => x.firstHitSoak));
   }
   const soak = pierce ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
@@ -595,7 +659,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
 }
 
 /** The support's own base numbers (special cards). */
-export function baseEffects(s: SupportDef, h: HeroDef, e: HeroDef, firstSupport: boolean) {
+export function baseEffects(s: SupportDef, h: FighterDef, e: FighterDef, firstSupport: boolean) {
   if (!s.forHero && !s.vsHero && !s.firstBonus && !s.vsBig) return s.effects;
   const effs = s.effects.map((x) => ({ ...x }));
   if (s.forHero && h.id === s.forHero.id) effs[0].n = s.forHero.n;
@@ -607,8 +671,8 @@ export function baseEffects(s: SupportDef, h: HeroDef, e: HeroDef, firstSupport:
 /** +1 bonuses for the primary effect (step 4) and Reinforcement (step 5, the omen). */
 export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, isStrike: boolean): number {
   const b = (1 - a) as Side;
-  const h = heroAt(S, C.hs[a]);
-  const e = heroAt(S, C.hs[b]);
+  const h = fighter(S, C, a);
+  const e = fighter(S, C, b);
   let n = 0;
   if (kin(s.alignment, h.alignment)) n += h.ab.kinBonus ?? 1;
   const f = focusOf(C, a, h);
@@ -618,7 +682,7 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
     if (isElement(ef) && beats(s.element, ef)) n += 1;
     if (e.weakness && s.element === e.weakness) n += 1;
   }
-  for (const fx of fxOf(S, a)) {
+  for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
     if (fx.kind && s.kind === fx.kind.kind) n += fx.kind.n;
   }
@@ -627,15 +691,15 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
 
 function resolveSupport(S: State, C: CombatState, a: Side, s: SupportDef, firstSupport: boolean, stats: MatchStats | null) {
   const b = (1 - a) as Side;
-  const h = heroAt(S, C.hs[a]);
-  const e = heroAt(S, C.hs[b]);
+  const h = fighter(S, C, a);
+  const e = fighter(S, C, b);
   const effs = baseEffects(s, h, e, firstSupport);
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
     const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") : 0);
     if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, s.drain ?? 0);
     else if (eff.type === "heal") heal(S, C, a, n);
-    else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(fxOf(S, a), (x) => x.shield));
+    else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
   }
   if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
   if (s.nextStrike) C.nextStrike[a] += s.nextStrike;
@@ -649,6 +713,33 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     C.focusTodo = C.focusTodo.slice(1);
     if (o.el) { const f = C.focus.slice(); f[p] = o.el; C.focus = f; }
     if (C.focusTodo.length === 0) C.stage = "turns";
+    return;
+  }
+  if (o.t === "champion") {
+    const a = actorOf(C);
+    const card = C.champs[a].find((x) => x.uid === o.uid)!;
+    const cs = C.champs.slice();
+    cs[a] = C.champs[a].filter((x) => x.uid !== o.uid);
+    C.champs = cs;
+    const ch = C.champ.slice();
+    ch[a] = card;
+    C.champ = ch;
+    if (C === S.combat) { const P = S.players[a]; const j = P.hand.findIndex((c) => c.uid === card.uid); if (j >= 0) P.hand.splice(j, 1); }
+    const def = card.def as FighterDef;
+    const d = C.duel;
+    // wounds so far stay counted: the duel's start becomes (Valour already lost) + the champion's Valour
+    const sv = C.startV.slice();
+    sv[d] = sv[d].slice();
+    sv[d][a] = Math.max(0, C.startV[d][a] - C.valour[a]) + def.valour + S.rules.valourBonus;
+    C.startV = sv;
+    C.valour[a] = def.valour + S.rules.valourBonus;
+    C.cap[a] = C.valour[a] + S.rules.capOver;
+    C.shield[a] = def.ab.shieldStart ?? 0;
+    C.nextStrike[a] = 0; C.struck[a] = false; C.hit[a] = false;
+    const f = C.focus.slice(); f[a] = null; C.focus = f;
+    if (stats) { stats.champions++; stats.championsBySide[a]++; }
+    C.turn++;
+    if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
     return;
   }
   if (o.t !== "duel") throw new Error("bad combat option");
@@ -669,7 +760,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
   }
   if (o.act === "use") {
     const s = S.board[o.spot]!.def as SupportDef;
-    const h = heroAt(S, C.hs[a]);
+    const h = fighter(S, C, a);
     const borrowed = quadOf(o.spot) !== quadOf(C.hs[a]);
     C.used |= 1 << o.spot;
     if (borrowed) C.kingsDue[a] = true;
@@ -684,11 +775,11 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
         const m = forbidMask(S, C, a, s);
         C.broken |= m;
         C.valour[a] -= breakCost(S, m);
-        if (stats) { stats.oathBroken += bitCount(m >>> 5); stats.geisBroken += bitCount(m & 31); }
+        if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
       } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
       if (C.valour[a] > 0) {
         resolveSupport(S, C, a, s, first, stats);
-        if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === heroAt(S, C.hs[1 - a]).tag);
+        if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === fighter(S, C, 1 - a).tag);
       }
     }
   } else {
@@ -696,9 +787,9 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
       const m = restForbidMask(S, C, a);
       C.broken |= m;
       C.valour[a] -= breakCost(S, m);
-      if (stats) { stats.oathBroken += bitCount(m >>> 5); stats.geisBroken += bitCount(m & 31); }
+      if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
     } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
-    const ab = heroAt(S, C.hs[a]).ab;
+    const ab = fighter(S, C, a).ab;
     if (C.valour[a] > 0 && ab.restHeal && !crowActive(S, C)) heal(S, C, a, ab.restHeal);
     if (C.valour[a] > 0 && ab.restShield) C.shield[a] += ab.restShield;
   }
@@ -796,12 +887,20 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       const spot = facedSpot(S.step, p);
       if (ownerOfSpot(spot) === p) return "must face an enemy spot";
       if (o.t === "hold") return null;
-      if (o.t === "omen") return P.omens.some((s) => !s.faceUp && s.card.uid === o.uid) ? null : "no such face-down omen";
+      if (o.t === "omen") {
+        const sl = P.omens.find((s) => !s.faceUp && s.card.uid === o.uid);
+        if (!sl) return "no such face-down omen";
+        const tg = sl.card.def.type === "omen" && sl.card.def.scope === "targeted";
+        if (tg !== (o.target !== undefined)) return tg ? "a targeted omen needs a hero" : "this omen takes no target";
+        if (tg && !isHeroSpot(o.target!)) return "target must be a hero";
+        return null;
+      }
       const c = inHand(o.uid);
       if (!c) return "card not in hand";
       if (o.t === "bind") {
         if (!isHeroSpot(spot)) return "bind only on a hero spot";
         if (c.def.type !== "geis") return "bind needs a geis";
+        if (c.def.scope === "global") return S.globalGeis.length >= MAX_GLOBAL_GEASA ? "too many global geasa" : null;
         if (S.quadGeis[quadOf(spot)]) return "already bound";
         return null;
       }
@@ -812,19 +911,34 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
     }
     case "late": case "lateDone":
       if (S.phase !== "late" || S.sub !== p) return "not your late-omen turn";
-      if (o.t === "late" && !P.omens.some((s) => !s.faceUp && s.card.uid === o.uid)) return "no such omen";
+      if (o.t === "late") {
+        const sl = P.omens.find((s) => !s.faceUp && s.card.uid === o.uid);
+        if (!sl) return "no such omen";
+        const tg = sl.card.def.type === "omen" && sl.card.def.scope === "targeted";
+        if (tg !== (o.target !== undefined) || (tg && !isHeroSpot(o.target!))) return "bad omen target";
+      }
       return null;
     case "focus": {
       const C = S.combat;
       if (S.phase !== "combat" || !C || C.stage !== "focus" || C.focusTodo[0] !== p) return "no focus choice pending";
-      if (!heroAt(S, C.hs[p]).ab.shapeShift) return "this hero cannot shape-shift";
+      if (!fighter(S, C, p).ab.shapeShift) return "this hero cannot shape-shift";
       if (o.el !== null && !isElement(o.el)) return "focus must be an element";
+      return null;
+    }
+    case "champion": {
+      const C = S.combat;
+      if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
+      const c = P.hand.find((x) => x.uid === o.uid);
+      if (!c || c.def.type !== "champion") return "no such champion in hand";
+      if (!S.rules.champions) return "champions are off";
+      if (C.champ[p]) return "a champion already stands in this duel";
+      if (p === 1 && C.duel === 0) return "the second player may call a champion only in the second duel";
       return null;
     }
     case "duel": {
       const C = S.combat;
       if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
-      const h = heroAt(S, C.hs[p]);
+      const h = fighter(S, C, p);
       if (o.guest >= 0) {
         const g = C.guests[p].find((c) => c.uid === o.guest);
         if (!g || g.def.type !== "hero") return "guest not a hero in hand";
@@ -898,6 +1012,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "omen": {
       const s = P.omens.find((x) => x.card.uid === o.uid)!;
       s.faceUp = true;
+      if (o.target !== undefined) s.target = o.target;
       if (st) { st.actions.omen++; st.omensTurned.push({ side: p, id: s.card.def.id }); }
       advancePlay(S);
       return;
@@ -905,7 +1020,8 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "bind": {
       const spot = facedSpot(S.step, p);
       const g = removeFrom(P.hand, o.uid);
-      S.quadGeis[quadOf(spot)] = g;
+      if (g.def.type === "geis" && g.def.scope === "global") S.globalGeis.push(g);
+      else S.quadGeis[quadOf(spot)] = g;
       if (st) { st.actions.bind++; st.bound.push({ side: p, id: g.def.id }); }
       advancePlay(S);
       return;
@@ -934,6 +1050,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "late": {
       const s = P.omens.find((x) => x.card.uid === o.uid)!;
       s.faceUp = true;
+      if (o.target !== undefined) s.target = o.target;
       if (st) st.omensTurned.push({ side: p, id: s.card.def.id });
       return;
     }
@@ -942,6 +1059,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       return;
     case "focus":
     case "duel":
+    case "champion":
       combatApply(S, S.combat!, o, st);
       return;
   }
