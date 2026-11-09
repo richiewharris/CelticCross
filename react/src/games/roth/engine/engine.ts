@@ -114,6 +114,8 @@ export interface MatchStats {
   placed: { side: Side; id: string; how: "draft" | "supplant" }[];
   used: { side: Side; id: string; unwilling: boolean; effect: boolean }[];
   p2First: number;
+  /** Per side (the side that dealt it, or suffered it for startLoss/initLoss): where damage came from. */
+  fx: Record<"strikes" | "dmg" | "soaked" | "blunted" | "weakHits" | "beatsHits" | "focusHits" | "kinHits" | "healed" | "startLoss" | "initLoss" | "first" | "broke" | "duels", [number, number]>;
   bound: { side: Side; id: string }[];
   sworn: { side: Side; id: string; hero: string }[];
   omensTurned: { side: Side; id: string }[];
@@ -253,6 +255,7 @@ function emptyStats(): MatchStats {
   return {
     exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0, attend: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
+    fx: Object.fromEntries(["strikes", "dmg", "soaked", "blunted", "weakHits", "beatsHits", "focusHits", "kinHits", "healed", "startLoss", "initLoss", "first", "broke", "duels"].map((k) => [k, [0, 0]])) as MatchStats["fx"],
     placed: [], used: [], bound: [], sworn: [], omensTurned: [],
   };
 }
@@ -555,10 +558,12 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     const g = S.quadGeis[quadOf(C.hs[p])];
     const binding = [...(g && g.def.type === "geis" ? [g.def] : []), ...S.globalGeis.flatMap((x) => (x.def.type === "geis" ? [x.def] : []))];
     if (!ignoresGeis(S, p)) for (const gd of binding) {
-      if (gd.invoke && gd.invoke === h[p].tag) { v -= R.invokeLoss; if (stats) stats.invokes++; }
-      if (gd.bigLoss && h[p].valour >= 5) v -= gd.bigLoss;
-      if (gd.initLoss) init -= gd.initLoss;
+      if (gd.invoke && gd.invoke === h[p].tag) { v -= R.invokeLoss; if (stats) { stats.invokes++; stats.fx.startLoss[p] += R.invokeLoss; } }
+      if (gd.bigLoss && h[p].valour >= 5) { v -= gd.bigLoss; if (stats) stats.fx.startLoss[p] += gd.bigLoss; }
+      if (gd.initLoss) { init -= gd.initLoss; if (stats) stats.fx.initLoss[p] += gd.initLoss; }
     }
+    if (stats) stats.fx.initLoss[p] -= sumFx(fx, (e) => e.initMod) ;
+    if (stats) stats.fx.duels[p]++;
     C.valour[p] = v;
     C.init[p] = init;
     sv[d][p] = Math.max(0, v);
@@ -579,6 +584,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     C.first = R.initTie === "p2" ? 1 : R.initTie === "p1" ? 0 : S.tieCoin[d];
   }
   if (stats && C.first === 1) stats.p2First++;
+  if (stats) stats.fx.first[C.first]++;
   C.stage = C.focusTodo.length ? "focus" : "turns";
   if (C.valour[0] <= 0 || C.valour[1] <= 0) endDuel(S, C, stats);
 }
@@ -721,6 +727,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   n = Math.max(0, n);
   for (const fx of boardFx(S)) if (fx.truce !== undefined) n = Math.min(n, fx.truce);
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
+  const n0 = n;
   if (!C.struck[b]) {
     C.struck[b] = true;
     n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - sumFx(heroFx(S, C, b), (x) => x.firstHitSoak));
@@ -731,6 +738,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.valour[b] -= dmg;
   const dr = (ab.drain ?? 0) + drain;
   if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
+  const F = S.stats?.fx;
+  if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
 }
 
 /** The support's own base numbers (special cards). */
@@ -805,6 +814,17 @@ export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
 function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, firstSupport: boolean, stats: MatchStats | null) {
   const s = effSupport(S, a, s0);
   const b = (1 - a) as Side;
+  if (stats) {
+    const h0 = fighter(S, C, a), e0 = fighter(S, C, b), F = stats.fx;
+    if (kin(s.alignment, h0.alignment)) F.kinHits[a]++;
+    const f0 = focusOf(C, a, h0);
+    if (h0.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind))) F.focusHits[a]++;
+    if (s.effects[0].type === "strike" && s.element) {
+      const ef = focusOf(C, b, e0);
+      if (isElement(ef) && beats(s.element, ef)) F.beatsHits[a]++;
+      if (isElement(s.element) && effWeakness(S, b, e0).includes(s.element)) F.weakHits[a]++;
+    }
+  }
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   const effs = baseEffects(s, h, e, firstSupport);
@@ -892,6 +912,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
         const m = forbidMask(S, C, a, s);
         C.broken |= m;
         C.valour[a] -= breakCost(S, m);
+        if (stats) stats.fx.broke[a] += breakCost(S, m);
         if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
       } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
       if (C.valour[a] > 0) {
@@ -904,6 +925,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
       const m = restForbidMask(S, C, a);
       C.broken |= m;
       C.valour[a] -= breakCost(S, m);
+      if (stats) stats.fx.broke[a] += breakCost(S, m);
       if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
     } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
     const ab = fighter(S, C, a).ab;
