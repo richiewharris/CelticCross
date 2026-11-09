@@ -116,6 +116,17 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
       { sel: ".ln-lore", at: [0.97, 0.5], title: "Lore", text: "A line from the old tales. Small cards drop it first." },
     ],
   },
+  attendant: {
+    def: "a_scribe",
+    parts: [
+      ...COMMON_TOP,
+      { sel: ".cf-stats", at: [0.5, 0.3], title: "Reach", text: "Ring-fort: your heroes' cards. Crossed spears: the enemy's. Globe: everyone's." },
+      { sel: ".cf-pic", at: [0.5, 0.45], title: "Art", text: "What it changes, an arrow, and what it becomes: here a Weapon becomes a Word." },
+      { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "An attendant, its reach, and its people if it has one." },
+      { sel: ".ln-text", at: [0.97, 0.5], title: "Effect", text: "What cards count as from now on. The new element or kind counts for everything, geasa included." },
+      { sel: ".ln-break", at: [0.97, 0.5], title: "When", text: "Called in the Playing turn instead of another action; it stays for the match." },
+    ],
+  },
 };
 type AnatKind = keyof typeof PARTS;
 
@@ -331,7 +342,7 @@ function Blow() {
 const PEOPLE_OF: Record<Faction, string> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow" };
 const GROUPS: { type: CardDef["type"]; title: string }[] = [
   { type: "hero", title: "Heroes" }, { type: "champion", title: "Champions" }, { type: "support", title: "Supports" },
-  { type: "geis", title: "Geasa" }, { type: "oath", title: "Oaths" }, { type: "omen", title: "Omens" },
+  { type: "geis", title: "Geasa" }, { type: "oath", title: "Oaths" }, { type: "omen", title: "Omens" }, { type: "attendant", title: "Attendants" },
 ];
 const ELS = ["Fire", "Wind", "Earth", "Water"] as const;
 const KINDS = ["Weapon", "Feat", "Ally", "Word"] as const;

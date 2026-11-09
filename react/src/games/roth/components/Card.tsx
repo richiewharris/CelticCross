@@ -34,6 +34,7 @@ export function subtype(d: CardDef): string {
     case "geis": return d.scope === "global" ? "Geis on every hero" : "Geis laid on one hero";
     case "oath": return "Oath sworn on your hero";
     case "omen": return d.scope === "global" ? "Omen over the whole field" : d.scope === "targeted" ? "Omen on one hero" : "Omen for your heroes";
+    case "attendant": return `Attendant${d.people ? ` ${PEOPLE[d.people]}` : ""} · ${d.scope === "global" ? "every hero" : d.scope === "yours" ? "your heroes" : "the enemy"}`;
     default: return "";
   }
 }
@@ -98,6 +99,8 @@ function Tokens({ d }: { d: CardDef }) {
       return <span className="tok tok-scope" title={d.scope === "global" ? "Every hero" : d.scope === "targeted" ? "One hero" : "Your heroes"}><Icon name={d.scope} /></span>;
     case "oath":
       return <span className="tok tok-scope" title="Sworn on your own hero"><Icon name="yours" /></span>;
+    case "attendant":
+      return <span className="tok tok-scope" title={d.scope === "global" ? "Every hero" : d.scope === "yours" ? "Your heroes" : "The enemy's heroes"}><Icon name={d.scope === "enemy" ? "enemy" : d.scope} /></span>;
     default:
       return null;
   }

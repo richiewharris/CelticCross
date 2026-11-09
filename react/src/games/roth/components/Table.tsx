@@ -115,6 +115,14 @@ export function Table(props: {
             </>
           )} />
       )}
+      {S.attendants?.length ? (
+        <div className="zone attendants" aria-label="Attendants in play">
+          <span className="zone-label">Attendants in play</span>
+          <div className="omens">
+            {S.attendants.map((c) => <CardFace key={c.uid} def={c.def} owner={c.owner === me ? "mine" : "theirs"} badge={c.owner === me ? "yours" : "theirs"} onFocusCard={props.onFocusCard} />)}
+          </div>
+        </div>
+      ) : null}
       <div className="zone mine" aria-label="Your omens and hand">
         {P.omens.length ? <><span className="zone-label">{props.names?.[0] ?? "You"}: omens</span><div className="omens">{omenRow(me)}</div></> : null}
         {P.hand.length ? <span className="zone-label">Hand</span> : null}

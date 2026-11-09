@@ -36,6 +36,12 @@ const ICONS: Record<string, ReactNode> = {
   targeted: <><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12" r="3" fill="currentColor" /><P d="M12 1v4M12 19v4M1 12h4M19 12h4" /></>,
   // yours: a ring-fort (ráth) with its gate, your own ground
   yours: <><P d="M7.5 5.2A8.5 8.5 0 1 0 16.5 5.2" /><P d="M9.6 9.2A4 4 0 1 0 14.4 9.2" /><P d="M12 2v8" /></>,
+  // an attendant: a cloaked figure with a staff
+  attendant: <><circle cx="11" cy="5" r="2.6" fill="currentColor" /><P fill d="M6.5 21c.4-5.5 1.6-10 4.5-11.5 2.9 1.5 4.1 6 4.5 11.5z" /><P d="M18.5 3v18" /><P d="M16.5 5.5h4" /></>,
+  // the enemy's side: two spears crossed
+  enemy: <><P d="M4 20 20 4M20 20 4 4" /><P fill d="M20 4l-.8 4-3.2-3.2zM4 4l4 .8L4.8 8z" /></>,
+  // turns into: an arrow
+  into: <><P d="M3 12h15" /><P fill d="m15 7 6 5-6 5z" /></>,
   rest: <><P d="M4 14h16v4H4zM6 14V9h5v5" /><P d="M15 4h4l-4 5h4" /></>,
   // pierce: a spear passing through a shield
   pierce: <><P d="M10 4.5 15 6.5v5c0 3.5-2.2 6.3-5 7.5-2.8-1.2-5-4-5-7.5v-5z" /><P d="M1.5 12h18" /><P fill d="m18 8.5 4.5 3.5-4.5 3.5z" /></>,

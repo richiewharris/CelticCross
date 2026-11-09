@@ -45,6 +45,7 @@ export const RANGES: { type: Exclude<CardDef["type"], "unknown">; title: string;
   { type: "geis", title: "Geasa", min: 2, max: 6 },
   { type: "oath", title: "Oaths", min: 0, max: 4 },
   { type: "omen", title: "Omens", min: 4, max: 6 },
+  { type: "attendant", title: "Attendants", min: 0, max: 2 },
 ];
 
 /** Why a card can't go in (or null if it can). */
@@ -64,7 +65,7 @@ export function deckProblems(deck: CardDef[]): string[] {
   return deckErrors(deck).map((e) => {
     let m: RegExpMatchArray | null;
     if ((m = e.match(/^deck has (\d+) cards/))) return `${m[1]} cards: a deck needs exactly 24.`;
-    if ((m = e.match(/^(heroes|supports|geasa|oaths|champions|omens) (\d+) \((\d+)–(\d+)\)/))) return `${m[2]} ${m[1]}: needs ${m[3]}–${m[4]}.`;
+    if ((m = e.match(/^(heroes|supports|geasa|oaths|champions|omens|attendants) (\d+) \((\d+)–(\d+)\)/))) return `${m[2]} ${m[1]}: needs ${m[3]}–${m[4]}.`;
     if ((m = e.match(/^(\w+) x(\d+) \(max (\d+)\)/))) return `${ALL_DEFS[m[1]]?.name ?? m[1]}: ${m[2]} copies, at most ${m[3]}.`;
     if ((m = e.match(/^legendaries (\d+)/))) return `${m[1]} legendary cards: at most ${MAX_LEGENDARIES}.`;
     if ((m = e.match(/^hero alignments (.*) \(max 2\)/))) return `Heroes from ${m[1].split(",").length} peoples: at most 2.`;

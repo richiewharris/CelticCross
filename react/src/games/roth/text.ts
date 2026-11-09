@@ -22,6 +22,7 @@ export function typeLine(d: CardDef): string {
     case "geis": return `${d.scope === "global" ? "Global" : "Targeted"} geis · ${RAR[d.rarity]}`;
     case "oath": return `Oath · ${RAR[d.rarity]}`;
     case "omen": return `${d.scope === "global" ? "Global" : d.scope === "targeted" ? "Targeted" : "Your"} omen · ${RAR[d.rarity]}`;
+    case "attendant": return `${d.scope === "global" ? "Global" : d.scope === "yours" ? "Your" : "Enemy"} attendant · ${RAR[d.rarity]}`;
     default: return "Hidden card";
   }
 }
@@ -29,7 +30,7 @@ export function typeLine(d: CardDef): string {
 export function cardText(d: CardDef): string {
   switch (d.type) {
     case "hero": case "champion": return d.quality;
-    case "support": case "geis": case "oath": case "omen": return d.text;
+    case "support": case "geis": case "oath": case "omen": case "attendant": return d.text;
     default: return "";
   }
 }
@@ -70,6 +71,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     }
     case "supplant": return `Supplant ${at(S, d.spot!)} with ${cardName(S, o.uid)}`;
     case "swear": return `Swear ${cardName(S, o.uid)} on ${atSpot(S, o.spot)}`;
+    case "attend": return `Call ${cardName(S, o.uid)}`;
     case "hold": return "Hold";
     case "focus": return o.el ? `Shape-shift: Focus ${o.el}` : "Keep her Focus";
     case "champion": return `Call ${cardName(S, o.uid)} to stand in`;
@@ -98,6 +100,7 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "bind": return `${who} ${optionLabel(S, d, o).replace(/^Bind/, "bound").replace(/^Lay/, "laid")}.`;
     case "supplant": return `${who} supplanted ${at(S, d.spot!)} with ${cardName(S, o.uid)}.`;
     case "swear": return `${who} swore ${cardName(S, o.uid)} on ${at(S, o.spot)}.`;
+    case "attend": return `${who} called ${cardName(S, o.uid)}.`;
     case "hold": return `${who} held at spot ${d.spot! + 1}.`;
     case "focus": return o.el ? `${who} shape-shifted: Focus ${o.el}.` : `${who} kept the Morrígan's Focus.`;
     case "champion": return `${who} called ${cardName(S, o.uid)} to stand in.`;

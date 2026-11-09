@@ -142,7 +142,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
 };
 
 /** What each type of card is, when it's played, and how it works with the rest. */
-export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
+export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen" | "attendant"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
   {
     type: "hero", title: "Heroes", sample: "cu",
     what: "The fighters. Each quadrant of the wheel is one hero and the two supports behind it, and the heroes fight the two duels at the ford.",
@@ -203,6 +203,18 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
       "{yours} **For your heroes**: wards that soften blows and reinforcements that add +1.",
       "{targeted} **On one hero**: Strikes ±1, Initiative −3, or Shield 1, on any hero, yours or theirs.",
       "In a tie-break's backwards round, geasa and omens reset.",
+    ],
+  },
+  {
+    type: "attendant", title: "Attendants", sample: "a_scribe",
+    what: "Smiths, druids, poets and thralls who change what a card **counts as**: its element, its kind, or what a hero is weak to.",
+    when: "**Playing turn**, from your hand, like an oath. It stays for the rest of the match.",
+    how: [
+      "**Enchant**: your Weapons (or Feats) count as an element. **Turn**: supports of one element count as another. **Channel**: the same, with Strike **+1**, but the hero using it loses **1 Valour**. **Reforge**: supports of one kind count as another. **Curse**: heroes in reach are weak to a new element.",
+      "{yours} **Your heroes**, {enemy} **the enemy's**, or {global} **every hero**: printed on the card.",
+      "The new element or kind counts for everything: **Focus**, the element wheel, **weakness**, omens, and the **geasa and oaths** that forbid it. So an attendant can slip a geis (a Weapon reforged as a Word is free of the king's peace) or walk the enemy's cards into one.",
+      "The Sídhe, who lean on Fire and Weapons, have the most: Goibniu's apprentice, Airmed's attendant, Ogma's scribe, the changeling and Bé Néit's shriek.",
+      "Up to **2** in a deck. In a tie-break's backwards round they go back to hand.",
     ],
   },
 ];

@@ -1,7 +1,8 @@
 // The duel at the ford, up close: each fighter as a full card with its Valour and Shield, its geis and oath,
 // and the two supports of its quadrant (used ones dimmed). Your side at the bottom.
 import type { CardDef } from "../engine/cards";
-import { fighter, ownerOfSpot, quadOf, type Side, type State } from "../engine/engine";
+import { effSupport, effWeakness, fighter, ownerOfSpot, quadOf, type Side, type State } from "../engine/engine";
+import type { SupportDef } from "../engine/cards";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
 
@@ -39,6 +40,7 @@ export function DuelView(props: {
             {globals.map((g) => <span key={g.uid} className="tag geis">⊘ {g.def.name} (global)</span>)}
             {oath ? <span className="tag oath">✠ {oath.def.name}</span> : null}
             {omens.map((o, i) => <span key={i} className="tag omen">☽ {o.name}</span>)}
+            {(() => { const w = effWeakness(S, p, f); return w !== f.weakness ? <span className="tag attendant">cursed: weak to {w}</span> : null; })()}
           </div>
         </div>
         <div className="duel-supports">
@@ -47,9 +49,12 @@ export function DuelView(props: {
             if (!c) return <div key={s} className="empty-spot">empty</div>;
             const used = !!(C.used & (1 << s));
             const can = props.usable?.has(s);
+            const sd = c.def as SupportDef;
+            const eff = effSupport(S, p, sd);
+            const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${eff.channel ? `, +${eff.channel}` : ""}` : null;
             return (
               <CardFace key={s} def={c.def} owner={c.owner === me ? "mine" : "theirs"} dim={used} playable={can} selected={props.chosen === s}
-                badge={used ? "used" : c.owner !== ownerOfSpot(s) ? "supplanted in" : undefined}
+                badge={used ? "used" : [c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined}
                 onFocusCard={props.onFocusCard} onClick={can && props.onSpot ? () => props.onSpot!(s) : undefined} />
             );
           })}

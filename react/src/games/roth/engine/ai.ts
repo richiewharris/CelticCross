@@ -71,7 +71,7 @@ export class CasualPolicy implements Policy {
         return argmax(o.map((x) => rank((x as { uid: number }).uid)));
       }
       case "musterReturn": {
-        const val = (c: Card) => (c.def.type === "geis" || c.def.type === "oath" || c.def.type === "champion" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? casualHero(c.def) : 0));
+        const val = (c: Card) => (c.def.type === "geis" || c.def.type === "oath" || c.def.type === "attendant" || c.def.type === "champion" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? casualHero(c.def) : 0));
         return argmax(o.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
       case "place": {
@@ -117,6 +117,16 @@ export class CasualPolicy implements Policy {
           if (v.type !== "oath") continue;
           const sups = [x.spot + 1, x.spot + 2].map((s) => V.board[s]?.def).filter((d): d is SupportDef => d?.type === "support");
           if (!sups.some((s) => forbidsSupport(v.forbids, s))) return i;
+        }
+        // call an attendant that changes some support on the wheel for the better (by rule of thumb)
+        for (let i = 0; i < o.length; i++) {
+          const x = o[i];
+          if (x.t !== "attend") continue;
+          const a = cardOf(V, me, x.uid)!.def;
+          if (a.type !== "attendant") continue;
+          if (a.mode === "curse" || a.scope === "enemy") return i;
+          const mine = V.board.filter((c): c is Card => !!c && c.owner === me && c.def.type === "support").map((c) => c.def as SupportDef);
+          if (mine.some((s) => (a.mode === "enchant" || a.mode === "reforge" ? s.kind === a.kind : s.element === a.from))) return i;
         }
         const om = omenIdx();
         if (om >= 0) {
@@ -269,7 +279,7 @@ export class SkilledPolicy implements Policy {
       case "musterReturn": {
         const me = d.player;
         const heroes = V.players[me].deckList.filter((x): x is HeroDef => x.type === "hero");
-        const val = (c: Card) => c.def.type === "geis" || c.def.type === "oath" ? 1.2 : c.def.type === "champion" ? 1.5 + 0.3 * c.def.valour : c.def.type === "hero" ? 2 + 0.5 * c.def.init + 0.3 * c.def.valour
+        const val = (c: Card) => c.def.type === "geis" || c.def.type === "oath" || c.def.type === "attendant" ? 1.2 : c.def.type === "champion" ? 1.5 + 0.3 * c.def.valour : c.def.type === "hero" ? 2 + 0.5 * c.def.init + 0.3 * c.def.valour
           : c.def.type === "support" ? Math.max(...heroes.map((h) => quickSupportValue(c.def as SupportDef, h, null))) : 0;
         return argmax(d.options.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }

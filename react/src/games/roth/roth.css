@@ -549,3 +549,13 @@ body.gm-roth .b-pool .card.full { font-size: 9.4px; }
 body.gm-roth .b-status { display: none; margin: 0; align-items: center; gap: 10px; font-size: .92rem; }
 @media (max-width: 960px) { body.gm-roth .b-status { display: flex; position: sticky; top: 0; z-index: 6; background: var(--night); padding: 6px 0; } body.gm-roth .b-pool .card.full { font-size: 10px; } }
 body.gm-roth .codex h3.cx-sub { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* attendants */
+body.gm-roth .card.t-attendant { --al: #3f8e74; --rite: #0e2a21; }
+body.gm-roth .card.full.t-attendant { background: radial-gradient(120% 70% at 30% 0%, #bfe8d4, transparent 60%), linear-gradient(165deg, #3f8e74, #0e2a21); }
+body.gm-roth .t-attendant .cf-title { background: linear-gradient(180deg, #1f4a3c, #0e2a21); color: #f0fff8; }
+body.gm-roth .t-attendant .cf-epi { color: #cfeee0; }
+body.gm-roth .t-attendant .gem { border-color: #dff6ec; }
+body.gm-roth .t-attendant .ln-ability { color: #1f4a3c; }
+body.gm-roth .tag.attendant { background: #12392d; color: #cff3e3; border-color: #3f8e74; }
+body.gm-roth .zone.attendants .c-badge { top: auto; bottom: 36%; }

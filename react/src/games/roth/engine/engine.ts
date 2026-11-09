@@ -100,7 +100,7 @@ export interface Result {
 
 export interface MatchStats {
   exchanges: number[];
-  actions: { omen: number; bind: number; supplant: number; hold: number; swear: number };
+  actions: { omen: number; bind: number; supplant: number; hold: number; swear: number; attend: number };
   champions: number;
   championsBySide: [number, number];
   tiebreaks: number;
@@ -126,6 +126,8 @@ export interface State {
   quadGeis: (Card | null)[];
   quadOath: (Card | null)[];
   globalGeis: Card[];
+  /** Attendants called in the Playing turn, in the order they were called. */
+  attendants: Card[];
   phase: Phase;
   musterP: Side;
   musterStage: "draw" | "check";
@@ -152,6 +154,7 @@ export type Option =
   | { t: "bind"; uid: number }
   | { t: "supplant"; uid: number }
   | { t: "swear"; uid: number; spot: number }
+  | { t: "attend"; uid: number }
   | { t: "hold" }
   | { t: "late"; uid: number; target?: number }
   | { t: "lateDone" }
@@ -248,7 +251,7 @@ export const geisForbidsSupport = (g: GeisDef, s: SupportDef) => forbidsSupport(
 
 function emptyStats(): MatchStats {
   return {
-    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
+    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0, attend: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
     placed: [], used: [], bound: [], sworn: [], omensTurned: [],
   };
@@ -265,7 +268,7 @@ export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = 
     return { deckList: list, deck, hand: [], reserve: [], omens: [], discard: [], lost: [], musterQ: [] } as PlayerState;
   }) as [PlayerState, PlayerState];
   return {
-    rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null], globalGeis: [],
+    rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null], globalGeis: [], attendants: [],
     phase: "muster", musterP: 0, musterStage: "draw", musterReturns: 0, pendingOmen: null,
     reversed: false, step: 1, sub: 0, hiddenSpots: [], tieCoin: [rng.int(2) as Side, rng.int(2) as Side],
     combat: null, result: null, stats: trackStats ? emptyStats() : null, nextUid: uid,
@@ -292,7 +295,7 @@ function clonePlayer(P: PlayerState): PlayerState {
 }
 export function cloneState(S: State): State {
   return {
-    ...S, players: [clonePlayer(S.players[0]), clonePlayer(S.players[1])], board: S.board.slice(), quadGeis: S.quadGeis.slice(), quadOath: S.quadOath.slice(), globalGeis: S.globalGeis.slice(),
+    ...S, players: [clonePlayer(S.players[0]), clonePlayer(S.players[1])], board: S.board.slice(), quadGeis: S.quadGeis.slice(), quadOath: S.quadOath.slice(), globalGeis: S.globalGeis.slice(), attendants: (S.attendants ?? []).slice(),
     hiddenSpots: S.hiddenSpots.slice(), tieCoin: [S.tieCoin[0], S.tieCoin[1]], combat: S.combat ? cloneCombat(S.combat) : null,
     result: S.result ? { ...S.result } : null, stats: null,
   };
@@ -421,6 +424,7 @@ function playDecision(S: State): Decision {
     if (S.quadOath[quadOf(hs)]) continue;
     for (const c of P.hand) if (c.def.type === "oath" && !seen.has("o:" + hs + c.def.id)) { seen.add("o:" + hs + c.def.id); options.push({ t: "swear", uid: c.uid, spot: hs }); }
   }
+  for (const c of P.hand) if (c.def.type === "attendant" && !seen.has("a:" + c.def.id)) { seen.add("a:" + c.def.id); options.push({ t: "attend", uid: c.uid }); }
   options.push({ t: "hold" });
   return { kind: "action", player: p, options, spot };
 }
@@ -466,6 +470,8 @@ function startTiebreak(S: State) {
   S.quadGeis.forEach(back);
   S.quadOath.forEach(back);
   S.globalGeis.forEach(back);
+  (S.attendants ?? []).forEach(back);
+  S.attendants = [];
   S.quadGeis = [null, null, null, null];
   S.quadOath = [null, null, null, null];
   S.globalGeis = [];
@@ -551,8 +557,9 @@ export const actorOf = (C: CombatState): Side => (C.turn % 2 === 0 ? C.first : (
 export const focusOf = (C: CombatState, p: Side, h: FighterDef): Focus | null => C.focus[p] ?? h.focus;
 
 /** Geasa forbidding support s for side a's hero: bit set of geasa (quadrant bit, CROW_BIT). */
-export function forbidMask(S: State, C: CombatState, a: Side, s: SupportDef): number {
+export function forbidMask(S: State, C: CombatState, a: Side, s0: SupportDef): number {
   if (C.champ[a]) return 0; // a champion is bound by no geis or oath
+  const s = effSupport(S, a, s0);
   let m = 0;
   const q = quadOf(C.hs[a]);
   const g = S.quadGeis[q];
@@ -718,7 +725,8 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) n += 1;
-    if (e.weakness && s.element === e.weakness) n += 1;
+    const w = effWeakness(S, b, e);
+    if (w && s.element === w) n += 1;
   }
   for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
@@ -727,14 +735,49 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   return n;
 }
 
-function resolveSupport(S: State, C: CombatState, a: Side, s: SupportDef, firstSupport: boolean, stats: MatchStats | null) {
+/**
+ * Support s as side a's fighter sees it, through every attendant in play (in the order they were called): its element
+ * may change, and a Channel adds to its primary Strike and costs the user Valour.
+ */
+export function effSupport(S: State, a: Side, s: SupportDef): SupportDef {
+  const list = S.attendants;
+  if (!list || !list.length) return s;
+  let el = s.element;
+  let kind = s.kind;
+  let ch = 0;
+  for (const c of list) {
+    const d = c.def;
+    if (d.type !== "attendant") continue;
+    if (d.scope !== "global" && (d.scope === "yours") !== (c.owner === a)) continue;
+    if (d.mode === "curse") continue;
+    if (d.mode === "reforge") { if (kind === d.kind) kind = d.toKind ?? kind; }
+    else if (d.mode === "enchant") { if (kind === d.kind) el = d.to ?? el; }
+    else if (el === d.from) { el = d.to ?? el; if (d.mode === "channel") ch++; }
+  }
+  if (el === s.element && kind === s.kind && !ch) return s;
+  return { ...s, element: el, kind, ...(ch ? { channel: ch, selfLoss: (s.selfLoss ?? 0) + ch } : {}) };
+}
+/** Side p's fighter's weakness, after any Curse attendant in reach (the last one called wins). */
+export function effWeakness(S: State, p: Side, f: FighterDef): Element | null {
+  let w = f.weakness;
+  for (const c of S.attendants ?? []) {
+    const d = c.def;
+    if (d.type !== "attendant" || d.mode !== "curse") continue;
+    if (d.scope !== "global" && (d.scope === "yours") !== (c.owner === p)) continue;
+    w = d.to ?? w;
+  }
+  return w;
+}
+
+function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, firstSupport: boolean, stats: MatchStats | null) {
+  const s = effSupport(S, a, s0);
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   const effs = baseEffects(s, h, e, firstSupport);
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") : 0);
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
     if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, s.drain ?? 0);
     else if (eff.type === "heal") heal(S, C, a, n);
     else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
@@ -925,6 +968,12 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (S.quadOath[quadOf(o.spot)]) return "that hero is already sworn";
       return null;
     }
+    case "attend": {
+      if (S.phase !== "play" || S.sub !== p) return "not your playing turn";
+      const c = inHand(o.uid);
+      if (!c || c.def.type !== "attendant") return "attend needs an attendant in hand";
+      return null;
+    }
     case "omen": case "bind": case "supplant": case "hold": {
       if (S.phase !== "play" || S.sub !== p) return "not your playing turn";
       const spot = spotFaced(S, p);
@@ -1076,6 +1125,13 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       const c = removeFrom(P.hand, o.uid);
       S.board[spot] = c;
       if (st) { st.actions.supplant++; st.placed.push({ side: p, id: c.def.id, how: "supplant" }); }
+      advancePlay(S);
+      return;
+    }
+    case "attend": {
+      const v = removeFrom(P.hand, o.uid);
+      S.attendants = [...(S.attendants ?? []), v];
+      if (st) st.actions.attend++;
       advancePlay(S);
       return;
     }

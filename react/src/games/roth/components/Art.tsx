@@ -250,6 +250,7 @@ export function CardArt({ d }: { d: CardDef }) {
   else if (d.type === "omen") { scene = "night"; extra = d.scope; }
   else if (d.type === "geis") scene = "geis";
   else if (d.type === "oath") scene = "oath";
+  else if (d.type === "attendant") scene = d.to ?? "faction";
   const al = "alignment" in d ? d.alignment : "None";
   const legendary = "rarity" in d && d.rarity === "legendary";
   return (
@@ -278,6 +279,13 @@ export function CardArt({ d }: { d: CardDef }) {
       ) : d.type === "oath" ? (
         <g color="#f1d388" transform="translate(52.5 38.5) scale(.62)">
           {iconBody(d.boon.strike ? "strike" : d.boon.init ? "init" : d.boon.valour ? "valour" : d.boon.heal ? "heal" : "shield")}
+        </g>
+      ) : d.type === "attendant" ? (
+        <g>
+          <rect x="22" y="16" width="76" height="34" rx="17" fill="#07120e" fillOpacity=".55" stroke="#bfe8d4" strokeOpacity=".7" strokeWidth=".9" />
+          <g color="#e9fff4" transform="translate(28 21) scale(1)">{iconBody(d.mode === "curse" ? "valour" : d.mode === "enchant" || d.mode === "reforge" ? d.kind ?? "Weapon" : d.from ?? "Fire")}</g>
+          <g color="#bfe8d4" transform="translate(51 25) scale(.7)">{iconBody("into")}</g>
+          <g color="#fff6d8" transform="translate(68 21) scale(1)">{iconBody(d.mode === "reforge" ? d.toKind ?? "Word" : d.to ?? "Fire")}</g>
         </g>
       ) : d.type === "omen" ? (
         <g transform="translate(46 19) scale(1.18)">

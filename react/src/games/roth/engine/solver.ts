@@ -105,6 +105,7 @@ export function boardKey(S: State, me: Side): string {
   for (const c of S.quadGeis) k += "|" + (c ? c.def.id : "-");
   for (const c of S.quadOath) k += "|" + (c ? c.def.id : "-");
   k += "|g" + S.globalGeis.map((c) => c.def.id).join(",");
+  k += "|a" + (S.attendants ?? []).map((c) => c.def.id + c.owner).join(",");
   for (const P of S.players) { k += "#"; for (const o of P.omens) if (o.faceUp) k += o.card.def.id + (o.target ?? "") + ","; }
   return k;
 }

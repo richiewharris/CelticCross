@@ -1,7 +1,7 @@
 // Display-only words for the card faces: a short ability name, plain reminder text and, for cards with room,
 // a line of lore. Nothing here changes a rule; each entry restates what engine/cards.ts and engine/engine.ts do.
 // Markup: **word** is a keyword (bold), {name} is an inline icon from Icons.tsx.
-import { HEROES, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
+import { HEROES, type AttendantDef, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
 
 export interface Face {
   /** The ability's name, set as a small heading above the text. */
@@ -144,6 +144,27 @@ export const FACE: Record<string, Face> = {
   crane_bag: { lore: "The crane-bag held every treasure of the sea." },
   roane_lament: { lore: "The seal-folk mourn on the strand at night." },
 
+  // attendants
+  a_apprentice: { lore: "He works the bellows, and the blade comes out burning." },
+  a_fordkeeper: { lore: "She tempers every edge in the river." },
+  a_curse: { lore: "A poet's curse raises blotches on a king's face." },
+  a_weather: { lore: "She whistles up a wet wind from the west." },
+  a_poet: { lore: "He sings the stones hot." },
+  a_bard: { lore: "His harp turns the tide to a breeze." },
+  a_culann: { lore: "Culann made Conchobar's arms, and the hound that guarded his forge." },
+  a_sualtam: { lore: "Cú Chulainn's father rode crying through Ulster to warn it." },
+  a_handmaid: { lore: "She dries the queen's spears by the fire of Cruachan." },
+  a_cailitin: { lore: "Calatín's children, schooled in sorcery to bring down the Hound." },
+  a_goibniu: { lore: "Goibniu's apprentices forge a spearhead in three blows." },
+  a_airmed: { lore: "Airmed sorts the herbs: what burns, she turns to breath." },
+  a_scribe: { lore: "Ogma cut the letters, and every blade became a word." },
+  a_changeling: { lore: "What the Sídhe leave in the cradle is never what they took." },
+  a_benet: { lore: "Bé Néit's shriek over the host: a hundred men died of fright." },
+  a_thrall: { lore: "Tethra's thralls draw the wind down into the sea." },
+  a_eyebearers: { lore: "The four who lift Balor's lid choose what it falls on." },
+  a_selkie: { lore: "A seal's daughter, born with the sea in her hands." },
+  a_bell: { lore: "Under the waves a church bell rings, and fires go out." },
+
   // geasa: the first line (what it forbids) is built from the card's data; these add the rest
   g_door: { ability: "Invoke Hospitality", text: "A bound hero whose geis is **Hospitality** starts its duel **2 Valour** lower.", lore: "A guest's geis: never refuse a hearth's welcome." },
   g_hound: { ability: "Invoke Hound", text: "A bound hero whose geis is **Hound** starts its duel **2 Valour** lower.", lore: "Cú Chulainn's geis: never eat the flesh of a dog." },
@@ -240,6 +261,19 @@ function autoGeis(d: GeisDef): Face {
   return {};
 }
 
+const KP: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };
+/** An attendant's effect, from its data. */
+export function attendantLine(d: AttendantDef): string {
+  const whose = d.scope === "global" ? "Every hero's" : d.scope === "yours" ? "Your heroes'" : "The enemy's";
+  switch (d.mode) {
+    case "curse": return `${d.scope === "global" ? "Every hero is" : d.scope === "yours" ? "Your heroes are" : "The enemy's heroes are"} **weak to** {${d.to}} **${d.to}**.`;
+    case "enchant": return `${whose} {${d.kind}} **${KP[d.kind!]}** count as {${d.to}} **${d.to}**.`;
+    case "reforge": return `${whose} {${d.kind}} **${KP[d.kind!]}** count as {${d.toKind}} **${KP[d.toKind!]}**.`;
+    case "turn": return `${whose} {${d.from}} **${d.from}** supports count as {${d.to}} **${d.to}**.`;
+    case "channel": return `${whose} {${d.from}} **${d.from}** supports count as {${d.to}} **${d.to}**, with Strike **+1**; the hero using one loses **1 Valour**.`;
+  }
+}
+
 /** The lines a card face shows, in order. `kind` sets how each is drawn. */
 export type FaceLine = { kind: "effect" | "ability" | "text" | "lore" | "rule" | "break"; text: string };
 export function faceLines(d: CardDef): FaceLine[] {
@@ -259,6 +293,8 @@ export function faceLines(d: CardDef): FaceLine[] {
       push("ability", "Boon"); push("text", boonLine(d.boon)); push("ability", "Vow"); push("text", vowLine(d.forbids)); push("break", BREAK); break;
     case "omen":
       push("text", f.text ?? d.text); push("lore", f.lore); break;
+    case "attendant":
+      push("text", attendantLine(d)); push("lore", f.lore); push("break", "Called in the Playing turn; stays for the match."); break;
     default: break;
   }
   return out;

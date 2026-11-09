@@ -18,11 +18,13 @@ export function packState(S: State): string {
   });
 }
 export function unpackState(json: string): State {
-  return JSON.parse(json, (k, v) => {
+  const S = JSON.parse(json, (k, v) => {
     if (k === "def" && typeof v === "string") return defOf(v);
     if (k === "deckList" && Array.isArray(v)) return (v as string[]).map(defOf);
     return v;
   }) as State;
+  if (!S.attendants) S.attendants = []; // positions saved before attendants existed
+  return S;
 }
 
 /** Full minimax over both duels (alpha-beta), from `me`'s side. Guests and champions are left out. */

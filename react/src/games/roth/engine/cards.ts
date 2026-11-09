@@ -95,6 +95,8 @@ export interface SupportDef {
   vsBig?: number; // primary Strike +n against a hero of printed Valour 5+
   pierce?: boolean; // its Strikes ignore Shield
   drain?: number; // if its Strike wounds, Heal n
+  /** Set only on a support seen through a Channel attendant: its primary Strike +n (and the user pays n Valour). */
+  channel?: number;
 }
 /** What a geis or an oath forbids. */
 export interface Forbids {
@@ -160,12 +162,38 @@ export interface OmenDef {
   /** An omen tied to one people belongs to that people's pool; the rest are open to every deck. */
   people?: Alignment;
 }
+/**
+ * An attendant (a patron, smith, druid or thrall) is called from hand in the Playing turn, like an oath, and stays
+ * for the match. It changes the element supports count as, for everything an element touches: Focus, the element
+ * wheel, weakness, omens, and which geasa and oaths forbid them.
+ *   enchant: supports of `kind` count as `to`.
+ *   turn:    supports of `from` count as `to`.
+ *   channel: supports of `from` count as `to`, their primary Strike +1, and the hero using one loses 1 Valour.
+ *   reforge: supports of kind `kind` count as kind `toKind` (so a Weapon can slip a "no Weapons" geis).
+ *   curse:   fighters in reach are weak to `to` (in place of their printed weakness).
+ * scope: global (every fighter), yours (your fighters and the supports they use), enemy (the enemy's).
+ */
+export interface AttendantDef {
+  type: "attendant";
+  id: string;
+  name: string;
+  rarity: Rarity;
+  scope: "global" | "yours" | "enemy";
+  mode: "enchant" | "turn" | "channel" | "reforge" | "curse";
+  kind?: Kind;
+  toKind?: Kind;
+  from?: Element;
+  to?: Element;
+  /** An attendant tied to one people belongs to that people's pool; the rest are open to every deck. */
+  people?: Alignment;
+  text: string;
+}
 export interface UnknownDef {
   type: "unknown";
   id: "unknown";
   name: "?";
 }
-export type CardDef = HeroDef | ChampionDef | SupportDef | GeisDef | OathDef | OmenDef | UnknownDef;
+export type CardDef = HeroDef | ChampionDef | SupportDef | GeisDef | OathDef | OmenDef | AttendantDef | UnknownDef;
 
 export const UNKNOWN: UnknownDef = { type: "unknown", id: "unknown", name: "?" };
 
@@ -421,6 +449,42 @@ export const OMENS: Record<string, OmenDef> = {
   o_cruachan: omen("o_cruachan", "Cruachan's plenty", C, "reinforcement", { heal: 1 }, "Your Heals +1"),
 };
 
+// ---------------------------------------------------------------- attendants
+const att = (id: string, name: string, rarity: Rarity, scope: AttendantDef["scope"], mode: AttendantDef["mode"], spec: { kind?: Kind; toKind?: Kind; from?: Element; to?: Element }, people?: Alignment): AttendantDef => {
+  if (mode === "curse") {
+    const whoC = scope === "global" ? "Every hero is" : scope === "yours" ? "Your heroes are" : "The enemy's heroes are";
+    return { type: "attendant", id, name, rarity, scope, mode, ...spec, people, text: `${whoC} weak to ${spec.to}` };
+  }
+  const what = mode === "enchant" ? `${spec.kind}s count as ${spec.to}` : mode === "reforge" ? `${spec.kind}s count as ${spec.toKind}s`
+    : `${spec.from} supports count as ${spec.to}${mode === "channel" ? ", Strike +1, and the user loses 1 Valour" : ""}`;
+  const who = scope === "global" ? "Every hero's" : scope === "yours" ? "Your heroes'" : "The enemy's";
+  return { type: "attendant", id, name, rarity, scope, mode, ...spec, people, text: `${who} ${what}` };
+};
+export const ATTENDANTS: Record<string, AttendantDef> = {
+  // open to every deck
+  a_apprentice: att("a_apprentice", "The smith's apprentice", C, "yours", "enchant", { kind: "Weapon", to: "Fire" }),
+  a_fordkeeper: att("a_fordkeeper", "The ford-keeper", C, "yours", "enchant", { kind: "Weapon", to: "Water" }),
+  a_curse: att("a_curse", "The satirist's curse", R, "enemy", "curse", { to: "Earth" }),
+  a_weather: att("a_weather", "The weather-worker", R, "global", "turn", { from: "Wind", to: "Water" }),
+  a_poet: att("a_poet", "The poet's fosterling", R, "yours", "channel", { from: "Earth", to: "Fire" }),
+  a_bard: att("a_bard", "The bard of the hall", R, "yours", "channel", { from: "Water", to: "Wind" }),
+  // tied to a people
+  a_culann: att("a_culann", "Culann the smith", R, "yours", "enchant", { kind: "Weapon", to: "Fire" }, "Ulaid"),
+  a_sualtam: att("a_sualtam", "Sualtam's warning", C, "enemy", "turn", { from: "Wind", to: "Fire" }, "Ulaid"),
+  a_handmaid: att("a_handmaid", "Medb's handmaid", C, "yours", "turn", { from: "Water", to: "Earth" }, "Connachta"),
+  a_cailitin: att("a_cailitin", "The children of Calatín", R, "enemy", "turn", { from: "Water", to: "Earth" }, "Connachta"),
+  // the Sídhe lean on Fire and Weapons; their attendants slip the geasa that shut those off, and turn the tables
+  a_goibniu: att("a_goibniu", "Goibniu's apprentice", R, "yours", "enchant", { kind: "Weapon", to: "Wind" }, "Sidhe"),
+  a_airmed: att("a_airmed", "Airmed's attendant", C, "yours", "channel", { from: "Fire", to: "Wind" }, "Sidhe"),
+  a_scribe: att("a_scribe", "Ogma's scribe", C, "yours", "reforge", { kind: "Weapon", toKind: "Word" }, "Sidhe"),
+  a_changeling: att("a_changeling", "The changeling", R, "enemy", "turn", { from: "Fire", to: "Earth" }, "Sidhe"),
+  a_benet: att("a_benet", "Bé Néit's shriek", R, "enemy", "curse", { to: "Wind" }, "Sidhe"),
+  a_thrall: att("a_thrall", "Tethra's thrall", C, "yours", "turn", { from: "Wind", to: "Water" }, "Fomoire"),
+  a_eyebearers: att("a_eyebearers", "The eye-bearers", R, "enemy", "turn", { from: "Water", to: "Fire" }, "Fomoire"),
+  a_selkie: att("a_selkie", "The selkie's daughter", C, "yours", "enchant", { kind: "Feat", to: "Water" }, "Merrow"),
+  a_bell: att("a_bell", "The drowned bell", R, "global", "turn", { from: "Fire", to: "Water" }, "Merrow"),
+};
+
 /** Omens that belong to one people's pool (deck building). The others are open to every deck. */
 const OMEN_PEOPLE: Record<string, Alignment> = {
   o_emain: "Ulaid", o_culann: "Ulaid", o_redbranch: "Ulaid",
@@ -431,7 +495,7 @@ const OMEN_PEOPLE: Record<string, Alignment> = {
 };
 for (const [id, p] of Object.entries(OMEN_PEOPLE)) OMENS[id].people = p;
 
-export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS };
+export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS, ...ATTENDANTS };
 
 export function defsFromIds(ids: string[]): CardDef[] {
   return ids.map((id) => {
@@ -509,7 +573,7 @@ export const PEOPLE: Record<Faction, Alignment> = { ulster: "Ulaid", connacht: "
 export function peopleOf(d: CardDef): Alignment | null {
   if (d.type === "hero" || d.type === "champion") return d.alignment === "None" ? null : d.alignment;
   if (d.type === "support") return d.alignment === "Unaligned" ? null : d.alignment;
-  if (d.type === "omen") return d.people ?? null;
+  if (d.type === "omen" || d.type === "attendant") return d.people ?? null;
   return null;
 }
 /** Whether a card belongs to faction f's pool. Exiles (Deorad) belong to both Ulster's and Connacht's. */
@@ -541,13 +605,14 @@ export function deckErrors(deck: CardDef[]): string[] {
   const errs: string[] = [];
   if (deck.length !== 24) errs.push(`deck has ${deck.length} cards, needs 24`);
   const count = (t: CardDef["type"]) => deck.filter((d) => d.type === t).length;
-  const h = count("hero"), s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion");
+  const h = count("hero"), s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion"), at = count("attendant");
   if (count("unknown") > 0) errs.push("unknown card");
   if (h < 4 || h > 6) errs.push(`heroes ${h} (4–6)`);
   if (s < 8 || s > 12) errs.push(`supports ${s} (8–12)`);
   if (g < 2 || g > 6) errs.push(`geasa ${g} (2–6)`);
   if (v > 4) errs.push(`oaths ${v} (0–4)`);
   if (ch > 2) errs.push(`champions ${ch} (0–2)`);
+  if (at > 2) errs.push(`attendants ${at} (0–2)`);
   if (o < 4 || o > 6) errs.push(`omens ${o} (4–6)`);
   const copies: Record<string, number> = {};
   for (const d of deck) copies[d.id] = (copies[d.id] ?? 0) + 1;

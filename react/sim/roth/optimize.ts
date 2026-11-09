@@ -56,7 +56,10 @@ if (process.argv.includes("--worker")) {
     const pool = poolOf(f);
     const i = r.int(ids.length);
     const out = ids.slice();
-    const t = ALL_DEFS[ids[i]].type;
+    // a support may give way to an attendant (and back), so attendants can find their way into tuned decks
+    let t = ALL_DEFS[ids[i]].type;
+    if (t === "support" && r.next() < 0.3) t = "attendant";
+    else if (t === "attendant" && r.next() < 0.3) t = "support";
     const cands = pool.filter((d) => d.type === t && d.id !== ids[i]);
     if (!cands.length) return null;
     out[i] = r.pick(cands).id;

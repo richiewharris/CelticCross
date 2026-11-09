@@ -4,14 +4,14 @@
 // `noise` blurs the scores: 0 builds the same strong deck every time, large values build loose, varied decks.
 import {
   ALL_DEFS, MAX_LEGENDARIES, RARITY_LIMIT, deckErrors, inPool, unwillingPair, type CardDef, type Faction, type FighterDef,
-  type Forbids, type GeisDef, type HeroDef, type OathDef, type OmenDef, type SupportDef,
+  type AttendantDef, type Forbids, type GeisDef, type HeroDef, type OathDef, type OmenDef, type SupportDef,
 } from "./cards";
 import { kin } from "./engine";
 import type { Rng } from "./rng";
 
 export interface BuildOptions { factions: Faction[]; noise: number; /** cards already chosen; the rest is filled round them */ start?: CardDef[] }
 /** How many of each type a built deck holds (the starter decks' shape). */
-export const SHAPE = { hero: 4, champion: 2, support: 9, geis: 3, oath: 2, omen: 4 } as const;
+export const SHAPE = { hero: 4, champion: 2, support: 8, geis: 3, oath: 2, omen: 4, attendant: 1 } as const;
 
 const maxCopies = (d: CardDef) => (d.type === "hero" || d.type === "champion" || d.type === "omen" ? 1 : d.type === "unknown" ? 0 : RARITY_LIMIT[d.rarity]);
 
@@ -79,6 +79,25 @@ function omenScore(o: OmenDef, sups: SupportDef[], heroes: FighterDef[]): number
   return v;
 }
 
+/** An attendant's worth to this deck: supports turned to its heroes' Focus, Channel's extra Strike, a Weapon slipped
+ *  out of the "no Weapons" geasa; a curse or an enemy turn is worth a little whatever the enemy. */
+function attendantScore(a: AttendantDef, sups: SupportDef[], heroes: FighterDef[]): number {
+  if (a.scope === "enemy") return a.mode === "curse" ? 1.6 : 1.3;
+  if (a.mode === "curse") return a.scope === "global" ? 0.6 : -1;
+  const focus = (el: string | null, kind: string | null) => heroes.filter((h) => h.ab.focusAny || h.focus === el || h.focus === kind).length / Math.max(1, heroes.length);
+  let v = 0.4;
+  for (const s of sups) {
+    const hit = a.mode === "enchant" || a.mode === "reforge" ? s.kind === a.kind : s.element === a.from;
+    if (!hit) continue;
+    const el = a.mode === "reforge" ? s.element : a.to ?? s.element;
+    const kind = a.mode === "reforge" ? a.toKind ?? s.kind : s.kind;
+    v += 1.2 * (focus(el, kind) - focus(s.element, s.kind));
+    if (a.mode === "channel" && s.effects[0].type === "strike") v += 0.35;
+    if (a.mode === "reforge" && s.kind === "Weapon") v += 0.25;
+  }
+  return a.scope === "global" ? 0.6 * v : v;
+}
+
 /** Builds a legal deck. Throws only if the pool can't make one (it always can for the five factions). */
 export function buildDeck(opts: BuildOptions, rng: Rng): CardDef[] {
   const pools = Object.values(ALL_DEFS).filter((d) => opts.factions.some((f) => inPool(d, f)));
@@ -111,6 +130,7 @@ export function buildDeck(opts: BuildOptions, rng: Rng): CardDef[] {
   const sups = deck.filter((d): d is SupportDef => d.type === "support");
   pick(pools.filter((d): d is GeisDef => d.type === "geis"), 3, (g) => geisScore(g, sups));
   pick(pools.filter((d): d is OathDef => d.type === "oath"), 2, (o) => oathScore(o, sups));
+  pick(pools.filter((d): d is AttendantDef => d.type === "attendant"), 1, (a) => attendantScore(a, sups, fighters));
   const omens = pools.filter((d): d is OmenDef => d.type === "omen");
   if (!deck.some((d) => d.type === "omen" && d.scope === "targeted")) pick(omens.filter((o) => o.scope === "targeted"), 1, (o) => omenScore(o, sups, fighters));
   pick(omens, 4, (o) => omenScore(o, sups, fighters));
