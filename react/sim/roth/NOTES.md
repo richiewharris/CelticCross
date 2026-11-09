@@ -119,6 +119,21 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     `pool.ts --built` (strong built decks against the starters; `BVB=1` against each other), `ablate.ts <faction>`
     (drop one card at a time and refill), `optimize.ts`.
 
+## Attendants
+
+48. A seventh card type, up to 2 a deck (rarity limits as usual), mustered to hand like oaths. In the Playing
+    turn, instead of another action, a player may call one attendant from hand; it stays for the match and goes
+    back to hand in the backwards round.
+49. Reach (printed): yours (the supports your fighters use, whoever placed them), enemy (the enemy fighter's
+    supports, or the enemy's heroes for a curse), or global (everyone).
+50. Modes: enchant (supports of a kind count as an element), turn (one element counts as another), channel (as
+    turn, primary Strike +1, and the user loses 1 Valour per use), reforge (one kind counts as another), curse
+    (fighters in reach are weak to an element instead of their printed weakness; the last curse called wins).
+51. Attendants apply in the order called, each seeing the earlier ones' changes. The changed element or kind
+    counts for everything: kinship is untouched, but Focus, the element wheel, weakness, element and kind
+    reinforcements, and geis/oath/crow prohibitions all read the changed card. Champions are reached like heroes.
+52. Built decks carry one attendant (8 supports); the optimizer may swap supports and attendants.
+
 ## Puzzles
 
 Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where
