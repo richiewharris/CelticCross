@@ -448,3 +448,55 @@ describe("champions", () => {
     expect(fighter(S, S.combat!, 0).id).toBe("loegaire");
   });
 });
+
+describe("tie-break: the round runs backwards", () => {
+  // Shields only: nobody can wound anybody, so the first combat ends level on felled and wounds.
+  const quiet = (extra: Omit<Spec, "board"> = {}) =>
+    combatState({ board: B("fergus", "salmon", "salmon", "liban", "salmon", "salmon"), ...extra });
+  const finishCombat = (S: ReturnType<typeof combatState>) => {
+    for (;;) {
+      const d = nextDecision(S);
+      if (!d || S.phase !== "combat") return;
+      act(S, d.options.find((o) => o.t === "duel" && o.act === "rest" && o.guest < 0) ?? d.options[0]);
+    }
+  };
+  it("a level match is replayed backwards: geasa and oaths back to hand, omens face down", () => {
+    const S = quiet({ geasa: ["g_spear", null, "g_hearth", null], oaths: [null, "v_shieldwall", null, null], omens: [["o_rath"], ["o_keen"]] });
+    S.players[1].omens[0].target = 0;
+    S.globalGeis = [card("g_peace", 0)];
+    finishCombat(S);
+    expect(S.phase).toBe("play");
+    expect(S.reversed).toBe(true);
+    expect(S.stats!.tiebreaks).toBe(1);
+    expect(S.quadGeis.every((g) => g === null) && S.quadOath.every((g) => g === null) && S.globalGeis.length === 0).toBe(true);
+    expect(S.players[1].hand.map((c) => c.def.id).sort()).toEqual(["g_spear"]); // P2 laid the spear on P1's quadrant
+    expect(S.players[0].hand.map((c) => c.def.id).sort()).toEqual(["g_hearth", "g_peace", "v_shieldwall"]);
+    expect(S.players.flatMap((P) => P.omens).every((o) => !o.faceUp && o.target === undefined)).toBe(true);
+  });
+  it("the wheel turns counter-clockwise, the second player acts first, and the second pair fights first", () => {
+    const S = quiet();
+    finishCombat(S);
+    const faced: [number, number][] = [];
+    while (S.phase === "play") {
+      const d = nextDecision(S)!;
+      faced.push([d.player, d.spot! + 1]);
+      act(S, { t: "hold" });
+    }
+    expect(faced.slice(0, 4)).toEqual([[1, 6], [0, 12], [1, 5], [0, 11]]);
+    expect(faced.at(-1)).toEqual([0, 7]);
+    expect(S.combat!.hs).toEqual([3, 9]); // spots 4 and 10 first
+    expect(V(S)).toEqual([4, 5]); // Emer and Conall at full Valour
+    finishCombat(S);
+    expect(S.phase).toBe("end");
+    expect(S.result).toMatchObject({ tiebreak: true, decidedBy: "draw" }); // still level: draw
+  });
+  it("the tie-break can be switched off, and the backwards round can start with the first player", () => {
+    const S = quiet({ rules: { tiebreak: "none" } });
+    finishCombat(S);
+    expect(S.phase).toBe("end");
+    expect(S.result!.tiebreak).toBeUndefined();
+    const S2 = quiet({ rules: { reverseFirst: "p1" } });
+    finishCombat(S2);
+    expect(nextDecision(S2)!.player).toBe(0);
+  });
+});

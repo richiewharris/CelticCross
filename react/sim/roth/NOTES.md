@@ -81,3 +81,14 @@ npx vitest run --config sim/roth/vitest.config.ts
     Wounds: the Valour the hero lost before the swap still counts.
 35. Guests may heal a champion of the same alignment.
 36. Lever `champions: false` turns champions off (for the seat analysis).
+
+## Rulings added for the tie-break (the round run backwards)
+
+37. Triggered when felled and wounds are level after the duels (`tiebreak: "reverse"`; `"none"` skips it).
+38. Reset: targeted geasa, global geasa and oaths return to the hands of the players who played them; turned
+    omens go back face down with no target. Supplanted supports stay; spent champions, guests and lost omens stay gone.
+39. The Playing turn runs counter-clockwise: P1 faces spots 12→7, P2 faces 6→1; P2 acts first at each step
+    (`reverseFirst: "p1"` flips it). Late omens follow the same order. Unturned omens are lost after it again.
+40. The duels are fought afresh, spots 4/10 first, then 1/7. "First duel" effects (Night of the Fomóire, the
+    boyhood deeds, champion timing) mean the first duel fought. Only the backwards round decides the result; if it
+    is level too, the first-duel rule, then a draw.

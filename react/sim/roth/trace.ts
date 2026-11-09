@@ -58,7 +58,7 @@ export function traceMatch(S: State, policies: [Policy, Policy], rngs: [Rng, Rng
         out.push(`-- oaths: ${S.quadOath.map((g, q) => `Q${q + 1}:${g?.def.name ?? "-"}`).join(" ")}`);
         out.push(`-- omens up: P1 ${S.players[0].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}; P2 ${S.players[1].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}`);
       }
-      out.push(`== ${S.phase}`);
+      out.push(`== ${S.phase}${S.reversed && S.phase === "play" ? " (tie-break: the round runs backwards)" : ""}`);
     }
     if (!d) break;
     const i = d.options.length === 1 ? 0 : policies[d.player].choose(observe(S, d.player), d, rngs[d.player]);
@@ -71,6 +71,6 @@ export function traceMatch(S: State, policies: [Policy, Policy], rngs: [Rng, Rng
     }
   }
   const r = S.result!;
-  out.push(`Result: ${r.winner === -1 ? "draw" : `P${r.winner + 1} wins`} by ${r.decidedBy}; felled P1 ${r.felled[0]} P2 ${r.felled[1]}; wounds dealt ${r.valour.join("/")}`);
+  out.push(`Result: ${r.winner === -1 ? "draw" : `P${r.winner + 1} wins`} by ${r.decidedBy}${r.tiebreak ? " (in the tie-break round)" : ""}; felled P1 ${r.felled[0]} P2 ${r.felled[1]}; wounds dealt ${r.valour.join("/")}`);
   return out;
 }

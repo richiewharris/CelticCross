@@ -29,10 +29,14 @@ export interface Rules {
   initTie: "p2" | "p1" | "random";
   /** Lever: champions may be called at the Ford. */
   champions: boolean;
+  /** Tie-break when felled and wounds are level: run the round backwards ("reverse") or go straight to the first-duel rule ("none"). */
+  tiebreak: "reverse" | "none";
+  /** Who acts first at each step of the backwards round. */
+  reverseFirst: "p2" | "p1";
 }
 export const DEFAULT_RULES: Rules = {
   valourBonus: 0, capOver: 2, geisBreakCost: 2, oathBreakCost: 2, invokeLoss: 2, omenSpots: 4, handSize: 12,
-  keepOmensUntilCombat: false, blindHeroes: false, initTie: "p1", champions: true,
+  keepOmensUntilCombat: false, blindHeroes: false, initTie: "p1", champions: true, tiebreak: "reverse", reverseFirst: "p2",
 };
 
 export interface Card { uid: number; def: CardDef; owner: Side }
@@ -88,6 +92,8 @@ export interface Result {
   winner: Side | -1;
   decidedBy: "felled" | "valour" | "firstDuel" | "draw";
   felled: [number, number]; // heroes of side p felled
+  /** The result came from the backwards tie-break round. */
+  tiebreak?: boolean;
   /** Wounds dealt by side p: the Valour its enemies lost over both duels (felled heroes count their whole start). */
   valour: [number, number];
 }
@@ -97,6 +103,7 @@ export interface MatchStats {
   actions: { omen: number; bind: number; supplant: number; hold: number; swear: number };
   champions: number;
   championsBySide: [number, number];
+  tiebreaks: number;
   geisBroken: number;
   oathBroken: number;
   unwilling: number;
@@ -131,6 +138,8 @@ export interface State {
   combat: CombatState | null;
   result: Result | null;
   stats: MatchStats | null;
+  /** In the backwards tie-break round. */
+  reversed: boolean;
   nextUid: number;
 }
 
@@ -159,7 +168,11 @@ export const ownerOfSpot = (i: number): Side => (i < 6 ? 0 : 1);
 export const heroSpotsOf = (p: Side) => (p === 0 ? [0, 3] : [6, 9]);
 export const draftSpot = (step: number, p: Side) => step - 1 + (p === 1 ? 6 : 0);
 /** Spot faced by player p at playing step k: P1 faces 7–12, P2 faces 1–6. */
-export const facedSpot = (step: number, p: Side) => (p === 0 ? 6 + step - 1 : step - 1);
+export const facedSpot = (step: number, p: Side, reversed = false) =>
+  reversed ? (p === 0 ? 12 - step : 6 - step) : p === 0 ? 6 + step - 1 : step - 1;
+/** Who acts first at each step of the Playing turn (and the late omens): P1, except P2 in the backwards round by default. */
+export const firstActor = (S: State): Side => (S.reversed && S.rules.reverseFirst === "p2" ? 1 : 0);
+const spotFaced = (S: State, p: Side) => facedSpot(S.step, p, S.reversed);
 
 const uc = (a: string) => a === "Ulaid" || a === "Connachta";
 /** Kinship: support alignment matches hero; Deorad matches Ulaid and Connachta (both ways). */
@@ -235,7 +248,7 @@ export const geisForbidsSupport = (g: GeisDef, s: SupportDef) => forbidsSupport(
 
 function emptyStats(): MatchStats {
   return {
-    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0 }, champions: 0, championsBySide: [0, 0],
+    exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
     placed: [], used: [], bound: [], sworn: [], omensTurned: [],
   };
@@ -254,7 +267,7 @@ export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = 
   return {
     rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null], globalGeis: [],
     phase: "muster", musterP: 0, musterStage: "draw", musterReturns: 0, pendingOmen: null,
-    step: 1, sub: 0, hiddenSpots: [], tieCoin: [rng.int(2) as Side, rng.int(2) as Side],
+    reversed: false, step: 1, sub: 0, hiddenSpots: [], tieCoin: [rng.int(2) as Side, rng.int(2) as Side],
     combat: null, result: null, stats: trackStats ? emptyStats() : null, nextUid: uid,
   };
 }
@@ -386,7 +399,7 @@ function advanceDraft(S: State) {
 }
 function playDecision(S: State): Decision {
   const p = S.sub;
-  const spot = facedSpot(S.step, p);
+  const spot = spotFaced(S, p);
   const P = S.players[p];
   const options: Option[] = [];
   for (const o of P.omens) if (!o.faceUp) {
@@ -418,11 +431,12 @@ function loseFaceDown(S: State) {
   }
 }
 function advancePlay(S: State) {
-  if (S.sub === 0) { S.sub = 1; return; }
-  S.sub = 0;
+  const f = firstActor(S);
+  if (S.sub === f) { S.sub = (1 - f) as Side; return; }
+  S.sub = f;
   S.step++;
   if (S.step > 6) {
-    if (S.rules.keepOmensUntilCombat) { S.phase = "late"; S.sub = 0; }
+    if (S.rules.keepOmensUntilCombat) { S.phase = "late"; S.sub = f; }
     else { loseFaceDown(S); startCombat(S); }
   }
 }
@@ -438,8 +452,30 @@ function lateDecision(S: State): Decision | null {
   return { kind: "late", player: S.sub, options: [...opts, { t: "lateDone" }] };
 }
 function advanceLate(S: State) {
-  if (S.sub === 0) S.sub = 1;
+  if (S.sub === firstActor(S)) S.sub = (1 - S.sub) as Side;
   else { loseFaceDown(S); startCombat(S); }
+}
+
+/**
+ * Tie-break: the round runs backwards. Laid geasa and sworn oaths go back to their owners' hands, turned omens go
+ * back face down, and the wheel turns counter-clockwise through the Playing turn again; then the duels are fought
+ * afresh, the second pair first, with every hero back at its starting Valour and every support unused.
+ */
+function startTiebreak(S: State) {
+  const back = (c: Card | null) => { if (c) S.players[c.owner].hand.push(c); };
+  S.quadGeis.forEach(back);
+  S.quadOath.forEach(back);
+  S.globalGeis.forEach(back);
+  S.quadGeis = [null, null, null, null];
+  S.quadOath = [null, null, null, null];
+  S.globalGeis = [];
+  for (const P of S.players) P.omens = P.omens.map((o) => ({ card: o.card, faceUp: false }));
+  if (S.stats) S.stats.tiebreaks++;
+  S.reversed = true;
+  S.combat = null;
+  S.phase = "play";
+  S.step = 1;
+  S.sub = firstActor(S);
 }
 
 // ---------------------------------------------------------------- combat
@@ -463,7 +499,8 @@ function startCombat(S: State) {
 
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
   C.duel = d;
-  C.hs = d === 0 ? [0, 6] : [3, 9];
+  // the backwards round fights the second pair of heroes first
+  C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
   C.turn = 0; C.supportsUsed = 0;
   C.nextStrike = [0, 0]; C.cathbad = [false, false]; C.kingsDue = [false, false];
   C.struck = [false, false]; C.hit = [false, false]; C.guestUsed = [false, false]; C.focus = [null, null]; C.champ = [null, null];
@@ -834,7 +871,12 @@ export function nextDecision(S: State): Decision | null {
       case "combat": {
         const d = combatDecision(S, S.combat!);
         if (d) return d;
-        S.result = combatResult(S.combat!);
+        const r = combatResult(S.combat!);
+        if (!S.reversed && S.rules.tiebreak === "reverse" && (r.decidedBy === "firstDuel" || r.decidedBy === "draw")) {
+          startTiebreak(S);
+          break;
+        }
+        S.result = S.reversed ? { ...r, tiebreak: true } : r;
         S.phase = "end";
         break;
       }
@@ -884,7 +926,7 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
     }
     case "omen": case "bind": case "supplant": case "hold": {
       if (S.phase !== "play" || S.sub !== p) return "not your playing turn";
-      const spot = facedSpot(S.step, p);
+      const spot = spotFaced(S, p);
       if (ownerOfSpot(spot) === p) return "must face an enemy spot";
       if (o.t === "hold") return null;
       if (o.t === "omen") {
@@ -1018,7 +1060,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       return;
     }
     case "bind": {
-      const spot = facedSpot(S.step, p);
+      const spot = spotFaced(S, p);
       const g = removeFrom(P.hand, o.uid);
       if (g.def.type === "geis" && g.def.scope === "global") S.globalGeis.push(g);
       else S.quadGeis[quadOf(spot)] = g;
@@ -1027,7 +1069,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       return;
     }
     case "supplant": {
-      const spot = facedSpot(S.step, p);
+      const spot = spotFaced(S, p);
       const old = S.board[spot]!;
       S.players[old.owner].discard.push(old);
       const c = removeFrom(P.hand, o.uid);
