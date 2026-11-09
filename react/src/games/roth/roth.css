@@ -381,3 +381,108 @@ body.gm-roth .dialog.lose h2 { color: var(--garnet); }
 body.gm-roth .across { position: absolute; left: 50%; transform: translateX(-50%); top: 8px; justify-items: center; display: grid; gap: 3px; font-size: max(6.5px, 1.05cqw); z-index: 3; }
 body.gm-roth .across .zone-label { font-size: 11px; }
 body.gm-roth .across .empty-spot { width: 15em; aspect-ratio: 5 / 7; min-height: 0; }
+
+/* ---------------------------------------------------------------- Cards & decks guide */
+body.gm-roth .codex { display: grid; gap: 34px; max-width: 980px; }
+body.gm-roth .codex h3 { font-family: var(--font-display); font-weight: 400; color: var(--bronze-hi); margin: 0 0 8px; font-size: 1.12rem; display: flex; align-items: center; gap: 8px; }
+body.gm-roth .codex h4 { margin: 14px 0 6px; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bronze); display: flex; align-items: center; gap: 6px; }
+body.gm-roth .codex h3 .ico, body.gm-roth .codex h4 .ico { width: 1.2em; height: 1.2em; }
+body.gm-roth .codex p { margin: 0 0 8px; max-width: 72ch; }
+body.gm-roth .codex ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+body.gm-roth .codex .ico { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
+body.gm-roth .cx-nav { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: linear-gradient(var(--night) 70%, transparent); }
+body.gm-roth .cx-intro { color: var(--muted); font-style: italic; }
+body.gm-roth .cx-section { display: grid; gap: 12px; scroll-margin-top: 56px; }
+body.gm-roth .cx-small { font-size: .88rem; color: var(--muted); }
+body.gm-roth .cx-seg { justify-self: start; flex-wrap: wrap; }
+body.gm-roth .cx-panel { background: var(--night-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+
+/* anatomy */
+body.gm-roth .cx-anatomy { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: start; }
+body.gm-roth .cx-anat-card { position: relative; padding: 14px; justify-self: center; }
+body.gm-roth .cx-anat-card .card.full { font-size: 18px; }
+body.gm-roth .cx-pin { position: absolute; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%; border: 2px solid #1b130c; background: var(--bronze-hi); color: #1b130c; font: 700 12px/1 var(--font-body); display: grid; place-items: center; cursor: pointer; z-index: 6; box-shadow: 0 0 0 2px rgba(220, 187, 128, .35), 0 2px 6px rgba(0, 0, 0, .6); padding: 0; }
+body.gm-roth .cx-pin.on, body.gm-roth .cx-pin:focus-visible { background: #fff3d6; box-shadow: 0 0 0 4px rgba(255, 243, 214, .5); outline: none; }
+body.gm-roth .card .cx-lit { outline: 2px solid #ffd98a; outline-offset: 2px; border-radius: 4px; box-shadow: 0 0 14px rgba(255, 217, 138, .6); }
+body.gm-roth .cx-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+body.gm-roth .cx-parts li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; padding: 7px 10px; border-radius: 8px; transition: background .15s; }
+body.gm-roth .cx-parts li.on { background: var(--night-3); }
+body.gm-roth .cx-num, body.gm-roth .cx-step-n { width: 24px; height: 24px; border-radius: 50%; background: var(--bronze); color: #1b130c; font-weight: 700; font-size: 12px; display: grid; place-items: center; margin-top: 1px; }
+@media (max-width: 720px) { body.gm-roth .cx-anatomy { grid-template-columns: minmax(0, 1fr); } body.gm-roth .cx-anat-card .card.full { font-size: 16px; } }
+
+/* icons */
+body.gm-roth .cx-icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+body.gm-roth .cx-legend { margin: 0; display: grid; gap: 8px; }
+body.gm-roth .cx-leg { display: grid; gap: 0; }
+body.gm-roth .cx-leg dt { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+body.gm-roth .cx-leg dd { margin: 0 0 0 44px; color: var(--muted); font-size: .9rem; }
+body.gm-roth .cx-mark { width: 34px; display: grid; place-items: center; font-size: 15px; color: var(--bronze-hi); }
+body.gm-roth .cx-mark > .ico { width: 24px; height: 24px; }
+body.gm-roth .cx-mark .tok-scope { background: #2a1f15; }
+body.gm-roth .cx-gem .gem { display: block; font-size: 20px; }
+body.gm-roth .cx-wheel { position: relative; width: min(230px, 100%); aspect-ratio: 1; margin: 4px auto 10px; color: var(--bronze); }
+body.gm-roth .cx-wheel svg { width: 100%; height: 100%; display: block; }
+body.gm-roth .cx-arc { fill: none; stroke: currentColor; stroke-width: 1.6; }
+body.gm-roth .cx-beats { fill: var(--muted); font-size: 6.5px; font-style: italic; }
+body.gm-roth .cx-el { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 0; font-size: .82rem; }
+body.gm-roth .cx-el .ico { width: 30px; height: 30px; padding: 5px; border-radius: 50%; background: var(--night-3); border: 1px solid var(--line); }
+body.gm-roth .cx-el.el-Fire { color: #f08a5d; } body.gm-roth .cx-el.el-Wind { color: #b7d3e0; }
+body.gm-roth .cx-el.el-Earth { color: #d1a75e; } body.gm-roth .cx-el.el-Water { color: #59b9d8; }
+
+/* types */
+body.gm-roth .cx-types { display: grid; gap: 18px; }
+body.gm-roth .cx-type { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: start; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--night-2); }
+body.gm-roth .cx-when { color: var(--ink); }
+body.gm-roth .cx-k { display: inline-block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--night); background: var(--bronze); border-radius: 4px; padding: 1px 6px; margin-right: 4px; vertical-align: .1em; }
+@media (max-width: 600px) { body.gm-roth .cx-type { grid-template-columns: minmax(0, 1fr); } body.gm-roth .cx-type-card { justify-content: center; } }
+
+/* blow */
+body.gm-roth .cx-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+body.gm-roth .cx-steps li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+body.gm-roth .cx-step-n { width: 30px; border-radius: 6px; }
+body.gm-roth .cx-ex-cards { margin: 6px 0 12px; }
+body.gm-roth .cx-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; }
+body.gm-roth .cx-term { display: grid; justify-items: center; gap: 2px; min-width: 52px; text-align: center; }
+body.gm-roth .cx-term small { font-size: .74rem; color: var(--muted); line-height: 1.2; }
+body.gm-roth .cx-op { font-weight: 700; color: var(--bronze-hi); font-size: 1.05rem; }
+
+/* decks */
+body.gm-roth .cx-deck { --al: var(--al-Unaligned); display: grid; gap: 16px; border: 1px solid var(--line); border-top: 4px solid var(--al); border-radius: 12px; padding: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--al) 10%, var(--night-2)), var(--night) 280px); }
+body.gm-roth .cx-deck.al-Ulaid { --al: var(--al-Ulaid); } body.gm-roth .cx-deck.al-Connachta { --al: var(--al-Connachta); }
+body.gm-roth .cx-deck.al-Sidhe { --al: var(--al-Sidhe); } body.gm-roth .cx-deck.al-Fomoire { --al: var(--al-Fomoire); }
+body.gm-roth .cx-deck.al-Merrow { --al: var(--al-Merrow); }
+body.gm-roth .cx-deck-head { display: flex; gap: 16px; align-items: center; }
+body.gm-roth .cx-deck-head h3 { font-size: 1.7rem; margin: 0; }
+body.gm-roth .cx-sigil { width: 76px; height: 76px; flex: none; color: var(--al); background: var(--night-3); border: 2px solid var(--al); border-radius: 50%; padding: 6px; }
+body.gm-roth .cx-people { color: var(--muted); font-style: italic; margin: 0 0 4px; }
+body.gm-roth .cx-motto { font-size: 1.05rem; margin: 0; }
+body.gm-roth .cx-deck-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+body.gm-roth .cx-deck-grid h4:first-child { margin-top: 0; }
+@media (max-width: 760px) { body.gm-roth .cx-deck-grid { grid-template-columns: minmax(0, 1fr); } body.gm-roth .cx-deck { padding: 14px 12px; } }
+body.gm-roth .cx-bars { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 8px; margin: 6px 0; font-size: .82rem; color: var(--muted); }
+body.gm-roth .cx-bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; gap: 2px; }
+body.gm-roth .cx-bar > span { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 34px; color: #fff; font-size: .8rem; }
+body.gm-roth .cx-bar .ico { width: 14px; height: 14px; }
+body.gm-roth .cx-seg-Fire { background: #a8452a; } body.gm-roth .cx-seg-Wind { background: #4f7489; }
+body.gm-roth .cx-seg-Earth { background: #86632a; } body.gm-roth .cx-seg-Water { background: #23708a; }
+body.gm-roth .cx-seg-Weapon { background: #6b5a45; } body.gm-roth .cx-seg-Feat { background: #8a5a2b; }
+body.gm-roth .cx-seg-Ally { background: #4d6a45; } body.gm-roth .cx-seg-Word { background: #5c4a78; }
+body.gm-roth .cx-table-wrap { overflow-x: auto; }
+body.gm-roth .cx-table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 560px; }
+body.gm-roth .cx-table caption { text-align: left; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--bronze); padding-bottom: 6px; }
+body.gm-roth .cx-table th, body.gm-roth .cx-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+body.gm-roth .cx-table thead th { color: var(--muted); font-weight: 400; font-size: .8rem; }
+body.gm-roth .cx-table tbody th { font-weight: 600; }
+body.gm-roth .cx-table tbody tr:hover, body.gm-roth .cx-table tbody tr:focus { background: var(--night-3); outline: none; }
+body.gm-roth .cx-table .tok { font-size: 12px; }
+body.gm-roth .cx-fw { display: inline-flex; align-items: center; gap: 4px; }
+body.gm-roth .cx-chip { margin-left: 6px; font-size: .7rem; padding: 1px 6px; border-radius: 8px; background: var(--night-3); color: var(--bronze-hi); font-weight: 400; }
+body.gm-roth .cx-dash { color: var(--muted); }
+body.gm-roth .cx-group { display: grid; gap: 4px; }
+body.gm-roth .cx-count { font-size: .75rem; color: var(--muted); letter-spacing: 0; }
+/* icon tokens (pierce, reach): draw the icon in the token's ink, centred, not in the number tokens' outline */
+body.gm-roth .tok-pierce svg.ico, body.gm-roth .tok-scope svg.ico { position: relative; inset: auto; }
+body.gm-roth .tok-pierce svg.ico path, body.gm-roth .tok-scope svg.ico path { stroke: currentColor; stroke-width: 1.8; }
+body.gm-roth .cx-sum { margin-bottom: 10px; }
+body.gm-roth .cx-legend + .cx-small { margin-top: 10px; }
+@media (max-width: 600px) { body.gm-roth .cx-nav { position: static; } }

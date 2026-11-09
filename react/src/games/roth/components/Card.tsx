@@ -55,7 +55,7 @@ export function Rich({ text }: { text: string }) {
   return (
     <>
       {parts.map((p, i) => {
-        if (p.startsWith("**")) return <b key={i}>{p.slice(2, -2)}</b>;
+        if (p.startsWith("**")) return <b key={i}><Rich text={p.slice(2, -2)} /></b>;
         if (p.startsWith("{")) return <Icon key={i} name={p.slice(1, -1)} className={`ink-${p.slice(1, -1)}`} />;
         return <span key={i}>{p}</span>;
       })}
