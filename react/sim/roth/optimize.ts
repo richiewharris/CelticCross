@@ -40,7 +40,8 @@ if (process.argv.includes("--worker")) {
   const stored = args.includes("--resume") ? (JSON.parse(readFileSync(new URL("../../src/games/roth/engine/computerDecks.json", import.meta.url), "utf8")) as Record<string, string[]>) : {};
   const best: Record<string, string[]> = Object.fromEntries(FACTIONS.map((f) => [f, stored[f] ?? buildDeck({ factions: [f], noise: 0 }, r).map((d) => d.id)]));
   const only = args.includes("--only") ? args[args.indexOf("--only") + 1].split(",") : FACTIONS;
-  const field = () => [...FACTIONS.map((f) => DECK_IDS[f]), ...FACTIONS.map((f) => best[f])];
+  // --tuned plays against the five tuned decks only (the starters drop out of the field)
+  const field = () => [...(args.includes("--tuned") ? [] : FACTIONS.map((f) => DECK_IDS[f])), ...FACTIONS.map((f) => best[f])];
   let seedBase = 1;
   /** Mean score of each candidate against the field, all on the same seeds. */
   const evalMany = async (cands: string[][]) => {
