@@ -7,11 +7,11 @@ import { Choices } from "./components/Choices";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
 import { optionAt, selFilter, Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
-import { Codex } from "./codex/Codex";
+import { CardsGuide, DecksGuide } from "./codex/Codex";
 import { FACTION_TITLE } from "./text";
 import { useMatch } from "./useMatch";
 
-type Tab = "play" | "puzzles" | "cards";
+type Tab = "play" | "puzzles" | "cards" | "decks";
 
 export function RothGame() {
   const [tab, setTab] = useStoredState<Tab>("roth-react-tab", "play");
@@ -24,8 +24,8 @@ export function RothGame() {
         <p className="private-note">Private preview: only you can see this page.</p>
       </header>
       <Segmented label="Mode" value={tab} onChange={setTab} className="tabs"
-        options={[{ value: "play", label: "Play the computer" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards & decks" }] as { value: Tab; label: string }[]} />
-      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : <Codex setFocus={setFocus} />}
+        options={[{ value: "play", label: "Play the computer" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
+      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );
 }

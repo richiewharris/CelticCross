@@ -1,7 +1,6 @@
-// "Cards & decks": the rules told through the cards. An annotated sample card, the icons, the six card types,
-// how a blow's number is worked out, and a breakdown of each of the five decks.
+// The rules told through the cards, on two pages. "Cards": an annotated sample of each kind of card, with what it
+// does and when it's played, then the icons and how a blow's number is worked out. "Decks": the five decks.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Segmented } from "../../../kit/Segmented";
 import { useStoredState } from "../../../kit/useStoredState";
 import { ALL_DEFS, DECK_IDS, FACTIONS, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
 import { CardFace, Rich, Token } from "../components/Card";
@@ -9,26 +8,31 @@ import { Emblem, Icon } from "../components/Icons";
 import { FACTION_TITLE } from "../text";
 import { DECK_NOTES, TYPE_NOTES } from "./notes";
 
-const SECTIONS = [
-  { id: "cx-anatomy", label: "A card, piece by piece" },
-  { id: "cx-icons", label: "Icons" },
-  { id: "cx-types", label: "The six kinds of card" },
-  { id: "cx-blow", label: "Reading a blow" },
-  { id: "cx-decks", label: "The five decks" },
-];
+/** A row of tags; the current one is lit. */
+function Tags<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
+  return (
+    <nav className="chips cx-tags" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.value} type="button" className={o.value === value ? "cur" : ""} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>
+      ))}
+    </nav>
+  );
+}
 
-export function Codex({ setFocus }: { setFocus: (d: CardDef) => void }) {
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+export function CardsGuide({ setFocus }: { setFocus: (d: CardDef) => void }) {
   return (
     <div className="codex">
-      <nav className="cx-nav chips" aria-label="Sections">
-        {SECTIONS.map((s) => <button key={s.id} type="button" onClick={() => go(s.id)}>{s.label}</button>)}
-      </nav>
-      <p className="cx-intro">Every rule in Roth Catha lives on a card. This guide reads the cards: what each mark means, what each kind of card does and when you play it, how a support's number grows at the ford, and how each of the five decks wants to win.</p>
-      <Anatomy />
+      <p className="cx-intro">Every rule in Roth Catha lives on a card. Pick a kind of card to see it piece by piece, what it does and when you play it. The icons and how a blow is worked out follow below.</p>
+      <Anatomy setFocus={setFocus} />
       <Icons />
-      <Types setFocus={setFocus} />
       <Blow />
+    </div>
+  );
+}
+
+export function DecksGuide({ setFocus }: { setFocus: (d: CardDef) => void }) {
+  return (
+    <div className="codex">
       <Decks setFocus={setFocus} />
     </div>
   );
@@ -54,6 +58,18 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
       { sel: ".cf-chips", at: [0.97, 0.5], title: "Focus and weakness", text: "Focus: supports of this element or kind get +1. Weak to: enemy Strikes of this element get +1." },
       { sel: ".ln-ability", at: [0.97, 0.5], title: "Ability", text: "The hero's named quality, then what it does in plain words. Bold words are the numbers that matter." },
       { sel: ".cf-tag", at: [0.97, 0.5], title: "Geis tag", text: "The hero's own taboo. A card that invokes this tag costs the hero 2 Valour." },
+    ],
+  },
+  champion: {
+    def: "fiacha",
+    parts: [
+      ...COMMON_TOP,
+      { sel: ".cf-stats", at: [0.5, 0.25], title: "Valour", text: "The champion's own Valour. It has no Initiative: it steps in mid-duel, on your turn." },
+      { sel: ".cf-pic", at: [0.6, 0.35], title: "Art", text: "A shield bearing the sigil of the champion's people." },
+      { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "A champion and whose it is." },
+      { sel: ".cf-chips", at: [0.97, 0.5], title: "Focus and weakness", text: "As for a hero: supports of its Focus get +1, enemy Strikes of its weakness get +1." },
+      { sel: ".ln-ability", at: [0.97, 0.5], title: "Ability", text: "The champion's quality, in force from the moment it steps in." },
+      { sel: ".cf-tag", at: [0.97, 0.5], title: "Reminder", text: "Champions stay in your hand until called at the ford." },
     ],
   },
   support: {
@@ -103,11 +119,12 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
 };
 type AnatKind = keyof typeof PARTS;
 
-function Anatomy() {
+function Anatomy({ setFocus }: { setFocus: (d: CardDef) => void }) {
   const [kind, setKind] = useStoredState<AnatKind>("roth-codex-anatomy", "hero");
   const [hi, setHi] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const spec = PARTS[kind] ?? PARTS.hero;
+  const note = TYPE_NOTES.find((t) => t.type === (PARTS[kind] ? kind : "hero"))!;
   const [pins, setPins] = useState<({ x: number; y: number } | null)[]>([]);
   useLayoutEffect(() => {
     const root = box.current;
@@ -136,12 +153,13 @@ function Anatomy() {
   }, [hi, spec, kind]);
   return (
     <section id="cx-anatomy" className="cx-section">
-      <h2>A card, piece by piece</h2>
-      <Segmented label="Sample card" value={kind} onChange={(v) => { setKind(v); setHi(null); }} className="cx-seg"
-        options={[{ value: "hero", label: "Hero" }, { value: "support", label: "Support" }, { value: "geis", label: "Geis" }, { value: "oath", label: "Oath" }, { value: "omen", label: "Omen" }] as { value: AnatKind; label: string }[]} />
+      <Tags label="Kind of card" value={(PARTS[kind] ? kind : "hero") as AnatKind} onChange={(v) => { setKind(v); setHi(null); }}
+        options={TYPE_NOTES.map((t) => ({ value: t.type as AnatKind, label: <><Icon name={t.type} /> {t.title}</> }))} />
+      <h2><Icon name={note.type} /> {note.title}</h2>
+      <p className="cx-lede"><Rich text={note.what} /></p>
       <div className="cx-anatomy">
         <div className="cx-anat-card" ref={box}>
-          <CardFace def={ALL_DEFS[spec.def]} owner="mine" />
+          <CardFace def={ALL_DEFS[spec.def]} owner="mine" onFocusCard={setFocus} />
           {pins.slice(0, spec.parts.length).map((p, i) => p ? (
             <button key={i} type="button" className={`cx-pin${hi === i ? " on" : ""}`} style={{ left: p.x, top: p.y }}
               aria-label={`${i + 1}: ${spec.parts[i].title}`} onMouseEnter={() => setHi(i)} onMouseLeave={() => setHi(null)} onFocus={() => setHi(i)} onBlur={() => setHi(null)}
@@ -156,6 +174,11 @@ function Anatomy() {
             </li>
           ))}
         </ol>
+      </div>
+      <div className="cx-panel cx-type-note">
+        <p className="cx-when"><span className="cx-k">When</span> <Rich text={note.when} /></p>
+        <h4>How it plays</h4>
+        <ul>{note.how.map((h, i) => <li key={i}><Rich text={h} /></li>)}</ul>
       </div>
     </section>
   );
@@ -266,30 +289,6 @@ function ElementWheel() {
   );
 }
 
-// ------------------------------------------------------------------ the six kinds
-
-function Types({ setFocus }: { setFocus: (d: CardDef) => void }) {
-  return (
-    <section id="cx-types" className="cx-section">
-      <h2>The six kinds of card</h2>
-      <p className="cx-small">Every deck is 24 cards. The five here each hold 4 heroes, 2 champions, 9 supports, 3 geasa, 2 oaths and 4 omens.</p>
-      <div className="cx-types">
-        {TYPE_NOTES.map((t) => (
-          <article key={t.type} className="cx-type">
-            <div className="cx-type-card hand"><CardFace def={ALL_DEFS[t.sample]} owner="mine" onFocusCard={setFocus} /></div>
-            <div className="cx-type-text">
-              <h3><Icon name={t.type} /> {t.title}</h3>
-              <p><Rich text={t.what} /></p>
-              <p className="cx-when"><span className="cx-k">When</span> <Rich text={t.when} /></p>
-              <ul>{t.how.map((h, i) => <li key={i}><Rich text={h} /></li>)}</ul>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 // ------------------------------------------------------------------ reading a blow
 
 function Blow() {
@@ -349,8 +348,7 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
   const fighters = unique.filter((d): d is FighterDef => d.type === "hero" || d.type === "champion");
   return (
     <section id="cx-decks" className="cx-section">
-      <h2>The five decks</h2>
-      <Segmented label="Deck" value={faction} onChange={setF} className="cx-seg"
+      <Tags label="Deck" value={faction} onChange={setF}
         options={FACTIONS.map((x) => ({ value: x, label: FACTION_TITLE[x] }))} />
       <article className={`cx-deck al-${PEOPLE_OF[faction]}`}>
         <header className="cx-deck-head">

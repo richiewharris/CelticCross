@@ -486,3 +486,8 @@ body.gm-roth .tok-pierce svg.ico path, body.gm-roth .tok-scope svg.ico path { st
 body.gm-roth .cx-sum { margin-bottom: 10px; }
 body.gm-roth .cx-legend + .cx-small { margin-top: 10px; }
 @media (max-width: 600px) { body.gm-roth .cx-nav { position: static; } }
+body.gm-roth .codex h2 { display: flex; align-items: center; gap: 10px; }
+body.gm-roth .codex h2 .ico { width: 1.05em; height: 1.05em; }
+body.gm-roth .cx-tags button .ico { width: 1.05em; height: 1.05em; vertical-align: -.18em; margin-right: 2px; }
+body.gm-roth .cx-lede { font-size: 1.05rem; }
+body.gm-roth .cx-type-note h4 { margin-top: 10px; }
