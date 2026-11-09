@@ -76,7 +76,8 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     case "duel": {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
       const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
-      const act = o.act === "rest" ? "rest" : `use ${at(S, o.spot)}`;
+      const twin = o.act === "use" && d.options.some((x) => x.t === "duel" && x.act === "use" && x.spot !== o.spot && S.board[x.spot]?.def.name === S.board[o.spot]?.def.name);
+      const act = o.act === "rest" ? "rest" : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}`;
       const s = mode + act;
       return s[0].toUpperCase() + s.slice(1) + guest;
     }

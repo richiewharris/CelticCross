@@ -69,65 +69,129 @@ body.gm-roth .chips button.cur { color: #1a140e; background: var(--bronze); bord
 body.gm-roth .chips button.done:not(.cur) { color: var(--good); border-color: #4a6a45; }
 body.gm-roth .chips .count { opacity: .8; font-size: .8em; }
 
-/* cards */
-body.gm-roth .card {
-  --al: var(--al-Unaligned);
-  position: relative; display: flex; flex-direction: column; gap: 2px; text-align: left;
-  width: 100%; min-height: 100%; padding: .35em .45em .4em; border-radius: .6em;
-  background: linear-gradient(180deg, #2c241c, #211b15); color: var(--ink);
-  border: 2px solid var(--al); border-top-width: .35em; font: inherit; font-size: 1em; line-height: 1.15; overflow: hidden;
-}
-body.gm-roth .card.theirs { background: linear-gradient(180deg, #241d1b, #1a1514); }
+/* cards: the full playing card and the compact tile */
+body.gm-roth .ico { width: 1em; height: 1em; vertical-align: -0.14em; flex: none; }
+body.gm-roth .card { --al: var(--al-Unaligned); position: relative; font: inherit; color: var(--ink); text-align: left; padding: 0; }
 body.gm-roth .card.al-Ulaid { --al: var(--al-Ulaid); }
 body.gm-roth .card.al-Connachta { --al: var(--al-Connachta); }
 body.gm-roth .card.al-Sidhe { --al: var(--al-Sidhe); }
 body.gm-roth .card.al-Fomoire { --al: var(--al-Fomoire); }
 body.gm-roth .card.al-Merrow { --al: var(--al-Merrow); }
 body.gm-roth .card.al-Deorad { --al: var(--al-Deorad); }
-body.gm-roth .card.t-geis, body.gm-roth .card.t-oath, body.gm-roth .card.t-omen { --al: var(--bronze); }
-body.gm-roth .card.t-omen.down { opacity: .8; border-style: dashed; }
-body.gm-roth .card.t-unknown { background: repeating-linear-gradient(45deg, #2a2119, #2a2119 6px, #231c15 6px, #231c15 12px); --al: var(--line); align-items: center; justify-content: center; }
-body.gm-roth .card .back { color: var(--bronze); font-size: 1.2em; }
-body.gm-roth .card .c-name { font-weight: 600; font-size: .9em; }
-body.gm-roth .card .glyph { color: var(--al); margin-right: .25em; }
-body.gm-roth .card .c-short { color: var(--muted); font-size: .78em; }
-body.gm-roth .card .c-type { color: var(--bronze); font-size: .78em; }
-body.gm-roth .card .c-text { font-size: .8em; }
-body.gm-roth .card .c-badge { font-size: .74em; color: var(--bronze-hi); }
-body.gm-roth .card .c-down { font-size: .7em; color: var(--muted); font-style: italic; }
+body.gm-roth .card.t-geis { --al: #9b3a33; }
+body.gm-roth .card.t-oath { --al: #b08d55; }
+body.gm-roth .card.t-omen { --al: #5d5aa0; }
 body.gm-roth button.card { cursor: pointer; }
-body.gm-roth .card.playable { box-shadow: 0 0 0 2px var(--bronze-hi), 0 0 14px rgba(220, 187, 128, .35); }
-body.gm-roth .card.sel { box-shadow: 0 0 0 3px #fff3d6, 0 0 18px rgba(255, 243, 214, .5); transform: translateY(-3px); }
-body.gm-roth .card.r-legendary .c-name::after { content: " ◆"; color: var(--bronze-hi); }
-body.gm-roth .card.r-rare .c-name::after { content: " ◇"; color: var(--bronze); }
+body.gm-roth .card.playable { box-shadow: 0 0 0 .2em var(--bronze-hi), 0 0 1.2em rgba(220, 187, 128, .45); }
+body.gm-roth .card.sel { box-shadow: 0 0 0 .3em #fff3d6, 0 0 1.4em rgba(255, 243, 214, .6); transform: translateY(-.3em); }
+body.gm-roth .card.dim { filter: grayscale(.85) brightness(.55); }
+body.gm-roth .card.down { opacity: .82; }
+body.gm-roth .card .c-badge { position: absolute; left: .5em; top: 2.2em; z-index: 2; font-size: .72em; font-weight: 700; background: rgba(12, 9, 7, .82); color: var(--bronze-hi); padding: .1em .45em; border-radius: .4em; }
+body.gm-roth .card .c-down { position: absolute; left: 0; right: 0; top: 2.6em; text-align: center; font-size: .8em; font-style: italic; color: #f3e6c8; text-shadow: 0 1px 2px #000; z-index: 2; }
+
+/* full card */
+body.gm-roth .card.full {
+  display: flex; flex-direction: column; width: 15em; aspect-ratio: 5 / 7; padding: .42em; gap: .28em;
+  border-radius: .75em; border: .28em solid #0e0b09; overflow: hidden; line-height: 1.15;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--al) 78%, #fff 6%), color-mix(in srgb, var(--al) 42%, #0b0907));
+  box-shadow: 0 .25em .6em rgba(0, 0, 0, .45);
+}
+body.gm-roth .card.full.theirs { background: linear-gradient(160deg, color-mix(in srgb, var(--al) 60%, #2a2320), color-mix(in srgb, var(--al) 30%, #0b0907)); }
+body.gm-roth .cf-title { display: flex; align-items: center; justify-content: space-between; gap: .3em; background: linear-gradient(#f3e8cf, #d9c69e); color: #1d150e; border-radius: .38em; padding: .22em .45em; font-weight: 700; font-size: 1.02em; box-shadow: inset 0 0 0 .08em rgba(0,0,0,.35); }
+body.gm-roth .cf-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.gm-roth .gem { width: .72em; height: .72em; border-radius: 50%; flex: none; border: .08em solid #1d150e; transform: rotate(45deg); border-radius: .12em; }
+body.gm-roth .gem.g-common { background: #c7c4bd; }
+body.gm-roth .gem.g-rare { background: linear-gradient(135deg, #f6dd8b, #b88a2e); }
+body.gm-roth .gem.g-legendary { background: linear-gradient(135deg, #ffb36b, #c4471c); box-shadow: 0 0 .35em #ff9a4a; }
+body.gm-roth .cf-art { position: relative; flex: 0 0 31%; border-radius: .3em; overflow: hidden; border: .12em solid #0e0b09; display: grid; place-items: center; background: radial-gradient(110% 90% at 50% 35%, #6f6a62, #26221e); }
+body.gm-roth .cf-art.art-Fire { background: radial-gradient(110% 90% at 50% 70%, #f0a050, #a8341c 55%, #3e0f08); }
+body.gm-roth .cf-art.art-Wind { background: radial-gradient(110% 90% at 40% 30%, #d6e4ef, #7d95ad 50%, #2a3848); }
+body.gm-roth .cf-art.art-Earth { background: radial-gradient(110% 90% at 50% 80%, #c9a96a, #7a5f30 55%, #2c2010); }
+body.gm-roth .cf-art.art-Water { background: radial-gradient(110% 90% at 50% 30%, #8fd3e0, #2f8199 50%, #0c2c38); }
+body.gm-roth .cf-art.art-hero, body.gm-roth .cf-art.art-champion { background: radial-gradient(110% 90% at 50% 35%, color-mix(in srgb, var(--al) 70%, #fff), color-mix(in srgb, var(--al) 40%, #000)); }
+body.gm-roth .cf-art.art-geis { background: radial-gradient(110% 90% at 50% 40%, #d0685c, #6a1d18 55%, #220806); }
+body.gm-roth .cf-art.art-oath { background: radial-gradient(110% 90% at 50% 40%, #f0d398, #9a7438 55%, #33240e); }
+body.gm-roth .cf-art.art-omen { background: radial-gradient(110% 90% at 50% 30%, #b8b6f0, #4f4c98 50%, #14133a); }
+body.gm-roth .cf-emblem { position: absolute; inset: 0; width: 100%; height: 100%; color: #fff; opacity: .22; }
+body.gm-roth .cf-kind { position: relative; font-size: 2.9em; color: rgba(255, 252, 244, .92); filter: drop-shadow(0 .05em .08em rgba(0, 0, 0, .6)); line-height: 0; }
+body.gm-roth .cf-el { position: absolute; right: .3em; top: .25em; font-size: 1.15em; color: #fff; filter: drop-shadow(0 0 .1em #000); line-height: 0; }
+body.gm-roth .cf-type { display: flex; align-items: center; gap: .3em; background: linear-gradient(#f3e8cf, #d9c69e); color: #1d150e; border-radius: .3em; padding: .16em .45em; font-size: .78em; font-weight: 600; box-shadow: inset 0 0 0 .08em rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; }
+body.gm-roth .cf-type span { overflow: hidden; text-overflow: ellipsis; }
+body.gm-roth .cf-text { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .3em; background: #f1e8d4; color: #251b12; border-radius: .3em; padding: .35em .45em 1.7em; font-size: .9em; line-height: 1.2; overflow: hidden; box-shadow: inset 0 0 0 .08em rgba(0,0,0,.25); }
+body.gm-roth .cf-focus { display: flex; flex-wrap: wrap; gap: .2em .7em; font-weight: 700; color: #4c3a24; }
+body.gm-roth .cf-focus .weak { font-weight: 600; color: #8a3324; }
+body.gm-roth .cf-tag { font-style: italic; color: #7a3b2a; margin-top: auto; }
+body.gm-roth .cf-stats { position: absolute; right: .55em; bottom: .55em; display: flex; gap: .25em; z-index: 1; }
+body.gm-roth .badge { display: inline-flex; align-items: center; gap: .18em; font-weight: 800; font-size: 1em; color: #fff; padding: .12em .4em; border-radius: .45em; background: #1d150e; border: .12em solid #f0dfb8; box-shadow: 0 .1em .25em rgba(0,0,0,.5); line-height: 1.1; }
+body.gm-roth .badge.valour { background: #7c1f17; }
+body.gm-roth .badge.init { background: #2a4366; }
+body.gm-roth .badge.eff-strike { background: #6b2318; }
+body.gm-roth .badge.eff-heal { background: #245a31; }
+body.gm-roth .badge.eff-shield { background: #2d4569; }
+body.gm-roth .badge.pierce { background: #4a3a1a; }
+body.gm-roth .badge.scope { background: #3a2f4f; }
+body.gm-roth .cf-back { flex: 1; border-radius: .4em; color: var(--bronze); background: repeating-linear-gradient(45deg, #2a2119, #2a2119 .5em, #231c15 .5em, #231c15 1em); display: grid; place-items: center; }
+body.gm-roth .cf-back svg, body.gm-roth .cf-back g { width: 60%; }
+body.gm-roth .card.full.t-unknown { background: #1a1410; }
+
+/* compact tile */
+body.gm-roth .card.compact {
+  display: flex; flex-direction: column; gap: .2em; width: 100%; min-height: 4.6em; padding: .35em .45em .4em; border-radius: .6em;
+  background: linear-gradient(180deg, #2c241c, #211b15); border: .14em solid var(--al); border-top-width: .4em; line-height: 1.15; overflow: hidden;
+}
+body.gm-roth .card.compact.theirs { background: linear-gradient(180deg, #241d1b, #1a1514); }
+body.gm-roth .card.compact .c-name { font-weight: 700; font-size: .92em; display: flex; gap: .25em; align-items: flex-start; }
+body.gm-roth .card.compact .glyph { color: var(--al); margin-top: .08em; }
+body.gm-roth .card.compact .c-short { display: flex; flex-wrap: wrap; gap: .2em; font-size: .78em; }
+body.gm-roth .card.compact .badge { font-size: .95em; padding: .02em .3em; border-width: .08em; }
+body.gm-roth .card.compact.t-unknown { align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #2a2119, #2a2119 6px, #231c15 6px, #231c15 12px); }
+body.gm-roth .card .back { color: var(--bronze); font-size: 1.2em; }
+body.gm-roth .card.r-legendary.compact .c-name::after { content: " ◆"; color: #ff9a4a; }
 
 /* the table */
 body.gm-roth .table { display: grid; gap: 10px; justify-items: center; }
-body.gm-roth .zone { width: 100%; max-width: 640px; display: grid; gap: 4px; }
+body.gm-roth .zone { width: 100%; max-width: 720px; display: grid; gap: 4px; }
 body.gm-roth .zone-label { font-size: .78rem; color: var(--muted); }
 body.gm-roth .omens, body.gm-roth .hand { display: flex; flex-wrap: wrap; gap: 6px; }
-body.gm-roth .omens .card, body.gm-roth .hand .card { width: 112px; min-height: 58px; font-size: 13px; }
-@media (max-width: 480px) { body.gm-roth .omens .card, body.gm-roth .hand .card { width: calc(33.3% - 4px); font-size: 11.5px; } }
+body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 10.4px; }
+body.gm-roth .zone.theirs .omens .card.full { font-size: 6.5px; }
+body.gm-roth .omens, body.gm-roth .hand { gap: 8px; }
+@media (max-width: 480px) { body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 10.6px; } }
+@media (max-width: 400px) { body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 10px; } }
+body.gm-roth .omens .empty-spot, body.gm-roth .hand .empty-spot { width: 165px; aspect-ratio: 5 / 7; min-height: 0; display: grid; place-items: center; color: var(--muted); font-size: .85rem; }
+body.gm-roth .view-bar { width: 100%; max-width: 720px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+body.gm-roth .phase-line { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.15rem; }
+body.gm-roth .btn.small { padding: 4px 10px; font-size: .85rem; }
+body.gm-roth .all-cards { width: 100%; max-width: 720px; }
+body.gm-roth .all-cards summary { cursor: pointer; color: var(--bronze); font-size: .92rem; }
+body.gm-roth .quad-row { display: grid; gap: 4px; margin-top: 10px; }
 
 /* the wheel */
-body.gm-roth .wheel-box { width: min(100%, 640px); container-type: inline-size; }
+body.gm-roth .wheel-box { width: min(100%, 720px); container-type: inline-size; position: relative; }
+body.gm-roth .wheel-box.zoom { aspect-ratio: 1 / 0.66; overflow: hidden; border-radius: 16px; background: radial-gradient(120% 100% at 50% 100%, #221b15, #120f0c); box-shadow: inset 0 0 0 1px var(--line); }
 body.gm-roth .wheel { position: relative; width: 100%; aspect-ratio: 1; font-size: max(8.5px, 2.4cqw); }
+body.gm-roth .wheel-box.zoom .wheel { position: absolute; }
+body.gm-roth .wheel-rot { position: absolute; inset: 0; transition: transform .7s cubic-bezier(.4, .1, .2, 1); }
 body.gm-roth .wheel-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 body.gm-roth .wheel-bg .rim { fill: #1e1813; stroke: var(--bronze); stroke-width: .5; }
 body.gm-roth .wheel-bg .hub { fill: #17120e; stroke: var(--line); stroke-width: .4; }
 body.gm-roth .wheel-bg .spoke { stroke: var(--line); stroke-width: .5; }
 body.gm-roth .wheel-bg .ford { stroke: #2d5f6b; stroke-width: 1.4; stroke-dasharray: 2 1.5; opacity: .55; }
-body.gm-roth .spot { position: absolute; width: 15.5%; transform: translate(-50%, -50%); display: grid; gap: 2px; justify-items: stretch; }
+body.gm-roth .spot { position: absolute; width: 15.5%; height: 0; }
 body.gm-roth .spot.hero { width: 18.5%; }
-body.gm-roth .spot .card { min-height: 5.4em; }
-body.gm-roth .spot-no { position: absolute; top: -1.3em; left: 50%; transform: translateX(-50%); font-size: .8em; color: var(--muted); }
-body.gm-roth .empty-spot { min-height: 5.4em; border: 1px dashed var(--line); border-radius: .6em; background: rgba(0, 0, 0, .2); color: var(--bronze-hi); font: inherit; font-size: 1.4em; }
-body.gm-roth button.empty-spot { cursor: pointer; }
+body.gm-roth .spot-up { position: absolute; left: 0; top: 0; width: 100%; display: grid; gap: 2px; justify-items: stretch; transition: transform .7s cubic-bezier(.4, .1, .2, 1); }
+body.gm-roth .wheel-box.zoom .spot { width: 14.5%; font-size: 1.5cqw; }
+body.gm-roth .wheel-box.zoom .spot.hero { width: 18.5%; font-size: 1.91cqw; }
+body.gm-roth .wheel-box.zoom .spot .card.full { width: 100%; }
+body.gm-roth .spot-no { position: absolute; top: -1.4em; left: 50%; transform: translateX(-50%); font-size: .8em; color: var(--muted); }
+body.gm-roth .empty-spot { min-height: 4.6em; border: 1px dashed var(--line); border-radius: .6em; background: rgba(0, 0, 0, .25); color: var(--muted); font: inherit; font-size: 1em; display: grid; place-items: center; }
+body.gm-roth .wheel-box.zoom .empty-spot { aspect-ratio: 5 / 7; min-height: 0; }
+body.gm-roth button.empty-spot { cursor: pointer; color: var(--bronze-hi); font-size: 1.6em; }
 body.gm-roth .spot.m-target .empty-spot { border: 2px solid var(--bronze-hi); box-shadow: 0 0 12px rgba(220, 187, 128, .4); }
-body.gm-roth .spot.m-faced > .card, body.gm-roth .spot.m-faced > .empty-spot { box-shadow: 0 0 0 2px var(--bronze-hi); }
-body.gm-roth .spot.m-duel > .card { box-shadow: 0 0 0 3px #e9d39d, 0 0 16px rgba(233, 211, 157, .45); }
-body.gm-roth .spot.m-chosen > .card { box-shadow: 0 0 0 3px #fff3d6; }
-body.gm-roth .spot.felled > .card { filter: grayscale(.8) brightness(.6); }
+body.gm-roth .spot.m-faced .card { box-shadow: 0 0 0 .25em var(--bronze-hi), 0 0 1em rgba(220, 187, 128, .5); }
+body.gm-roth .spot.m-duel .card { box-shadow: 0 0 0 .3em #e9d39d, 0 0 1.2em rgba(233, 211, 157, .5); }
+body.gm-roth .spot.m-chosen .card { box-shadow: 0 0 0 .3em #fff3d6; }
+body.gm-roth .spot.felled .card { filter: grayscale(.8) brightness(.6); }
 body.gm-roth .spot-tags { display: flex; flex-direction: column; gap: 2px; align-items: center; position: absolute; top: 100%; left: 0; right: 0; margin-top: 2px; z-index: 2; pointer-events: none; }
 body.gm-roth .tag { font-size: .78em; padding: 0 .35em; border-radius: .4em; background: var(--night-3); border: 1px solid var(--line); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 body.gm-roth .tag.geis { border-color: var(--garnet); color: #f0b3a9; }
@@ -139,6 +203,25 @@ body.gm-roth .valour.live { background: #5c231c; color: #fff; }
 body.gm-roth .wheel-center { position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); width: 46%; display: grid; gap: .4em; justify-items: center; text-align: center; }
 body.gm-roth .wheel-center .phase { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.5em; line-height: 1.15; }
 body.gm-roth .wheel-center .tag { font-size: 1em; }
+
+/* the duel */
+body.gm-roth .duel { width: 100%; max-width: 720px; display: grid; gap: 10px; }
+body.gm-roth .duel-side { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; padding: 10px; border-radius: 14px; background: rgba(0, 0, 0, .18); border: 1px solid var(--line); }
+body.gm-roth .duel-side.acting { border-color: var(--bronze); box-shadow: 0 0 0 1px var(--bronze) inset; }
+body.gm-roth .duel-side.felled .duel-fighter .card { filter: grayscale(.85) brightness(.55); }
+body.gm-roth .duel-fighter { display: grid; gap: 6px; font-size: 11.5px; }
+body.gm-roth .duel-supports { display: flex; gap: 10px; flex-wrap: wrap; font-size: 9.6px; align-items: flex-start; }
+body.gm-roth .duel-supports .empty-spot { width: 15em; aspect-ratio: 5 / 7; }
+body.gm-roth .duel-meter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+body.gm-roth .duel-meter .hearts { color: #e2564a; display: inline-flex; gap: 2px; }
+body.gm-roth .duel-meter .shields { color: #8fb3e0; display: inline-flex; gap: 2px; }
+body.gm-roth .duel-meter .cap { font-size: 12px; color: var(--muted); }
+body.gm-roth .duel-tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 18em; font-size: 12px; }
+body.gm-roth .duel-ford { text-align: center; font-family: var(--font-display); color: #6fa5b3; border-block: 2px dashed #2d5f6b; padding: 4px; }
+@media (max-width: 560px) {
+  body.gm-roth .duel-fighter { font-size: 10px; }
+  body.gm-roth .duel-supports { font-size: 8.4px; }
+}
 
 /* choices, puzzles, log, inspector */
 body.gm-roth .choices { display: grid; gap: 8px; width: 100%; max-width: 640px; margin: 0 auto; }
@@ -167,4 +250,7 @@ body.gm-roth .dialog { background: var(--night-2); border: 1px solid var(--bronz
 body.gm-roth .dialog h2 { font-size: 1.6rem; }
 body.gm-roth .dialog p { margin: 0; }
 body.gm-roth .dialog.lose h2 { color: var(--garnet); }
-@media (prefers-reduced-motion: reduce) { body.gm-roth .card.sel { transform: none; } }
+@media (prefers-reduced-motion: reduce) { body.gm-roth .card.sel { transform: none; } body.gm-roth .wheel-rot, body.gm-roth .spot-up { transition: none; } }
+body.gm-roth .across { position: absolute; left: 50%; transform: translateX(-50%); top: 8px; justify-items: center; display: grid; gap: 3px; font-size: max(6.5px, 1.05cqw); z-index: 3; }
+body.gm-roth .across .zone-label { font-size: 11px; }
+body.gm-roth .across .empty-spot { width: 15em; aspect-ratio: 5 / 7; min-height: 0; }

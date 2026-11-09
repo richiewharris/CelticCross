@@ -1,8 +1,21 @@
 // The whole table from one seat: the enemy's hand and omens, the wheel, your omens and your hand.
+import { useState } from "react";
 import type { CardDef } from "../engine/cards";
-import { type Decision, type Option, type Side, type State } from "../engine/engine";
+import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
+import { DuelView } from "./DuelView";
 import { Wheel, type Mark } from "./Wheel";
+
+/** The spot the zoomed wheel turns to the front: the one you're filling or facing. */
+function focusSpot(S: State, me: Side, d: Decision | null): number | null {
+  if (S.phase === "draft") {
+    if (d && d.player === me && d.spot !== undefined) return d.spot;
+    const s = draftSpot(Math.min(S.step, 6), me);
+    return S.board[s] ? d?.spot ?? null : s;
+  }
+  if (S.phase === "play" && S.step <= 6) return facedSpot(S.step, me, S.reversed);
+  return null;
+}
 
 export type Sel = { uid?: number; spot?: number } | null;
 
@@ -36,6 +49,7 @@ export function Table(props: {
   onFocusCard?: (d: CardDef) => void; names?: [string, string];
 }) {
   const { S, me, d, sel } = props;
+  const [wide, setWide] = useState(false);
   const mineToAct = !!d && d.player === me && !!props.onCard;
   const playable = new Set<number>();
   const marks = new Map<number, Mark>();
@@ -56,6 +70,10 @@ export function Table(props: {
     }
     if (sel?.spot !== undefined) marks.set(sel.spot, "chosen");
   }
+  const focus = focusSpot(S, me, d);
+  const duel = S.phase === "combat" && !!S.combat;
+  const usable = new Set<number>();
+  if (mineToAct && d?.kind === "duel") for (const o of d.options) if (o.t === "duel" && o.act === "use") usable.add(o.spot);
   const them = (1 - me) as Side;
   const P = S.players[me], O = S.players[them];
   const omenRow = (p: Side) => S.players[p].omens.map((o) => {
@@ -77,13 +95,26 @@ export function Table(props: {
           <div className="omens">{omenRow(them)}</div>
         </div>
       ) : null}
-      <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
-        center={(
-          <>
-            <span className="phase">{phaseText(S)}</span>
-            {S.globalGeis.map((g) => <span key={g.uid} className="tag geis global" title={g.def.name}>⊘ {g.def.name}</span>)}
-          </>
-        )} />
+      <div className="view-bar">
+        <span className="phase-line">{phaseText(S)}{S.globalGeis.length ? ` · global: ${S.globalGeis.map((g) => g.def.name).join(", ")}` : ""}</span>
+        {focus !== null || duel ? (
+          <button type="button" className="btn quiet small" aria-pressed={wide} onClick={() => setWide(!wide)}>
+            {wide ? (duel ? "Back to the duel" : "Zoom in") : "Whole wheel"}
+          </button>
+        ) : null}
+      </div>
+      {duel && !wide ? (
+        <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard} />
+      ) : (
+        <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
+          focus={wide || focus === null ? null : Math.floor(focus / 3) * 3 + 1 /* the middle of the quadrant: hero and both supports */}
+          center={(
+            <>
+              <span className="phase">{phaseText(S)}</span>
+              {S.globalGeis.map((g) => <span key={g.uid} className="tag geis global" title={g.def.name}>⊘ {g.def.name}</span>)}
+            </>
+          )} />
+      )}
       <div className="zone mine" aria-label="Your omens and hand">
         {P.omens.length ? <><span className="zone-label">{props.names?.[0] ?? "You"}: omens</span><div className="omens">{omenRow(me)}</div></> : null}
         {P.hand.length ? <span className="zone-label">Hand</span> : null}
@@ -95,6 +126,21 @@ export function Table(props: {
           ))}
         </div>
       </div>
+      <details className="all-cards">
+        <summary>Every card on the wheel</summary>
+        {[0, 1, 2, 3].map((q) => (
+          <div key={q} className="quad-row">
+            <span className="zone-label">Spots {q * 3 + 1}–{q * 3 + 3}{(q < 2 ? 0 : 1) === me ? " (yours)" : " (theirs)"}
+              {S.quadGeis[q] ? ` · bound by ${S.quadGeis[q]!.def.name}` : ""}{S.quadOath[q] ? ` · sworn to ${S.quadOath[q]!.def.name}` : ""}</span>
+            <div className="hand">
+              {[0, 1, 2].map((k) => {
+                const c = S.board[q * 3 + k];
+                return c ? <CardFace key={k} def={c.def} owner={c.owner === me ? "mine" : "theirs"} onFocusCard={props.onFocusCard} /> : <div key={k} className="empty-spot">empty</div>;
+              })}
+            </div>
+          </div>
+        ))}
+      </details>
     </div>
   );
 }

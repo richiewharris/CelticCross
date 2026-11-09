@@ -26,7 +26,7 @@ export default function Playground() {
         <section>
           <h2>Cards</h2>
           <div className="hand">{SAMPLE.map((id) => <CardFace key={id} def={ALL_DEFS[id]} owner="mine" onFocusCard={setFocus} />)}</div>
-          <CardFace def={ALL_DEFS.manannan} full owner="theirs" />
+          <div className="hand">{SAMPLE.map((id) => <CardFace key={id} def={ALL_DEFS[id]} variant="compact" owner="theirs" />)}</div>
           <Inspector def={focus} />
         </section>
         {views.map((v) => (
