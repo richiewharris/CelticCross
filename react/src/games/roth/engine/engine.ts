@@ -744,17 +744,21 @@ export function effSupport(S: State, a: Side, s: SupportDef): SupportDef {
   let el = s.element;
   let kind = s.kind;
   let ch = 0;
+  let own = false;
   for (const c of list) {
     const d = c.def;
     if (d.type !== "attendant") continue;
     if (d.scope !== "global" && (d.scope === "yours") !== (c.owner === a)) continue;
     if (d.mode === "curse") continue;
-    if (d.mode === "reforge") { if (kind === d.kind) kind = d.toKind ?? kind; }
-    else if (d.mode === "enchant") { if (kind === d.kind) el = d.to ?? el; }
-    else if (el === d.from) { el = d.to ?? el; if (d.mode === "channel") ch++; }
+    const hit = d.mode === "reforge" || d.mode === "enchant" ? kind === d.kind : el === d.from;
+    if (!hit) continue;
+    if (d.mode === "reforge") kind = d.toKind ?? kind;
+    else el = d.to ?? el;
+    if (d.mode === "channel") ch++;
+    if (c.owner === a) own = true;
   }
   if (el === s.element && kind === s.kind && !ch) return s;
-  return { ...s, element: el, kind, ...(ch ? { channel: ch, selfLoss: (s.selfLoss ?? 0) + ch } : {}) };
+  return { ...s, element: el, kind, ...(own ? { attuned: 1 } : {}), ...(ch ? { channel: ch, selfLoss: (s.selfLoss ?? 0) + ch } : {}) };
 }
 /** Side p's fighter's weaknesses: its printed one, plus one for each Curse attendant in reach. */
 export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
@@ -776,7 +780,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   const effs = baseEffects(s, h, e, firstSupport);
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
     if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, s.drain ?? 0);
     else if (eff.type === "heal") heal(S, C, a, n);
     else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));

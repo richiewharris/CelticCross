@@ -51,7 +51,7 @@ export function DuelView(props: {
             const can = props.usable?.has(s);
             const sd = c.def as SupportDef;
             const eff = effSupport(S, p, sd);
-            const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${eff.channel ? `, +${eff.channel}` : ""}` : null;
+            const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${(eff.channel ?? 0) + (eff.attuned ?? 0) ? `, +${(eff.channel ?? 0) + (eff.attuned ?? 0)}` : ""}` : null;
             return (
               <CardFace key={s} def={c.def} owner={c.owner === me ? "mine" : "theirs"} dim={used} playable={can} selected={props.chosen === s}
                 badge={used ? "used" : [c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined}

@@ -97,6 +97,8 @@ export interface SupportDef {
   drain?: number; // if its Strike wounds, Heal n
   /** Set only on a support seen through a Channel attendant: its primary Strike +n (and the user pays n Valour). */
   channel?: number;
+  /** Set only on a support one of the user's own attendants changed: its primary effect +n. */
+  attuned?: number;
 }
 /** What a geis or an oath forbids. */
 export interface Forbids {
@@ -171,6 +173,7 @@ export interface OmenDef {
  *   channel: supports of `from` count as `to`, their primary Strike +1, and the hero using one loses 1 Valour.
  *   reforge: supports of kind `kind` count as kind `toKind` (so a Weapon can slip a "no Weapons" geis).
  *   curse:   fighters in reach are also weak to `to` (as well as their printed weakness).
+ * A support changed by its user's own attendant (enchant, turn, channel or reforge) is attuned: primary effect +1.
  * scope: global (every fighter), yours (your fighters and the supports they use), enemy (the enemy's).
  */
 export interface AttendantDef {

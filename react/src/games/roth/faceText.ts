@@ -294,7 +294,7 @@ export function faceLines(d: CardDef): FaceLine[] {
     case "omen":
       push("text", f.text ?? d.text); push("lore", f.lore); break;
     case "attendant":
-      push("text", attendantLine(d)); push("lore", f.lore); push("break", "Called in the Playing turn; stays for the match."); break;
+      push("text", attendantLine(d)); if (d.mode !== "curse" && d.scope !== "enemy") push("text", "Your cards it changes get **+1**."); push("lore", f.lore); push("break", "Called in the Playing turn; stays for the match."); break;
     default: break;
   }
   return out;
