@@ -67,15 +67,15 @@
   "uaithne",
   "fragarach",
   "goibniu",
-  "g_burning",
+  "g_hoard",
   "g_samhain",
-  "g_plough",
+  "g_door",
   "v_swift",
-  "v_hearthguard",
-  "o_sleep",
-  "o_truce",
+  "v_watch",
+  "o_mist",
+  "o_brugh",
   "o_lugh",
-  "o_mantle"
+  "o_sleep"
  ],
  "fomoire": [
   "indech",
