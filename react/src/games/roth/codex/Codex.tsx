@@ -339,7 +339,7 @@ function Blow() {
 
 // ------------------------------------------------------------------ decks
 
-const PEOPLE_OF: Record<Faction, string> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow" };
+const PEOPLE_OF: Record<Faction, string> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow", sluagh: "Sluagh" };
 const GROUPS: { type: CardDef["type"]; title: string }[] = [
   { type: "hero", title: "Heroes" }, { type: "champion", title: "Champions" }, { type: "support", title: "Supports" },
   { type: "geis", title: "Geasa" }, { type: "oath", title: "Oaths" }, { type: "omen", title: "Omens" }, { type: "attendant", title: "Attendants" },

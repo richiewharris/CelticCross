@@ -4,16 +4,16 @@
 // `noise` blurs the scores: 0 builds the same strong deck every time, large values build loose, varied decks.
 import {
   ALL_DEFS, MAX_LEGENDARIES, RARITY_LIMIT, deckErrors, inPool, unwillingPair, type CardDef, type Faction, type FighterDef,
-  type AttendantDef, type Forbids, type GeisDef, type HeroDef, type OathDef, type OmenDef, type SupportDef,
+  composeHost, type AttendantDef, type Forbids, type GeisDef, type HostDef, type MonsterDef, type HeroDef, type OathDef, type OmenDef, type SupportDef,
 } from "./cards";
 import { kin } from "./engine";
 import type { Rng } from "./rng";
 
 export interface BuildOptions { factions: Faction[]; noise: number; /** cards already chosen; the rest is filled round them */ start?: CardDef[] }
 /** How many of each type a built deck holds (the starter decks' shape). */
-export const SHAPE = { hero: 4, champion: 2, support: 8, geis: 3, oath: 2, omen: 4, attendant: 1 } as const;
+export const SHAPE = { hero: 4, champion: 2, support: 8, geis: 3, oath: 2, omen: 4, attendant: 1, host: 3, monster: 5 } as const;
 
-const maxCopies = (d: CardDef) => (d.type === "hero" || d.type === "champion" || d.type === "omen" ? 1 : d.type === "unknown" ? 0 : RARITY_LIMIT[d.rarity]);
+const maxCopies = (d: CardDef) => (d.type === "hero" || d.type === "champion" || d.type === "omen" || d.type === "host" || d.type === "monster" ? 1 : d.type === "unknown" ? 0 : RARITY_LIMIT[d.rarity]);
 
 function forbidsSup(f: Forbids, s: SupportDef) {
   return (!!f.element && s.element === f.element) || (!!f.kind && s.kind === f.kind) || (!!f.heal && s.effects.some((e) => e.type === "heal"));
@@ -120,17 +120,29 @@ export function buildDeck(opts: BuildOptions, rng: Rng): CardDef[] {
       add(best.d);
     }
   };
-  // heroes from at most two peoples (exiles go with Ulster and Connacht)
-  const heroes = pools.filter((d): d is HeroDef => d.type === "hero");
-  pick(heroes, 4, heroScore);
-  const hs = deck.filter((d): d is HeroDef => d.type === "hero");
-  pick(pools.filter((d): d is FighterDef => d.type === "champion"), 2, (c) => heroScore(c as unknown as HeroDef) - 1);
-  const fighters = deck.filter((d): d is FighterDef => d.type === "hero" || d.type === "champion");
+  let hs: HeroDef[];
+  if (opts.factions.includes("sluagh")) {
+    // a host deck: the three hosts and six monsters fight in place of heroes and champions
+    pick(pools.filter((d): d is HostDef => d.type === "host"), 3, () => 1);
+    pick(pools.filter((d): d is MonsterDef => d.type === "monster"), 5, (m) => heroScore({ ...(m as unknown as HeroDef), init: 2 + m.init }) - 1);
+    pick(pools.filter((d): d is FighterDef => d.type === "champion"), 2, (c) => heroScore(c as unknown as HeroDef) - 1);
+    const hostDefs = deck.filter((d): d is HostDef => d.type === "host");
+    const mons = deck.filter((d): d is MonsterDef => d.type === "monster");
+    hs = hostDefs.map((h, i) => composeHost(h, mons.slice(i * 2, i * 2 + 2)));
+  } else {
+    // heroes from at most two peoples (exiles go with Ulster and Connacht)
+    const heroes = pools.filter((d): d is HeroDef => d.type === "hero");
+    pick(heroes, 4, heroScore);
+    hs = deck.filter((d): d is HeroDef => d.type === "hero");
+    pick(pools.filter((d): d is FighterDef => d.type === "champion"), 2, (c) => heroScore(c as unknown as HeroDef) - 1);
+  }
+  const fighters: FighterDef[] = [...hs, ...deck.filter((d): d is FighterDef => d.type === "champion")];
   pick(pools.filter((d): d is SupportDef => d.type === "support"), 9, (s) => supportScore(s, hs));
   const sups = deck.filter((d): d is SupportDef => d.type === "support");
-  pick(pools.filter((d): d is GeisDef => d.type === "geis"), 3, (g) => geisScore(g, sups));
-  pick(pools.filter((d): d is OathDef => d.type === "oath"), 2, (o) => oathScore(o, sups));
-  pick(pools.filter((d): d is AttendantDef => d.type === "attendant"), 1, (a) => attendantScore(a, sups, fighters));
+  const hostShape = deck.some((d) => d.type === "host");
+  pick(pools.filter((d): d is GeisDef => d.type === "geis"), hostShape ? 2 : 3, (g) => geisScore(g, sups));
+  pick(pools.filter((d): d is OathDef => d.type === "oath"), hostShape ? 0 : 2, (o) => oathScore(o, sups));
+  pick(pools.filter((d): d is AttendantDef => d.type === "attendant"), hostShape ? 0 : 1, (a) => attendantScore(a, sups, fighters));
   const omens = pools.filter((d): d is OmenDef => d.type === "omen");
   if (!deck.some((d) => d.type === "omen" && d.scope === "targeted")) pick(omens.filter((o) => o.scope === "targeted"), 1, (o) => omenScore(o, sups, fighters));
   pick(omens, 4, (o) => omenScore(o, sups, fighters));

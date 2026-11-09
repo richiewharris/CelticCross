@@ -77,6 +77,17 @@ function Scene({ kind, seed, uid, extra }: { kind: string; seed: string; uid: st
         </>
       );
     }
+    case "Spirit": { // a grey mist over a dark field, with drifting soul-lights
+      return (
+        <>
+          <Defs g={[{ id: bg, stops: [[0, "#58665f"], [0.5, "#26302c"], [1, "#0b0f0d"]] }]} />
+          <rect width={W} height={H} fill={`url(#${bg})`} />
+          <path d={wave(40, 3, 30, rnd() * 20)} fill="#3a4842" opacity=".8" />
+          <path d={wave(50, 2.5, 24, rnd() * 20)} fill="#1c2421" />
+          {Array.from({ length: 9 }, (_, i) => <circle key={i} cx={r1(rnd() * W)} cy={r1(6 + rnd() * 34)} r={r1(0.6 + rnd() * 1.2)} fill="#d9f2e4" opacity={r1(0.35 + rnd() * 0.5)} />)}
+        </>
+      );
+    }
     case "Water": {
       const ph = rnd() * 20;
       return (
@@ -202,7 +213,7 @@ function Scene({ kind, seed, uid, extra }: { kind: string; seed: string; uid: st
   }
 }
 
-const ELEMENTS = new Set(["Fire", "Wind", "Earth", "Water"]);
+const ELEMENTS = new Set(["Fire", "Wind", "Earth", "Water", "Spirit"]);
 
 /** What a geis forbids, as an icon name (the motif behind its slash). */
 function forbidIcon(d: CardDef): string {
@@ -251,6 +262,7 @@ export function CardArt({ d }: { d: CardDef }) {
   else if (d.type === "geis") scene = "geis";
   else if (d.type === "oath") scene = "oath";
   else if (d.type === "attendant") scene = d.to ?? "faction";
+  else if (d.type === "host" || d.type === "monster") scene = "Spirit";
   const al = "alignment" in d ? d.alignment : "None";
   const legendary = "rarity" in d && d.rarity === "legendary";
   return (
@@ -279,6 +291,11 @@ export function CardArt({ d }: { d: CardDef }) {
       ) : d.type === "oath" ? (
         <g color="#f1d388" transform="translate(52.5 38.5) scale(.62)">
           {iconBody(d.boon.strike ? "strike" : d.boon.init ? "init" : d.boon.valour ? "valour" : d.boon.heal ? "heal" : "shield")}
+        </g>
+      ) : d.type === "host" || d.type === "monster" ? (
+        <g>
+          <circle cx="60" cy="33" r="20" fill="#060807" fillOpacity=".55" stroke="#cfe6da" strokeWidth="1.2" />
+          <g color="#eef8f2" transform={d.type === "host" ? "translate(45 18) scale(1.25)" : "translate(46 19) scale(1.18)"}>{iconBody(d.type)}</g>
         </g>
       ) : d.type === "attendant" ? (
         <g>

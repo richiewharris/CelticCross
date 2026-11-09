@@ -1,7 +1,7 @@
 // AI players: Novice (random), Casual (rules of thumb), Skilled (static eval + exact duels),
 // Expert (Skilled + determinized Monte Carlo lookahead in drafting and the playing turn).
 
-import { unwillingPair, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
+import { composeHost, unwillingPair, type MonsterDef, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
   applyDecision, cloneCombat, cloneState, debilitated, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
@@ -76,7 +76,12 @@ export class CasualPolicy implements Policy {
       }
       case "place": {
         const spot = d.spot!;
-        if (isHeroSpot(spot)) return argmax(o.map((x) => casualHero(cardOf(V, me, (x as { uid: number }).uid)!.def as HeroDef)));
+        if (isHeroSpot(spot)) return argmax(o.map((x) => {
+          const d0 = cardOf(V, me, (x as { uid: number }).uid)!.def;
+          if (d0.type !== "host") return casualHero(d0 as HeroDef);
+          // Casual joins as many monsters as it can: big numbers
+          return casualHero(composeHost(d0, ((x as { join?: number[] }).join ?? []).map((u) => cardOf(V, me, u)!.def as MonsterDef)));
+        }));
         const h = knownHero(V, quadOf(spot) * 3);
         return argmax(o.map((x) => looks(cardOf(V, me, (x as { uid: number }).uid)!.def as SupportDef, h)));
       }
@@ -304,11 +309,17 @@ export class SkilledPolicy implements Policy {
     if (d.kind === "place") {
       const spot = d.spot!;
       return d.options.map((x) => {
-        const c = cardOf(V, me, (x as { uid: number }).uid)!;
+        const c0 = cardOf(V, me, (x as { uid: number }).uid)!;
+        const join = (x as { join?: number[] }).join ?? [];
+        const W = cloneState(V);
+        let c = c0;
+        if (c0.def.type === "host") {
+          const members = join.map((u) => cardOf(V, me, u)!.def as MonsterDef);
+          c = { uid: c0.uid, def: composeHost(c0.def, members), owner: c0.owner };
+        }
         const k = c.def.id;
         if (cache.has(k)) return cache.get(k)!;
-        const W = cloneState(V);
-        W.players[me].hand = W.players[me].hand.filter((y) => y.uid !== c.uid);
+        W.players[me].hand = W.players[me].hand.filter((y) => y.uid !== c0.uid && !join.includes(y.uid));
         W.board[spot] = c;
         let v: number;
         const eh = enemyHeroSpotOfQuad(quadOf(spot));
@@ -342,7 +353,9 @@ export function determinize(V: State, me: Side, rng: Rng): State {
   const O = D.players[o];
   const pool = O.deckList.slice();
   const drop = (def: CardDef) => { const i = pool.findIndex((x) => x.id === def.id); if (i >= 0) pool.splice(i, 1); };
-  for (const c of D.board) if (c && c.owner === o && c.def.type !== "unknown") drop(c.def);
+  for (const c of D.board) if (c && c.owner === o && c.def.type !== "unknown") {
+    if (c.def.type === "hero" && c.def.host) { drop(c.def.host.def); c.def.host.members.forEach(drop); } else drop(c.def);
+  }
   for (const c of D.quadGeis) if (c && c.owner === o) drop(c.def);
   for (const c of D.quadOath) if (c && c.owner === o) drop(c.def);
   for (const P of D.players) for (const c of P.discard) if (c.owner === o && c.def.type !== "unknown") drop(c.def);
@@ -368,7 +381,13 @@ export function determinize(V: State, me: Side, rng: Rng): State {
       if (D.board[spot]) continue;
       if (isHeroSpot(spot)) needH++; else needS++;
     }
-    for (let i = 0; i < needH && hand.length < handN; i++) { const x = take((y) => y.type === "hero"); if (x) hand.push(mk(x)); }
+    for (let i = 0; i < needH && hand.length < handN; i++) {
+      const x = take((y) => y.type === "hero");
+      if (x) { hand.push(mk(x)); continue; }
+      // a host deck: a host and two monsters to join to it
+      const hst = take((y) => y.type === "host");
+      if (hst) { hand.push(mk(hst)); for (let k = 0; k < 2 && hand.length < handN; k++) { const m = take((y) => y.type === "monster"); if (m) hand.push(mk(m)); } }
+    }
     for (let i = 0; i < needS && hand.length < handN; i++) { const x = take((y) => y.type === "support"); if (x) hand.push(mk(x)); }
   }
   while (hand.length < handN) {

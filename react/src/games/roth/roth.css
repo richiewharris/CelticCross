@@ -15,6 +15,7 @@ body.gm-roth {
   --al-Fomoire: #8a77c0;
   --al-Merrow: #3fa6b8;
   --al-Deorad: #a39684;
+  --al-Sluagh: #7f9a8c;
   --al-Unaligned: #8a857c;
   --font-display: "Uncial Antiqua", "Papyrus", Georgia, serif;
   --font-body: "Spectral", Georgia, "Times New Roman", serif;
@@ -82,6 +83,7 @@ body.gm-roth .card.al-Sidhe { --al: var(--al-Sidhe); }
 body.gm-roth .card.al-Fomoire { --al: var(--al-Fomoire); }
 body.gm-roth .card.al-Merrow { --al: var(--al-Merrow); }
 body.gm-roth .card.al-Deorad { --al: var(--al-Deorad); }
+body.gm-roth .card.al-Sluagh { --al: var(--al-Sluagh); }
 body.gm-roth .card.t-geis { --al: #9b3a33; --rite: #3b0f0b; }
 body.gm-roth .card.t-oath { --al: #b08d55; --rite: #33240e; }
 body.gm-roth .card.t-omen { --al: #5d5aa0; --rite: #1a1840; }
@@ -451,6 +453,7 @@ body.gm-roth .cx-deck { --al: var(--al-Unaligned); display: grid; gap: 16px; bor
 body.gm-roth .cx-deck.al-Ulaid { --al: var(--al-Ulaid); } body.gm-roth .cx-deck.al-Connachta { --al: var(--al-Connachta); }
 body.gm-roth .cx-deck.al-Sidhe { --al: var(--al-Sidhe); } body.gm-roth .cx-deck.al-Fomoire { --al: var(--al-Fomoire); }
 body.gm-roth .cx-deck.al-Merrow { --al: var(--al-Merrow); }
+body.gm-roth .cx-deck.al-Sluagh { --al: var(--al-Sluagh); }
 body.gm-roth .cx-deck-head { display: flex; gap: 16px; align-items: center; }
 body.gm-roth .cx-deck-head h3 { font-size: 1.7rem; margin: 0; }
 body.gm-roth .cx-sigil { width: 76px; height: 76px; flex: none; color: var(--al); background: var(--night-3); border: 2px solid var(--al); border-radius: 50%; padding: 6px; }
@@ -506,6 +509,7 @@ body.gm-roth .b-people svg { width: 18px; height: 18px; color: var(--al, var(--b
 body.gm-roth .b-people.al-Ulaid { --al: var(--al-Ulaid); } body.gm-roth .b-people.al-Connachta { --al: var(--al-Connachta); }
 body.gm-roth .b-people.al-Sidhe { --al: var(--al-Sidhe); } body.gm-roth .b-people.al-Fomoire { --al: var(--al-Fomoire); }
 body.gm-roth .b-people.al-Merrow { --al: var(--al-Merrow); }
+body.gm-roth .b-people.al-Sluagh { --al: var(--al-Sluagh); }
 body.gm-roth .chips button.b-people.cur svg { color: #1a140e; }
 body.gm-roth .b-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 body.gm-roth .b-hint { margin: 0; font-size: .85rem; color: var(--muted); }

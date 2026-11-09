@@ -42,6 +42,12 @@ const ICONS: Record<string, ReactNode> = {
   enemy: <><P d="M4 20 20 4M20 20 4 4" /><P fill d="M20 4l-.8 4-3.2-3.2zM4 4l4 .8L4.8 8z" /></>,
   // turns into: an arrow
   into: <><P d="M3 12h15" /><P fill d="m15 7 6 5-6 5z" /></>,
+  // Spirit (anam): a soul-flame rising in a spiral
+  Spirit: <><P d="M12 21c-4 0-6.5-2.6-6.5-6 0-4.5 4-6 4-10 2.5 1.5 3.5 3.5 3 6 1-1 1.8-2.4 1.8-4 2 2 3.7 4.7 3.7 8 0 3.4-2.5 6-6 6z" /><P d="M12 17.5a2 2 0 1 1 1.8-2.8" /></>,
+  // a host of the Slúagh: three birds in flight
+  host: <><P d="M2 9c2-1.5 3.5-1.5 5 0 1.5-1.5 3-1.5 5 0" /><P d="M7 15c2-1.5 3.5-1.5 5 0 1.5-1.5 3-1.5 5 0" /><P d="M12 5c2-1.5 3.5-1.5 5 0 1.5-1.5 3-1.5 5 0" /></>,
+  // a monster: a horned skull
+  monster: <><P fill d="M12 4c4.4 0 7 3 7 6.8 0 2.4-1.2 4-2.7 4.9V19h-8.6v-3.3C6.2 14.8 5 13.2 5 10.8 5 7 7.6 4 12 4zM9.2 10a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm5.6 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" /><P d="M6 6 3 2M18 6l3-4" /></>,
   rest: <><P d="M4 14h16v4H4zM6 14V9h5v5" /><P d="M15 4h4l-4 5h4" /></>,
   // pierce: a spear passing through a shield
   pierce: <><P d="M10 4.5 15 6.5v5c0 3.5-2.2 6.3-5 7.5-2.8-1.2-5-4-5-7.5v-5z" /><P d="M1.5 12h18" /><P fill d="m18 8.5 4.5 3.5-4.5 3.5z" /></>,
@@ -74,6 +80,8 @@ export function Emblem({ alignment }: { alignment: string }) {
       return <g {...s}><path d="M18 50c12-16 52-16 64 0-12 16-52 16-64 0z" /><circle cx="50" cy="50" r="8" /><circle cx="50" cy="50" r="2" fill="currentColor" /></g>;
     case "Merrow": // the waves and the red cap
       return <g {...s}><path d="M18 58c8-6 14-6 22 0s14 6 22 0 14-6 20 0" /><path d="M18 70c8-6 14-6 22 0s14 6 22 0 14-6 20 0" /><path d="M38 44c0-10 24-10 24 0z" /></g>;
+    case "Sluagh": // the flock of the dead over a grave-mound
+      return <g {...s}><path d="M22 70c8-14 48-14 56 0" /><path d="M26 38c5-4 9-4 12 0 3-4 7-4 12 0" /><path d="M44 26c5-4 9-4 12 0 3-4 7-4 12 0" /><path d="M54 46c5-4 9-4 12 0 3-4 7-4 12 0" /></g>;
     case "Deorad": // the exile's road
       return <g {...s}><path d="M30 76c10-14 30-12 40-40" /><path d="M64 30l6 6 2-10z" /><circle cx="30" cy="76" r="3" /></g>;
     default:

@@ -2,18 +2,20 @@
 // Every hero quality, support special, geis, oath and omen is data here; the engine reads the fields.
 
 export type Element = "Fire" | "Wind" | "Earth" | "Water";
+/** Spirit (anam) is the Slúagh's damage: outside the element wheel, it ignores Shield and steals 1 when it wounds. */
+export type SupportElement = Element | "Spirit";
 export type Kind = "Weapon" | "Feat" | "Ally" | "Word";
-export type Alignment = "Ulaid" | "Connachta" | "Sidhe" | "Fomoire" | "Merrow" | "Deorad";
+export type Alignment = "Ulaid" | "Connachta" | "Sidhe" | "Fomoire" | "Merrow" | "Deorad" | "Sluagh";
 export type SupportAlignment = Alignment | "Unaligned";
-export type Focus = Element | Kind;
+export type Focus = SupportElement | Kind;
 export type Rarity = "common" | "rare" | "legendary";
 
 export const ELEMENTS: Element[] = ["Fire", "Wind", "Earth", "Water"];
-export const FACTIONS = ["ulster", "connacht", "sidhe", "fomoire", "merrow"] as const;
+export const FACTIONS = ["ulster", "connacht", "sidhe", "fomoire", "merrow", "sluagh"] as const;
 export type Faction = (typeof FACTIONS)[number];
 
 /** Fire beats Wind beats Earth beats Water beats Fire. */
-export function beats(a: Element, b: Element): boolean {
+export function beats(a: SupportElement, b: Element): boolean {
   return (
     (a === "Fire" && b === "Wind") ||
     (a === "Wind" && b === "Earth") ||
@@ -21,7 +23,7 @@ export function beats(a: Element, b: Element): boolean {
     (a === "Water" && b === "Fire")
   );
 }
-export function isElement(x: unknown): x is Element {
+export function isElement(x: unknown): x is Element { // the four of the wheel (not Spirit)
   return x === "Fire" || x === "Wind" || x === "Earth" || x === "Water";
 }
 
@@ -62,6 +64,10 @@ export interface HeroDef {
   quality: string;
   tag: string | null;
   ab: HeroAb;
+  /** A Slúagh host as fought: every weakness its monsters and host type bring (weakness is the first of them). */
+  weaknesses?: Element[];
+  /** A Slúagh host as fought: the host card and the monsters joined to it. */
+  host?: { def: HostDef; members: MonsterDef[] };
 }
 /** A champion stands in for a hero at the Ford: same shape as a hero, no Initiative or tag of its own. */
 export interface ChampionDef extends Omit<HeroDef, "type"> {
@@ -78,7 +84,7 @@ export interface SupportDef {
   type: "support";
   id: string;
   name: string;
-  element: Element | null;
+  element: SupportElement | null;
   kind: Kind | null;
   alignment: SupportAlignment;
   rarity: Rarity;
@@ -99,6 +105,45 @@ export interface SupportDef {
   channel?: number;
   /** Set only on a support one of the user's own attendants changed: its primary effect +n. */
   attuned?: number;
+  /** The enemy fighter's next Strike −n. */
+  foeNext?: number;
+  /** The enemy fighter loses n Valour (no Shield stops it). */
+  foeLoss?: number;
+}
+/**
+ * The Slúagh, the host of the unquiet dead, fight as hosts. A host card goes on a hero spot with 2–3 monsters joined
+ * to it from hand; they fight as one fighter whose numbers are the monsters' added together, changed by the host.
+ */
+export interface MonsterDef {
+  type: "monster";
+  id: string;
+  name: string;
+  alignment: "Sluagh";
+  rarity: Rarity;
+  valour: number;
+  /** added to the host's Initiative (may be negative) */
+  init: number;
+  weakness: Element;
+  ab: HeroAb;
+  quality: string;
+}
+export interface HostDef {
+  type: "host";
+  id: string;
+  name: string;
+  alignment: "Sluagh";
+  rarity: Rarity;
+  kind: "hunt" | "prey" | "taboo";
+  /** the host's own Initiative, before its monsters' */
+  init: number;
+  /** Valour added for each monster joined */
+  valourEach: number;
+  /** the weakness every host of this kind carries */
+  weakness: Element;
+  focus: Focus;
+  tag: string;
+  ab: HeroAb;
+  quality: string;
 }
 /** What a geis or an oath forbids. */
 export interface Forbids {
@@ -196,7 +241,7 @@ export interface UnknownDef {
   id: "unknown";
   name: "?";
 }
-export type CardDef = HeroDef | ChampionDef | SupportDef | GeisDef | OathDef | OmenDef | AttendantDef | UnknownDef;
+export type CardDef = HeroDef | ChampionDef | SupportDef | GeisDef | OathDef | OmenDef | AttendantDef | HostDef | MonsterDef | UnknownDef;
 
 export const UNKNOWN: UnknownDef = { type: "unknown", id: "unknown", name: "?" };
 
@@ -250,12 +295,15 @@ export const CHAMPIONS: Record<string, ChampionDef> = {
   elatha: champ("elatha", "Elatha mac Delbaíth", "Fomoire", C, 5, "Water", "Wind", "Golden king: no special quality; he is simply big", {}),
   tethra: champ("tethra", "Tethra", "Fomoire", R, 4, "Water", "Earth", "Sea-crow: when his Strike wounds, Heal 1", { drain: 1 }),
   roane: champ("roane", "The Roane", "Merrow", C, 4, "Water", "Fire", "Seal-hide: Shield 1 when it steps in", { shieldStart: 1 }),
+  // the Slúagh: monsters that stand in for a host
+  banshee: champ("banshee", "The Banshee", "Sluagh", C, 4, "Spirit", "Wind", "Her keening steals: when her Strike wounds, Heal 1", { drain: 1 }),
+  fear_doirich: champ("fear_doirich", "Fear Doirich, the dark man", "Sluagh", R, 5, "Spirit", "Fire", "Lord of the host: his first Strike +1", { firstStrike: 1 }),
   muirdris: champ("muirdris", "The Muirdris", "Merrow", R, 5, "Water", "Earth", "Sea-beast: no Strike against it above 3", { capTaken: 3 }),
 };
 
 // ---------------------------------------------------------------- supports
 const sup = (
-  id: string, name: string, element: Element, kind: Kind, alignment: SupportAlignment, rarity: Rarity,
+  id: string, name: string, element: SupportElement, kind: Kind, alignment: SupportAlignment, rarity: Rarity,
   effects: Effect[], text: string, extra: Partial<SupportDef> = {},
 ): SupportDef => ({ type: "support", id, name, element, kind, alignment, rarity, effects, text, ...extra });
 const S = (n: number): Effect => ({ type: "strike", n });
@@ -309,6 +357,22 @@ export const SUPPORTS: Record<string, SupportDef> = {
   pearl: sup("pearl", "Pearl of the deep", "Earth", "Word", "Merrow", R, [H(2)], "Heal 2"),
   soul_cage: sup("soul_cage", "The soul cage", "Earth", "Ally", "Merrow", R, [S(1)], "Strike 1; if it wounds, Heal 1", { drain: 1 }),
   scuab: sup("scuab", "Scuabtuinne, the wave-sweeper", "Wind", "Ally", "Merrow", R, [S(2)], "Strike 2"),
+
+  // ---- the Slúagh: weaker, and turned against the enemy more than to their own good; Spirit ignores Shield and steals 1
+  cold_touch: sup("cold_touch", "The cold touch", "Spirit", "Feat", "Sluagh", C, [S(1)], "Strike 1 (Spirit)"),
+  keening_dead: sup("keening_dead", "The keening dead", "Spirit", "Word", "Sluagh", C, [S(1)], "Strike 1 (Spirit); the enemy's next Strike −1", { foeNext: 1 }),
+  grave_chill: sup("grave_chill", "Grave-chill", "Water", "Word", "Sluagh", R, [S(1)], "Strike 1; the enemy loses 1 Valour", { foeLoss: 1 }),
+  spine_whip: sup("spine_whip", "The Dullahan's whip", "Spirit", "Weapon", "Sluagh", R, [S(2)], "Strike 2 (Spirit)"),
+  corpse_candle: sup("corpse_candle", "Corpse-candle", "Fire", "Word", "Sluagh", C, [S(1)], "Strike 1; the enemy's next Strike −1", { foeNext: 1 }),
+  death_coach: sup("death_coach", "The cóiste bodhar", "Spirit", "Ally", "Sluagh", R, [S(2)], "Strike 2 (Spirit); your host loses 1 Valour", { selfLoss: 1 }),
+  bone_dust: sup("bone_dust", "Bone-dust", "Earth", "Word", "Sluagh", C, [Sh(1)], "Shield 1"),
+  hungry_grass: sup("hungry_grass", "The hungry grass", "Spirit", "Ally", "Sluagh", C, [S(1)], "Strike 1 (Spirit); Invoke Feast", { invoke: "Feast" }),
+  hunt_horn: sup("hunt_horn", "The horn of the hunt", "Wind", "Ally", "Sluagh", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
+  wail: sup("wail", "The wail", "Wind", "Word", "Sluagh", R, [S(1)], "Strike 1; the enemy loses 1 Valour", { foeLoss: 1 }),
+  grave_dirt: sup("grave_dirt", "Grave-dirt", "Earth", "Weapon", "Sluagh", C, [S(2)], "Strike 2"),
+  harvest: sup("harvest", "The harvest of souls", "Spirit", "Feat", "Sluagh", L, [S(3)], "Strike 3 (Spirit)"),
+  black_mass: sup("black_mass", "The withering", "Spirit", "Word", "Sluagh", C, [S(1)], "Strike 1 (Spirit); the enemy's next Strike −1", { foeNext: 1 }),
+  famine: sup("famine", "Famine-wind", "Wind", "Feat", "Sluagh", C, [S(2)], "Strike 2"),
 
   // ---- the second half of each people's pool (deck building) ----
   // Ulaid: Words at last for Conchobar and Emer, and tricks against the other peoples' geasa
@@ -452,6 +516,28 @@ export const OMENS: Record<string, OmenDef> = {
   o_cruachan: omen("o_cruachan", "Cruachan's plenty", C, "reinforcement", { heal: 1 }, "Your Heals +1"),
 };
 
+// ---------------------------------------------------------------- the Slúagh: hosts and monsters
+const host = (id: string, name: string, rarity: Rarity, kind: HostDef["kind"], init: number, valourEach: number, weakness: Element, focus: Focus, tag: string, ab: HeroAb, quality: string): HostDef =>
+  ({ type: "host", id, name, alignment: "Sluagh", rarity, kind, init, valourEach, weakness, focus, tag, ab, quality });
+export const HOSTS: Record<string, HostDef> = {
+  hunt: host("hunt", "The Hunt", R, "hunt", 2, 0, "Fire", "Spirit", "Night", { strikeAll: 1 }, "The host rides: Strikes +1. Torches drive it off: weak to Fire"),
+  prey: host("prey", "The Prey", C, "prey", 1, 1, "Earth", "Spirit", "Night", { firstHitSoak: 1 }, "The host flees and scatters: +1 Valour for each monster, and the first Strike against it each duel −1. Cold earth holds it: weak to Earth"),
+  taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { drain: 1, foeHealMalus: 1 }, "The host is a curse: when its Strike wounds, Heal 1, and the enemy's Heals −1. It cannot cross running water: weak to Water"),
+};
+const mon = (id: string, name: string, rarity: Rarity, valour: number, init: number, weakness: Element, ab: HeroAb, quality: string): MonsterDef =>
+  ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality });
+export const MONSTERS: Record<string, MonsterDef> = {
+  dullahan: mon("dullahan", "The Dullahan", L, 4, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1"),
+  puca: mon("puca", "The Púca", R, 3, 2, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +2; its first Strike each duel +1"),
+  dearg_due: mon("dearg_due", "The Dearg-due", R, 3, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1"),
+  fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 3, 1, "Earth", { foeHealMalus: 1 }, "The red man: Initiative +1; the enemy's Heals −1"),
+  bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 3, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1"),
+  marbh: mon("marbh", "The restless dead", C, 4, -1, "Fire", {}, "Many and slow: Initiative −1"),
+  each_uisce: mon("each_uisce", "The Each-uisce", R, 4, 1, "Earth", {}, "Water-horse: Initiative +1"),
+  fear_gorta: mon("fear_gorta", "The Fear Gorta", C, 4, -1, "Wind", { foeHealMalus: 1 }, "The hungry man: Initiative −1; the enemy's Heals −1"),
+  bananach: mon("bananach", "The Bánánach", C, 3, 1, "Water", { firstStrike: 1 }, "Shrieker of the air: Initiative +1; its first Strike each duel +1"),
+};
+
 // ---------------------------------------------------------------- attendants
 const att = (id: string, name: string, rarity: Rarity, scope: AttendantDef["scope"], mode: AttendantDef["mode"], spec: { kind?: Kind; toKind?: Kind; from?: Element; to?: Element }, people?: Alignment): AttendantDef => {
   if (mode === "curse") {
@@ -498,7 +584,30 @@ const OMEN_PEOPLE: Record<string, Alignment> = {
 };
 for (const [id, p] of Object.entries(OMEN_PEOPLE)) OMENS[id].people = p;
 
-export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS, ...ATTENDANTS };
+export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS, ...ATTENDANTS, ...HOSTS, ...MONSTERS };
+
+const HERO_AB_SUM: (keyof HeroAb)[] = ["strikeAll", "firstStrike", "vsBig", "kinBonus", "healBonus", "restHeal", "restShield", "shieldStart", "firstHitSoak", "drain", "foeHealMalus", "avenger"];
+/** The fighter a host makes with its monsters: their Valour, Initiative and qualities added up, every weakness kept. */
+export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
+  const ab: HeroAb = {};
+  for (const src of [h.ab, ...members.map((m) => m.ab)]) {
+    for (const k of HERO_AB_SUM) {
+      const v = src[k];
+      if (typeof v === "number") (ab as Record<string, number>)[k] = ((ab as Record<string, number>)[k] ?? 0) + v;
+    }
+    if (src.capTaken !== undefined) ab.capTaken = Math.min(ab.capTaken ?? 99, src.capTaken);
+  }
+  const weaknesses: Element[] = [];
+  for (const w of [h.weakness, ...members.map((m) => m.weakness)]) if (!weaknesses.includes(w)) weaknesses.push(w);
+  const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0);
+  const init = h.init + members.reduce((a, m) => a + m.init, 0);
+  const names = members.map((m) => m.name.replace(/^The /, "")).join(", ");
+  return {
+    type: "hero", id: `${h.id}:${members.map((m) => m.id).join("+")}`, name: members.length ? `${h.name}: ${names}` : h.name,
+    alignment: "Sluagh", rarity: h.rarity, valour: Math.max(1, valour), init, focus: h.focus, weakness: weaknesses[0], weaknesses,
+    quality: [h.quality, ...members.map((m) => `${m.name}: ${m.quality}`)].join(". "), tag: h.tag, ab, host: { def: h, members },
+  };
+}
 
 export function defsFromIds(ids: string[]): CardDef[] {
   return ids.map((id) => {
@@ -511,6 +620,15 @@ export function defsFromIds(ids: string[]): CardDef[] {
 // ---------------------------------------------------------------- the five decks
 // Each: 4 heroes, 2 champions, 9 supports, 3 geasa (1 global), 2 oaths, 4 omens (1 targeted) = 24.
 export const DECK_IDS: Record<Faction, string[]> = {
+  // three hosts, two champions, five monsters, eight supports, two geasa, four omens
+  sluagh: [
+    "hunt", "prey", "taboo",
+    "banshee", "fear_doirich",
+    "dullahan", "puca", "dearg_due", "fear_dearg", "bean_nighe",
+    "cold_touch", "cold_touch", "keening_dead", "spine_whip", "grave_chill", "corpse_candle", "grave_dirt", "hunt_horn",
+    "g_hearth", "g_salmon",
+    "o_sleep", "o_keen", "o_blight", "o_herolight",
+  ],
   ulster: [
     "cu", "conall", "conchobar", "emer",
     "loegaire", "fiacha",
@@ -565,16 +683,18 @@ export const MAX_LEGENDARIES = 2;
 export function unwillingPair(heroAl: string, supAl: string): boolean {
   return (
     (supAl === "Ulaid" && heroAl === "Connachta") || (supAl === "Connachta" && heroAl === "Ulaid") ||
-    (supAl === "Sidhe" && heroAl === "Fomoire") || (supAl === "Fomoire" && heroAl === "Sidhe")
+    (supAl === "Sidhe" && heroAl === "Fomoire") || (supAl === "Fomoire" && heroAl === "Sidhe") ||
+    (supAl === "Sidhe" && heroAl === "Sluagh") || (supAl === "Sluagh" && heroAl === "Sidhe")
   );
 }
 
 // ---------------------------------------------------------------- deck building
 /** The people each faction's pool is drawn from. */
-export const PEOPLE: Record<Faction, Alignment> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow" };
+export const PEOPLE: Record<Faction, Alignment> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow", sluagh: "Sluagh" };
 /** The people of a card, or null when any deck may take it (geasa, oaths, omens, unaligned supports). */
 export function peopleOf(d: CardDef): Alignment | null {
   if (d.type === "hero" || d.type === "champion") return d.alignment === "None" ? null : d.alignment;
+  if (d.type === "host" || d.type === "monster") return "Sluagh";
   if (d.type === "support") return d.alignment === "Unaligned" ? null : d.alignment;
   if (d.type === "omen" || d.type === "attendant") return d.people ?? null;
   return null;
@@ -608,9 +728,13 @@ export function deckErrors(deck: CardDef[]): string[] {
   const errs: string[] = [];
   if (deck.length !== 24) errs.push(`deck has ${deck.length} cards, needs 24`);
   const count = (t: CardDef["type"]) => deck.filter((d) => d.type === t).length;
-  const h = count("hero"), s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion"), at = count("attendant");
+  const hosts = count("host"), mons = count("monster");
+  const h = count("hero") + hosts, s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion"), at = count("attendant");
   if (count("unknown") > 0) errs.push("unknown card");
-  if (h < 4 || h > 6) errs.push(`heroes ${h} (4–6)`);
+  // a host with its monsters fights as a hero: a deck with hosts needs 3 hosts and heroes, and 4–9 monsters
+  if (hosts ? h < 3 || h > 6 : h < 4 || h > 6) errs.push(`heroes ${h} (${hosts ? 3 : 4}–6)`);
+  if (hosts && (mons < 4 || mons > 9)) errs.push(`monsters ${mons} (4–9)`);
+  if (!hosts && mons) errs.push(`monsters ${mons} without a host`);
   if (s < 8 || s > 12) errs.push(`supports ${s} (8–12)`);
   if (g < 2 || g > 6) errs.push(`geasa ${g} (2–6)`);
   if (v > 4) errs.push(`oaths ${v} (0–4)`);
@@ -623,7 +747,7 @@ export function deckErrors(deck: CardDef[]): string[] {
   for (const [id, n] of Object.entries(copies)) {
     const d = ALL_DEFS[id];
     if (!d || d.type === "unknown") continue;
-    const max = d.type === "hero" || d.type === "champion" || d.type === "omen" ? 1 : RARITY_LIMIT[d.rarity];
+    const max = d.type === "hero" || d.type === "champion" || d.type === "omen" || d.type === "host" || d.type === "monster" ? 1 : RARITY_LIMIT[d.rarity];
     if (n > max) errs.push(`${id} x${n} (max ${max})`);
     if (d.rarity === "legendary") legends += n;
   }

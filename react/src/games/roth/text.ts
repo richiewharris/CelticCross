@@ -3,13 +3,13 @@ import type { CardDef, Faction, FighterDef } from "./engine/cards";
 import type { Decision, Option, Side, State } from "./engine/engine";
 
 export const ALIGN: Record<string, string> = {
-  Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Unaligned: "Unaligned", None: "",
+  Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Sluagh: "Slúagh", Unaligned: "Unaligned", None: "",
 };
 export const FACTION_NAME: Record<Faction, string> = {
-  ulster: "Ulster", connacht: "Connacht", sidhe: "the Sídhe", fomoire: "the Fomóire", merrow: "the Merrow",
+  ulster: "Ulster", connacht: "Connacht", sidhe: "the Sídhe", fomoire: "the Fomóire", merrow: "the Merrow", sluagh: "the Slúagh",
 };
 export const FACTION_TITLE: Record<Faction, string> = {
-  ulster: "Ulster", connacht: "Connacht", sidhe: "Sídhe", fomoire: "Fomóire", merrow: "Merrow",
+  ulster: "Ulster", connacht: "Connacht", sidhe: "Sídhe", fomoire: "Fomóire", merrow: "Merrow", sluagh: "Slúagh",
 };
 const RAR: Record<string, string> = { common: "Common", rare: "Rare", legendary: "Legendary" };
 
@@ -62,7 +62,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
   switch (o.t) {
     case "musterOmen": return `Send ${cardName(S, o.uid)} to the Reserve`;
     case "musterReturn": return `Return ${cardName(S, o.uid)} to the Reserve`;
-    case "place": return `Place ${cardName(S, o.uid)}`;
+    case "place": return o.join ? `Place ${cardName(S, o.uid)} with ${o.join.length ? o.join.map((u) => cardName(S, u).replace(/^The /, "")).join(", ") : "no monsters"}` : `Place ${cardName(S, o.uid)}`;
     case "omen": case "late": return o.target !== undefined ? `Turn ${cardName(S, o.uid)} on ${atSpot(S, o.target)}` : `Turn ${cardName(S, o.uid)}`;
     case "lateDone": return "Done turning omens";
     case "bind": {
@@ -94,7 +94,7 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
   switch (o.t) {
     case "musterOmen": return `${who} sent ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
-    case "place": return `${who} placed ${cardName(S, o.uid)} at spot ${d.spot! + 1}.`;
+    case "place": return `${who} placed ${o.join ? optionLabel(S, d, o).replace(/^Place /, "") : cardName(S, o.uid)} at spot ${d.spot! + 1}.`;
     case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${at(S, o.target)}` : ""}.`;
     case "lateDone": return `${who} turned no more omens.`;
     case "bind": return `${who} ${optionLabel(S, d, o).replace(/^Bind/, "bound").replace(/^Lay/, "laid")}.`;

@@ -9,12 +9,14 @@ import { faceLines } from "../faceText";
 import { CardArt, Ogham } from "./Art";
 import { Icon } from "./Icons";
 
-const ELEMENTS = new Set(["Fire", "Wind", "Earth", "Water"]);
+const ELEMENTS = new Set(["Fire", "Wind", "Earth", "Water", "Spirit"]);
 const kindIcon = (d: CardDef): string => {
   switch (d.type) {
     case "hero": return "hero";
     case "champion": return "champion";
     case "support": return d.kind ?? "Weapon";
+    case "host": return "host";
+    case "monster": return "monster";
     default: return d.type === "unknown" ? "omen" : d.type;
   }
 };
@@ -34,6 +36,8 @@ export function subtype(d: CardDef): string {
     case "geis": return d.scope === "global" ? "Geis on every hero" : "Geis laid on one hero";
     case "oath": return "Oath sworn on your hero";
     case "omen": return d.scope === "global" ? "Omen over the whole field" : d.scope === "targeted" ? "Omen on one hero" : "Omen for your heroes";
+    case "host": return `Host of the Slúagh · the ${d.kind}`;
+    case "monster": return "Monster of the Slúagh";
     case "attendant": return `Attendant${d.people ? ` ${PEOPLE[d.people]}` : ""} · ${d.scope === "global" ? "every hero" : d.scope === "yours" ? "your heroes" : "the enemy"}`;
     default: return "";
   }
@@ -99,6 +103,10 @@ function Tokens({ d }: { d: CardDef }) {
       return <span className="tok tok-scope" title={d.scope === "global" ? "Every hero" : d.scope === "targeted" ? "One hero" : "Your heroes"}><Icon name={d.scope} /></span>;
     case "oath":
       return <span className="tok tok-scope" title="Sworn on your own hero"><Icon name="yours" /></span>;
+    case "host":
+      return <><Token kind="init" n={d.init} title={`Initiative ${d.init}, plus its monsters'`} />{d.valourEach ? <Token kind="valour" n={d.valourEach} title={`+${d.valourEach} Valour for each monster`} /> : null}</>;
+    case "monster":
+      return <><Token kind="valour" n={d.valour} title={`Valour ${d.valour}`} /><Token kind="init" n={d.init} title={`Initiative ${d.init >= 0 ? "+" : ""}${d.init}`} /></>;
     case "attendant":
       return <span className="tok tok-scope" title={d.scope === "global" ? "Every hero" : d.scope === "yours" ? "Your heroes" : "The enemy's heroes"}><Icon name={d.scope === "enemy" ? "enemy" : d.scope} /></span>;
     default:
@@ -110,7 +118,7 @@ function FighterChips({ f }: { f: FighterDef }) {
   return (
     <span className="cf-chips">
       {f.focus ? <span className="chip focus" title={`Focus: ${f.focus}. Supports of this element or kind get +1.`}>Focus <Icon name={f.focus} className={`ink-${f.focus}`} /><b>{f.focus}</b></span> : null}
-      {f.weakness ? <span className="chip weak" title={`Weak to ${f.weakness}: enemy ${f.weakness} Strikes get +1.`}>Weak to <Icon name={f.weakness} className={`ink-${f.weakness}`} /><b>{f.weakness}</b></span> : null}
+      {(f.weaknesses ?? (f.weakness ? [f.weakness] : [])).map((w) => <span key={w} className="chip weak" title={`Weak to ${w}: enemy ${w} Strikes get +1.`}>Weak to <Icon name={w} className={`ink-${w}`} /><b>{w}</b></span>)}
     </span>
   );
 }

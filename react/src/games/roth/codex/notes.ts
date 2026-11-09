@@ -12,6 +12,26 @@ export interface DeckNote {
 }
 
 export const DECK_NOTES: Record<Faction, DeckNote> = {
+  sluagh: {
+    people: "The host of the unquiet dead, that rides the night wind from the west",
+    motto: "A monster deck. No heroes: **hosts** of two or three monsters fight as one, and their blows are **Spirit**, which no Shield stops and which feeds the host.",
+    plan: [
+      "Place a **host** on a hero spot and join **2 or 3 monsters** from your hand to it. The host fights as one: its Valour is the monsters' added together, its Initiative the host's plus theirs, and it carries **every weakness** they bring.",
+      "Two monsters make a quick, lean host; three make a big one with more Valour and more weaknesses. The **Hunt** strikes harder, the **Prey** is tougher, the **Taboo** drinks life and spoils the enemy's Heals.",
+      "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
+      "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too.",
+      "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
+    ],
+    watch: [
+      "Big hosts carry many weaknesses: an enemy who brings the right element hits them for **+1** again and again.",
+      "Hosts count as printed with their combined Valour: the tathlum, Scáthach's teaching and the Geis of the giant's portion all bite.",
+      "The Aos Sídhe and the Slúagh are **Unwilling**: neither will use the other's supports.",
+    ],
+    roles: {},
+    groups: {
+      support: "Spirit blows that steal, and curses that weaken the enemy's next Strike or take Valour outright.",
+    },
+  },
   ulster: {
     people: "The Red Branch of Emain Macha",
     motto: "Fast, fiery and hard to stop. Ulster hits **through Shield** and tries to win each duel before the enemy settles.",

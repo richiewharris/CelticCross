@@ -7,7 +7,7 @@ import { faceLines } from "../../faceText";
 
 describe("pools", () => {
   it("doubles each people's supports, and the shared geasa and oaths", () => {
-    for (const f of FACTIONS) {
+    for (const f of FACTIONS.filter((x) => x !== "sluagh")) { // the Slúagh are a smaller monster deck
       const own = poolOf(f).filter((d) => d.type === "support" && d.alignment !== "Unaligned");
       expect(own.length, f).toBeGreaterThanOrEqual(17);
       const starter = new Set(DECKS[f].filter((d) => d.type === "support").map((d) => d.id));

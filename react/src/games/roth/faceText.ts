@@ -1,7 +1,7 @@
 // Display-only words for the card faces: a short ability name, plain reminder text and, for cards with room,
 // a line of lore. Nothing here changes a rule; each entry restates what engine/cards.ts and engine/engine.ts do.
 // Markup: **word** is a keyword (bold), {name} is an inline icon from Icons.tsx.
-import { HEROES, type AttendantDef, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
+import { HEROES, type AttendantDef, type HeroAb, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
 
 export interface Face {
   /** The ability's name, set as a small heading above the text. */
@@ -50,6 +50,8 @@ export const FACE: Record<string, Face> = {
   elatha: { ability: "Golden king", text: "No special quality: he is simply big." },
   tethra: { ability: "Sea-crow", text: "When his Strike wounds, {heal} **Heal 1**." },
   roane: { ability: "Seal-hide", text: "Steps in with {shield} **Shield 1**." },
+  banshee: { ability: "The keen", text: "When her Strike wounds, {heal} **Heal 1**." },
+  fear_doirich: { ability: "Lord of the host", text: "His first Strike after he steps in **+1**." },
   muirdris: { ability: "Sea-beast", text: "No Strike against it can be more than **3**." },
 
   // supports
@@ -144,6 +146,34 @@ export const FACE: Record<string, Face> = {
   crane_bag: { lore: "The crane-bag held every treasure of the sea." },
   roane_lament: { lore: "The seal-folk mourn on the strand at night." },
 
+  // the Slúagh
+  hunt: { lore: "The host rides the night wind, and woe to the traveller on the road." },
+  prey: { lore: "Hunted itself, the host scatters like starlings and gathers again." },
+  taboo: { lore: "Name it, and it comes: the host is a curse laid on a place." },
+  dullahan: { lore: "He carries his head under his arm, and where he stops, a man dies." },
+  puca: { lore: "Horse, goat or hare: the púca is never what it seems." },
+  dearg_due: { lore: "She rises from her grave to drink from the living." },
+  fear_dearg: { lore: "The red man asks to sit by your fire. Refuse him at your peril." },
+  bean_nighe: { lore: "She washes the shirts of those about to die." },
+  marbh: { lore: "The restless dead walk in their hundreds." },
+  each_uisce: { lore: "Mount the water-horse, and it carries you into the lake." },
+  fear_gorta: { lore: "The hungry man begs at the door in famine years." },
+  bananach: { lore: "The bánánach shriek in the air over the battle." },
+  cold_touch: { lore: "A hand on the shoulder, colder than the grave." },
+  keening_dead: { lore: "They keen for the living who are about to join them." },
+  grave_chill: { lore: "The cold of the grave seeps into the bones." },
+  spine_whip: { lore: "The Dullahan's whip is a human spine." },
+  corpse_candle: { lore: "A light over the bog that leads the unwary astray." },
+  death_coach: { lore: "The silent coach comes for a soul, and will not leave empty." },
+  bone_dust: { lore: "Ground bones, scattered at the threshold." },
+  hungry_grass: { lore: "Step on the hungry grass and you'll never be full again." },
+  hunt_horn: { lore: "The horn sounds and the host takes up the chase." },
+  wail: { lore: "A cry that stops the heart." },
+  grave_dirt: { lore: "A fistful of earth from a fresh grave." },
+  harvest: { lore: "At Samhain the host gathers the souls of the year's dead." },
+  black_mass: { lore: "Everything it touches withers." },
+  famine: { lore: "The famine wind blows the crops black." },
+
   // attendants
   a_apprentice: { lore: "He works the bellows, and the blade comes out burning." },
   a_fordkeeper: { lore: "She tempers every edge in the river." },
@@ -203,6 +233,7 @@ const EFF_WORD: Record<Effect["type"], string> = { strike: "Strike", heal: "Heal
 /** The support's effects as words, built from its numbers: "{strike} **Strike 2**, ignoring Shield". */
 export function effectLine(d: SupportDef): string {
   const parts = d.effects.map((e) => `{${e.type}} **${EFF_WORD[e.type]} ${e.n}**`);
+  if (d.element === "Spirit") return parts.join(" and ") + " of **Spirit**: it ignores Shield and steals {heal} **1** when it wounds.";
   return parts.join(" and ") + (d.pierce ? ", **ignoring Shield**." : ".");
 }
 const KIND_PLURAL: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };
@@ -247,6 +278,8 @@ function autoSupport(d: SupportDef): Face {
   if (d.forHero) { const h = HEROES[d.forHero.id]; const n = h ? h.name.replace(/,.*$/, "") : d.forHero.id; return { ability: `${n}'s own`, text: `**Strike ${d.forHero.n}** when ${n} uses it.` }; }
   if (d.invoke) return { ability: `Invoke ${d.invoke}`, text: invoke(d.invoke) };
   if (d.nextStrike) return { ability: "Follow-through", text: NEXT };
+  if (d.foeNext) return { ability: "Wither", text: `The enemy's next Strike **−${d.foeNext}**.` };
+  if (d.foeLoss) return { ability: "Drain", text: `The enemy loses **${d.foeLoss} Valour**; no Shield stops it.` };
   if (d.drain) return { ability: "Drink deep", text: "If its Strike wounds, {heal} **Heal 1**." };
   if (d.firstBonus) return { ability: "Opening blow", text: `**+${d.firstBonus}** if no support has been used yet this duel.` };
   if (d.vsBig) return { ability: "Giant-slayer", text: `**+${d.vsBig}** against ${BIG}.` };
@@ -261,6 +294,18 @@ function autoGeis(d: GeisDef): Face {
   return {};
 }
 
+/** A fighter's qualities in plain words, from its numbers (used for the Slúagh's hosts and monsters). */
+export function abLine(ab: HeroAb): string {
+  const out: string[] = [];
+  if (ab.strikeAll) out.push(`Strikes **+${ab.strikeAll}**.`);
+  if (ab.firstStrike) out.push(`First Strike each duel **+${ab.firstStrike}**.`);
+  if (ab.drain) out.push(`When its Strike wounds, {heal} **Heal ${ab.drain}**.`);
+  if (ab.foeHealMalus) out.push(`The enemy's Heals **−${ab.foeHealMalus}**.`);
+  if (ab.firstHitSoak) out.push(`The first Strike against it each duel **−${ab.firstHitSoak}**.`);
+  if (ab.shieldStart) out.push(`Starts each duel with {shield} **Shield ${ab.shieldStart}**.`);
+  if (ab.capTaken !== undefined) out.push(`No Strike against it above **${ab.capTaken}**.`);
+  return out.join(" ");
+}
 const KP: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };
 /** An attendant's effect, from its data. */
 export function attendantLine(d: AttendantDef): string {
@@ -284,7 +329,21 @@ export function faceLines(d: CardDef): FaceLine[] {
   const push = (kind: FaceLine["kind"], text?: string) => { if (text) out.push({ kind, text }); };
   switch (d.type) {
     case "hero": case "champion":
+      if (d.type === "hero" && d.host) {
+        push("ability", d.host.def.name);
+        push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}`);
+        break;
+      }
       push("ability", f.ability); push("text", f.text ?? d.quality); break;
+    case "host":
+      push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
+      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**.`);
+      push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one.");
+      push("lore", f.lore); break;
+    case "monster":
+      push("ability", d.quality.split(":")[0]);
+      push("text", `${abLine(d.ab) || "No quality of its own."} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
+      push("lore", f.lore); break;
     case "support":
       push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); break;
     case "geis":

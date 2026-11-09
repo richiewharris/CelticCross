@@ -4,8 +4,8 @@
 // Spots are 0-based here: index i = spot i+1. Heroes at 0,3,6,9. P1 owns 0–5, P2 owns 6–11.
 
 import {
-  beats, isElement, unwillingPair, ELEMENTS, UNKNOWN,
-  type CardDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
+  beats, composeHost, isElement, unwillingPair, ELEMENTS, UNKNOWN,
+  type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { Rng } from "./rng";
 
@@ -149,7 +149,7 @@ export type DuelMode = "normal" | "break" | "ignore";
 export type Option =
   | { t: "musterOmen"; uid: number }
   | { t: "musterReturn"; uid: number }
-  | { t: "place"; uid: number }
+  | { t: "place"; uid: number; join?: number[] }
   | { t: "omen"; uid: number; target?: number }
   | { t: "bind"; uid: number }
   | { t: "supplant"; uid: number }
@@ -328,22 +328,27 @@ const countType = (cs: Card[], t: string) => { let n = 0; for (const c of cs) if
 function musterFetch(S: State, p: Side): number {
   const P = S.players[p];
   let taken = 0;
-  const need = (t: "hero" | "support", min: number) => {
-    let miss = min - countType(P.hand, t);
+  // a host counts as a hero for the Muster
+  const is = (c: Card, t: string) => c.def.type === t || (t === "hero" && c.def.type === "host");
+  const need = (t: "hero" | "support" | "monster", min: number) => {
+    let miss = min - P.hand.filter((c) => is(c, t)).length;
     for (const src of [P.reserve, P.deck]) {
       for (let i = 0; i < src.length && miss > 0; ) {
-        if (src[i].def.type === t) { P.hand.push(src.splice(i, 1)[0]); miss--; taken++; } else i++;
+        if (is(src[i], t)) { P.hand.push(src.splice(i, 1)[0]); miss--; taken++; } else i++;
       }
     }
   };
   need("hero", 2);
   need("support", 4);
+  if (hostDeck(P)) need("monster", 4);
   return taken;
 }
+const hostDeck = (P: PlayerState) => P.deckList.some((d) => d.type === "host");
 function musterReturnLegal(P: PlayerState, c: Card): boolean {
-  const h = countType(P.hand, "hero") - (c.def.type === "hero" ? 1 : 0);
+  const h = countType(P.hand, "hero") + countType(P.hand, "host") - (c.def.type === "hero" || c.def.type === "host" ? 1 : 0);
   const s = countType(P.hand, "support") - (c.def.type === "support" ? 1 : 0);
-  return h >= 2 && s >= 4;
+  const m = countType(P.hand, "monster") - (c.def.type === "monster" ? 1 : 0);
+  return h >= 2 && s >= 4 && (!hostDeck(P) || m >= 4);
 }
 function musterStep(S: State): Decision | null {
   while (S.phase === "muster") {
@@ -387,9 +392,34 @@ function draftDecision(S: State): Decision | null {
   const p = S.sub;
   const spot = draftSpot(S.step, p);
   const hero = isHeroSpot(spot);
-  const options = S.players[p].hand.filter((c) => c.def.type === (hero ? "hero" : "support")).map((c) => ({ t: "place" as const, uid: c.uid }));
+  const hand = S.players[p].hand;
+  const options: Option[] = hand.filter((c) => c.def.type === (hero ? "hero" : "support")).map((c) => ({ t: "place" as const, uid: c.uid }));
+  if (hero) {
+    // a Slúagh host goes down with 2 or 3 of the monsters in hand joined to it (all of them, if fewer than 2)
+    const mons = hand.filter((c) => c.def.type === "monster");
+    const seen = new Set<string>();
+    for (const h of hand) {
+      if (h.def.type !== "host") continue;
+      for (const join of joinSets(mons)) {
+        const key = h.def.id + ":" + join.map((c) => c.def.id).sort().join("+");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        options.push({ t: "place", uid: h.uid, join: join.map((c) => c.uid) });
+      }
+    }
+  }
   if (options.length === 0) { advanceDraft(S); return null; } // cannot happen after a legal muster
   return { kind: "place", player: p, options, spot };
+}
+/** The ways to join monsters to a host: every set of 2 or 3, or all of them when there are fewer than 2. */
+export function joinSets(mons: Card[]): Card[][] {
+  if (mons.length < 2) return [mons];
+  const out: Card[][] = [];
+  for (let i = 0; i < mons.length; i++) for (let j = i + 1; j < mons.length; j++) {
+    out.push([mons[i], mons[j]]);
+    for (let k = j + 1; k < mons.length; k++) out.push([mons[i], mons[j], mons[k]]);
+  }
+  return out;
 }
 function advanceDraft(S: State) {
   if (S.sub === 0) S.sub = 1;
@@ -725,7 +755,7 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) n += 1;
-    if (s.element && effWeakness(S, b, e).includes(s.element)) n += 1;
+    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) n += 1;
   }
   for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
@@ -762,7 +792,7 @@ export function effSupport(S: State, a: Side, s: SupportDef): SupportDef {
 }
 /** Side p's fighter's weaknesses: its printed one, plus one for each Curse attendant in reach. */
 export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
-  const w: Element[] = f.weakness ? [f.weakness] : [];
+  const w: Element[] = f.weaknesses ? f.weaknesses.slice() : f.weakness ? [f.weakness] : [];
   for (const c of S.attendants ?? []) {
     const d = c.def;
     if (d.type !== "attendant" || d.mode !== "curse") continue;
@@ -781,12 +811,15 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
     const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, s.drain ?? 0);
+    // Spirit (anam): ignores Shield and steals 1 when it wounds
+    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || s.element === "Spirit", (s.drain ?? 0) + (s.element === "Spirit" ? 1 : 0));
     else if (eff.type === "heal") heal(S, C, a, n);
     else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
   }
   if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
   if (s.nextStrike) C.nextStrike[a] += s.nextStrike;
+  if (s.foeNext) C.nextStrike[b] -= s.foeNext;
+  if (s.foeLoss) C.valour[b] -= s.foeLoss;
   if (s.selfLoss) C.valour[a] -= s.selfLoss;
   if (s.cathbad) C.cathbad[a] = true;
 }
@@ -960,7 +993,13 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (!c) return "card not in hand";
       const spot = draftSpot(S.step, p);
       if (S.board[spot]) return "spot occupied";
-      if (isHeroSpot(spot) ? c.def.type !== "hero" : c.def.type !== "support") return "wrong card type for spot";
+      if (isHeroSpot(spot) ? c.def.type !== "hero" && c.def.type !== "host" : c.def.type !== "support") return "wrong card type for spot";
+    if (c.def.type === "host") {
+      const mons = P.hand.filter((x) => x.def.type === "monster");
+      const join = o.join ?? [];
+      if (new Set(join).size !== join.length || join.some((u) => !mons.some((m) => m.uid === u))) return "join only monsters from your hand";
+      if (mons.length >= 2 ? join.length < 2 || join.length > 3 : join.length !== mons.length) return "a host takes 2 or 3 monsters";
+    } else if (o.join && o.join.length) return "only a host takes monsters";
       return null;
     }
     case "swear": {
@@ -1097,7 +1136,12 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       return;
     case "place": {
       const spot = draftSpot(S.step, p);
-      const c = removeFrom(P.hand, o.uid);
+      let c = removeFrom(P.hand, o.uid);
+      if (c.def.type === "host") {
+        // the host and its monsters become one fighter on the hero spot (it keeps the host card's uid)
+        const members = (o.join ?? []).map((u) => removeFrom(P.hand, u).def as MonsterDef);
+        c = { uid: c.uid, def: composeHost(c.def, members), owner: c.owner };
+      }
       S.board[spot] = c;
       if (st) st.placed.push({ side: p, id: c.def.id, how: "draft" });
       if (S.rules.blindHeroes && isHeroSpot(spot) && p === 0) S.hiddenSpots.push(spot);

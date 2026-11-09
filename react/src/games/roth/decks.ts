@@ -39,7 +39,9 @@ export const maxCopies = (d: CardDef) =>
 
 /** The type ranges, in the order the builder lists them. */
 export const RANGES: { type: Exclude<CardDef["type"], "unknown">; title: string; min: number; max: number }[] = [
-  { type: "hero", title: "Heroes", min: 4, max: 6 },
+  { type: "hero", title: "Heroes", min: 0, max: 6 },
+  { type: "host", title: "Hosts", min: 0, max: 3 },
+  { type: "monster", title: "Monsters", min: 0, max: 9 },
   { type: "champion", title: "Champions", min: 0, max: 2 },
   { type: "support", title: "Supports", min: 8, max: 12 },
   { type: "geis", title: "Geasa", min: 2, max: 6 },
@@ -65,7 +67,7 @@ export function deckProblems(deck: CardDef[]): string[] {
   return deckErrors(deck).map((e) => {
     let m: RegExpMatchArray | null;
     if ((m = e.match(/^deck has (\d+) cards/))) return `${m[1]} cards: a deck needs exactly 24.`;
-    if ((m = e.match(/^(heroes|supports|geasa|oaths|champions|omens|attendants) (\d+) \((\d+)–(\d+)\)/))) return `${m[2]} ${m[1]}: needs ${m[3]}–${m[4]}.`;
+    if ((m = e.match(/^(heroes|supports|geasa|oaths|champions|omens|attendants|monsters) (\d+) \((\d+)–(\d+)\)/))) return `${m[2]} ${m[1]}: needs ${m[3]}–${m[4]}.`;
     if ((m = e.match(/^(\w+) x(\d+) \(max (\d+)\)/))) return `${ALL_DEFS[m[1]]?.name ?? m[1]}: ${m[2]} copies, at most ${m[3]}.`;
     if ((m = e.match(/^legendaries (\d+)/))) return `${m[1]} legendary cards: at most ${MAX_LEGENDARIES}.`;
     if ((m = e.match(/^hero alignments (.*) \(max 2\)/))) return `Heroes from ${m[1].split(",").length} peoples: at most 2.`;
