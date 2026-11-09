@@ -1,6 +1,6 @@
 # The games, in React
 
-A React + TypeScript rebuild of the whole collection: Monsiv, Fidchell, Celtic Cross Lock (current and classic), Fiche, Cnoc, Cnoc Mór, Fidchell of Cups and Goldmines River, plus the front page and a component playground. This is the
+A React + TypeScript rebuild of the whole collection: Monsiv, Fidchell, Celtic Cross Lock (current and classic), Fiche, Cnoc, Cnoc Mór, Fidchell of Cups and Goldmines River, plus the front page and a component playground. Roth Catha, a card game, is an owner-only preview (see Private games below). This is the
 live site: the build is published to the repo root, which GitHub Pages serves.
 
 ## Commands
@@ -8,7 +8,7 @@ live site: the build is published to the repo root, which GitHub Pages serves.
 ```sh
 npm install
 npm run dev           # live-reloading dev server: #/, #/<game>, #/playground
-npm test              # 540 engine tests across the games (rules, AI, generators, puzzles, odds)
+npm test              # 728 tests across the games (rules, AI, generators, puzzles, odds)
 npm run sim -- --games 50 --host 3 --si 3        # Cnoc self-play on the same engine
 npx tsx sim/<game>-sim.ts --help                  # the other games' simulators
 npx tsx sim/finished-game.ts > game.json          # a finished game, for testing the review
@@ -46,3 +46,14 @@ The engine has no React or DOM in it, so the game, the tests and the simulator a
 exactly the same rules. Each game's stylesheet is scoped under `body.gm-<id>` (see
 `scripts/scope-css.mjs`), so games keep their own look side by side. To add a game, follow
 [PORTING.md](PORTING.md) and add an entry to `src/games/registry.ts`.
+
+## Private games
+
+A game with `private: true` in `src/games/registry.ts` is listed, and its page opens, only for the site's
+owner signed in with Google (`src/online/owner.ts` matches a SHA-256 hash of the owner's email, so the
+address isn't in the code). Everyone else gets a "Private page" notice. This only hides the game: its code
+still ships with the site and sits in the repository. To try it locally, open
+`http://localhost:5173/?online=local&owner#/roth` and press "Sign in with Google" on the notice.
+
+Roth Catha (`src/games/roth/`): the engine and computer players are shared with the simulator in
+`sim/roth/` (balance runs, puzzle generation); see `sim/roth/NOTES.md`.

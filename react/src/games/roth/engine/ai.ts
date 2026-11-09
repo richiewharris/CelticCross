@@ -3,7 +3,7 @@
 
 import { unwillingPair, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
-  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, fighter, forbidsSupport, heroAt, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
+  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
 import { Rng } from "./rng";

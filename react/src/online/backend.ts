@@ -3,7 +3,7 @@
 // Open the site with ?online=local to use it.
 import type { OnlineDoc, OnlineGameSummary, OnlineResult, SeatId } from "./types";
 
-export interface Account { uid: string; name: string | null; anonymous: boolean }
+export interface Account { uid: string; name: string | null; anonymous: boolean; email?: string | null }
 
 export interface OnlineBackend {
   kind: "firebase" | "local";

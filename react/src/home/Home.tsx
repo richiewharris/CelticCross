@@ -1,7 +1,8 @@
 import "./home.css";
 import { GameScope } from "../kit/GameScope";
 import { useEffect, useState } from "react";
-import { GAMES } from "../games/registry";
+import { visibleGames } from "../games/registry";
+import { useIsOwner } from "../online/owner";
 import { fetchPlayed } from "../online/analytics";
 import { isMyTurn, useMyGames } from "../online/useMyGames";
 
@@ -15,7 +16,8 @@ export function Home() {
   const mine = useMyGames(false);
   const myMove = mine.games.filter(g => isMyTurn(g, mine.uid)).length;
   const live = mine.games.filter(g => g.doc.status !== "done").length;
-  const featured = GAMES.filter(g => g.featured), more = GAMES.filter(g => !g.featured);
+  const games = visibleGames(useIsOwner());
+  const featured = games.filter(g => g.featured), more = games.filter(g => !g.featured);
   return (
     <GameScope id="home">
       <div className="home">

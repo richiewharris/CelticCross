@@ -15,6 +15,8 @@ export interface GameEntry {
   facts?: string[];
   /** Shown as a large card on the home page; the rest go under "Also in the collection". */
   featured?: boolean;
+  /** Only the site's owner, signed in with Google, sees it (see online/owner.ts). */
+  private?: boolean;
   Page: LazyExoticComponent<ComponentType>;
   Playground: LazyExoticComponent<ComponentType>;
 }
@@ -70,6 +72,15 @@ export const GAMES: GameEntry[] = [
     blurb: "Pan a Wicklow stream for gold without losing it over the lip.",
     Page: lazy(() => import("./goldmines/index")), Playground: lazy(() => import("./goldmines/Playground")),
   },
+  {
+    id: "roth", title: "Roth Catha", say: "(roh KAH-ha)", kicker: "Cards · vs computer · private preview", image: "roth-catha.jpg", private: true,
+    blurb: "The wheel of battle: an Ulster Cycle card game on a round board, with five decks, four computer levels and puzzles. Private preview.",
+    alt: "A round board divided into four quadrants, each with a hero card and two support cards, bronze rim on a dark ground.",
+    facts: ["5 decks", "4 computer levels", "21 puzzles"],
+    Page: lazy(() => import("./roth/index")), Playground: lazy(() => import("./roth/Playground")),
+  },
 ];
 
 export const gameById = (id: string) => GAMES.find(g => g.id === id);
+/** The games to list: private ones only for the owner. */
+export const visibleGames = (owner: boolean | undefined) => GAMES.filter(g => !g.private || owner === true);

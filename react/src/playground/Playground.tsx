@@ -2,13 +2,15 @@
 import { Suspense, useState } from "react";
 import { Segmented } from "../kit/Segmented";
 import { useStoredState } from "../kit/useStoredState";
-import { GAMES } from "../games/registry";
+import { visibleGames } from "../games/registry";
+import { useIsOwner } from "../online/owner";
 
 type Theme = "auto" | "light" | "dark";
 
 export function Playground() {
   const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || "auto");
   const [id, setId] = useStoredState("playground-game", "cnoc");
+  const GAMES = visibleGames(useIsOwner());
   const game = GAMES.find(g => g.id === id) ?? GAMES[0];
   const setThemeAttr = (t: Theme) => {
     setTheme(t);

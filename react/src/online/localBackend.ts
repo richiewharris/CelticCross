@@ -2,6 +2,7 @@
 // BroadcastChannel. Each tab is a different player (its id lives in sessionStorage), so two tabs
 // can play each other. Used with ?online=local and by the tests.
 import { OnlineError, type OnlineBackend } from "./backend";
+import { LOCAL_OWNER_EMAIL } from "./owner";
 import type { OnlineDoc } from "./types";
 
 const KEY = "online-local-games";
@@ -29,11 +30,16 @@ export function localBackend(): OnlineBackend {
     onAccount(cb) {
       const uid = sessionStorage.getItem("online-local-uid");
       const name = sessionStorage.getItem("online-local-name");
-      queueMicrotask(() => cb(uid ? { uid, name, anonymous: !name } : null));
+      const email = sessionStorage.getItem("online-local-email");
+      queueMicrotask(() => cb(uid ? { uid, name, anonymous: !name, email } : null));
       return () => {};
     },
-    async signInWithGoogle() { sessionStorage.setItem("online-local-name", "Local player"); },
-    async signOut() { sessionStorage.removeItem("online-local-name"); },
+    async signInWithGoogle() {
+      sessionStorage.setItem("online-local-name", "Local player");
+      // ?owner in the address signs in as the site's owner, to test owner-only pages locally
+      if (new URLSearchParams(location.search).has("owner")) sessionStorage.setItem("online-local-email", LOCAL_OWNER_EMAIL);
+    },
+    async signOut() { sessionStorage.removeItem("online-local-name"); sessionStorage.removeItem("online-local-email"); },
     async knownUid() { return sessionStorage.getItem("online-local-uid"); },
     async offerRematch(id, uid, next) {
       update(id, d => {

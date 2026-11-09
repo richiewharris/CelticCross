@@ -52,7 +52,7 @@ export function firebaseBackend(): OnlineBackend {
   return {
     kind: "firebase",
     onAccount(cb) {
-      return onAuthStateChanged(auth, u => cb(u ? { uid: u.uid, name: u.displayName ?? u.email ?? null, anonymous: u.isAnonymous } : null));
+      return onAuthStateChanged(auth, u => cb(u ? { uid: u.uid, name: u.displayName ?? u.email ?? null, anonymous: u.isAnonymous, email: u.email } : null));
     },
     async signInWithGoogle() {
       const provider = new GoogleAuthProvider();

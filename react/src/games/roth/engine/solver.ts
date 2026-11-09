@@ -21,7 +21,7 @@ export function firstDuelLeaf(C: CombatState, me: Side): number {
 }
 
 /** Solver options are the engine's options, with guest variants reduced to one guest and only when hurt. */
-function solverOptions(S: State, C: CombatState, opts: Option[], actor: Side): number[] {
+function solverOptions(_S: State, C: CombatState, opts: Option[], actor: Side): number[] {
   const out: number[] = [];
   let guestUid = -2;
   const hurt = C.valour[actor] < C.cap[actor];

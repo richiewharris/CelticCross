@@ -49,3 +49,6 @@
 }
 .yg-link { display: inline-flex; align-items: center; gap: 6px; }
 .yg-badge { display: inline-grid; place-items: center; min-width: 1.4em; height: 1.4em; padding: 0 5px; border-radius: 999px; background: #c0533d; color: #fff; font-size: .75rem; font-weight: 700; line-height: 1; }
+
+.private-gate { max-width: 34rem; margin: 3rem auto; padding: 0 16px; display: grid; gap: 12px; text-align: center; }
+.private-gate h1 { margin: 0; font-family: "Uncial Antiqua", Georgia, serif; font-weight: 400; }

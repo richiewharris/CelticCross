@@ -7,11 +7,11 @@
 import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
-import { ALL_DEFS, DECKS, type CardDef } from "./cards";
-import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "./engine";
-import { makePolicy } from "./ai";
-import { hashSeed, Rng } from "./rng";
-import { traceMatch } from "./trace";
+import { ALL_DEFS, DECKS, type CardDef } from "../../src/games/roth/engine/cards";
+import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
+import { makePolicy } from "../../src/games/roth/engine/ai";
+import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
+import { traceMatch } from "../../src/games/roth/engine/trace";
 
 // ---------------------------------------------------------------- rows and records
 interface RowSpec {

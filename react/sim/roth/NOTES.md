@@ -1,7 +1,8 @@
 # Roth Catha simulator
 
 A rules engine and four computer players (Novice, Casual, Skilled, Expert) for the Roth Catha
-draft rules, used to playtest skill, seat and deck balance and rule variants.
+draft rules, used to playtest skill, seat and deck balance and rule variants. The engine lives in
+`src/games/roth/engine/` (shared with the game page); its tests run with `npm test`.
 
 Second draft: five faction decks (Ulster, Connacht, Sídhe, Fomóire, Merrow), card rarity, heroes with
 their own Valour (3–6), oaths, modifying geasa, and a wounds tie-break. Every card is data in `cards.ts`;
@@ -14,7 +15,9 @@ npx tsx sim/roth/run.ts --quick          # every scenario, small samples (~70 s)
 npx tsx sim/roth/run.ts                  # full run (~35 min on 2 cores)
 npx tsx sim/roth/run.ts --ladder|--seat|--deck|--texture|--levers [--n 2000 --ne 80 --workers 2 --seed 1]
 npx tsx sim/roth/run.ts --trace --seed 3 --d1 sidhe --d2 fomoire --p1 skilled --p2 expert   # one match, move by move
-npx vitest run --config sim/roth/vitest.config.ts
+npx vitest run src/games/roth
+npx tsx sim/roth/puzzlegen.ts --games 800 --seed 2 > candidates.json      # puzzle candidates from self-play
+npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.json   # curated + proved
 ```
 
 `run.ts` holds the first draft's scenarios (Ulster against Connacht: ladder, seat, levers).
@@ -92,3 +95,12 @@ npx vitest run --config sim/roth/vitest.config.ts
 40. The duels are fought afresh, spots 4/10 first, then 1/7. "First duel" effects (Night of the Fomóire, the
     boyhood deeds, champion timing) mean the first duel fought. Only the backwards round decides the result; if it
     is level too, the first-duel rule, then a draw.
+
+## Puzzles
+
+Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where
+one choice is best by exact search and a Casual player would get it wrong. `makepuzzles.ts` holds the chosen
+positions with their titles and explanations, tidies them (drafting: no omens; combat: no hands), and refuses to
+write a puzzle whose answer isn't the single best choice. The rule each puzzle assumes is shown on the page:
+drafting, nobody acts in the Playing turn; Playing turn, everyone holds afterwards; combat, both sides play
+perfectly without guests or champions. `src/games/roth/puzzles/puzzles.test.ts` re-proves every answer.

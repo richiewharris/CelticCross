@@ -3,10 +3,10 @@
 import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
-import { ALL_DEFS, DECKS, DECK_IDS, FACTIONS, type CardDef } from "./cards";
-import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "./engine";
-import { makePolicy } from "./ai";
-import { hashSeed, Rng } from "./rng";
+import { ALL_DEFS, DECKS, DECK_IDS, FACTIONS, type CardDef } from "../../src/games/roth/engine/cards";
+import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
+import { makePolicy } from "../../src/games/roth/engine/ai";
+import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 
 interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules> }
 interface Rec {
