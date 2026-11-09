@@ -273,7 +273,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   cohuleen: sup("cohuleen", "The cohuleen druith", "Water", "Ally", "Merrow", L, [Sh(2), H(1)], "Shield 2 + Heal 1"),
   cliodhna: sup("cliodhna", "Clíodhna's wave", "Water", "Feat", "Merrow", R, [S(2)], "Strike 2; ignores Shield", { pierce: true }),
   undertow: sup("undertow", "Undertow", "Water", "Feat", "Merrow", C, [S(2)], "Strike 2"),
-  riptide: sup("riptide", "Riptide", "Wind", "Feat", "Merrow", C, [S(2)], "Strike 2; your next Strike +1", { nextStrike: 1 }),
+  riptide: sup("riptide", "Riptide", "Wind", "Feat", "Merrow", C, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
   sealskin: sup("sealskin", "Sealskin", "Water", "Word", "Merrow", C, [Sh(3)], "Shield 3"),
   pearl: sup("pearl", "Pearl of the deep", "Earth", "Word", "Merrow", R, [H(2)], "Heal 2"),
   soul_cage: sup("soul_cage", "The soul cage", "Earth", "Ally", "Merrow", R, [S(1)], "Strike 1; if it wounds, Heal 1", { drain: 1 }),
