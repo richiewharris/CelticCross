@@ -725,8 +725,7 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) n += 1;
-    const w = effWeakness(S, b, e);
-    if (w && s.element === w) n += 1;
+    if (s.element && effWeakness(S, b, e).includes(s.element)) n += 1;
   }
   for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
@@ -757,14 +756,14 @@ export function effSupport(S: State, a: Side, s: SupportDef): SupportDef {
   if (el === s.element && kind === s.kind && !ch) return s;
   return { ...s, element: el, kind, ...(ch ? { channel: ch, selfLoss: (s.selfLoss ?? 0) + ch } : {}) };
 }
-/** Side p's fighter's weakness, after any Curse attendant in reach (the last one called wins). */
-export function effWeakness(S: State, p: Side, f: FighterDef): Element | null {
-  let w = f.weakness;
+/** Side p's fighter's weaknesses: its printed one, plus one for each Curse attendant in reach. */
+export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
+  const w: Element[] = f.weakness ? [f.weakness] : [];
   for (const c of S.attendants ?? []) {
     const d = c.def;
     if (d.type !== "attendant" || d.mode !== "curse") continue;
     if (d.scope !== "global" && (d.scope === "yours") !== (c.owner === p)) continue;
-    w = d.to ?? w;
+    if (d.to && !w.includes(d.to)) w.push(d.to);
   }
   return w;
 }

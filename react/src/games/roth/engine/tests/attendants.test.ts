@@ -55,10 +55,10 @@ describe("attendants", () => {
     withAtt(S, ["a_apprentice", 1]); // P2's weapons now count as Fire
     expect(forbidMask(S, C, 1, sup("cet_spear"))).not.toBe(0);
   });
-  it("curse: the enemy's heroes are weak to the element", () => {
-    const S = withAtt(base(), ["a_benet", 0]);
-    expect(effWeakness(S, 1, fighter(S, S.combat!, 1))).toBe("Wind");
-    expect(effWeakness(S, 0, fighter(S, S.combat!, 0))).toBe(fighter(S, S.combat!, 0).weakness); // your own heroes keep theirs
+  it("curse: the enemy's heroes are also weak to the element", () => {
+    const S = withAtt(base(), ["a_curse", 0]);
+    expect(effWeakness(S, 1, fighter(S, S.combat!, 1))).toEqual(["Wind", "Earth"]); // Lí Ban: Wind, and now Earth
+    expect(effWeakness(S, 0, fighter(S, S.combat!, 0))).toEqual(["Wind"]); // your own heroes keep only theirs
   });
   it("attendants in order: the later one sees the earlier one's change", () => {
     const S = withAtt(base(), ["a_apprentice", 0], ["a_bell", 1]); // Weapons → Fire, then every Fire → Water

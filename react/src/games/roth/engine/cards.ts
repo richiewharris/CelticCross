@@ -170,7 +170,7 @@ export interface OmenDef {
  *   turn:    supports of `from` count as `to`.
  *   channel: supports of `from` count as `to`, their primary Strike +1, and the hero using one loses 1 Valour.
  *   reforge: supports of kind `kind` count as kind `toKind` (so a Weapon can slip a "no Weapons" geis).
- *   curse:   fighters in reach are weak to `to` (in place of their printed weakness).
+ *   curse:   fighters in reach are also weak to `to` (as well as their printed weakness).
  * scope: global (every fighter), yours (your fighters and the supports they use), enemy (the enemy's).
  */
 export interface AttendantDef {
@@ -453,7 +453,7 @@ export const OMENS: Record<string, OmenDef> = {
 const att = (id: string, name: string, rarity: Rarity, scope: AttendantDef["scope"], mode: AttendantDef["mode"], spec: { kind?: Kind; toKind?: Kind; from?: Element; to?: Element }, people?: Alignment): AttendantDef => {
   if (mode === "curse") {
     const whoC = scope === "global" ? "Every hero is" : scope === "yours" ? "Your heroes are" : "The enemy's heroes are";
-    return { type: "attendant", id, name, rarity, scope, mode, ...spec, people, text: `${whoC} weak to ${spec.to}` };
+    return { type: "attendant", id, name, rarity, scope, mode, ...spec, people, text: `${whoC} also weak to ${spec.to}` };
   }
   const what = mode === "enchant" ? `${spec.kind}s count as ${spec.to}` : mode === "reforge" ? `${spec.kind}s count as ${spec.toKind}s`
     : `${spec.from} supports count as ${spec.to}${mode === "channel" ? ", Strike +1, and the user loses 1 Valour" : ""}`;

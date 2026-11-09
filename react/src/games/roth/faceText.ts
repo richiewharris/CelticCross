@@ -266,7 +266,7 @@ const KP: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Al
 export function attendantLine(d: AttendantDef): string {
   const whose = d.scope === "global" ? "Every hero's" : d.scope === "yours" ? "Your heroes'" : "The enemy's";
   switch (d.mode) {
-    case "curse": return `${d.scope === "global" ? "Every hero is" : d.scope === "yours" ? "Your heroes are" : "The enemy's heroes are"} **weak to** {${d.to}} **${d.to}**.`;
+    case "curse": return `${d.scope === "global" ? "Every hero is" : d.scope === "yours" ? "Your heroes are" : "The enemy's heroes are"} **also weak to** {${d.to}} **${d.to}**.`;
     case "enchant": return `${whose} {${d.kind}} **${KP[d.kind!]}** count as {${d.to}} **${d.to}**.`;
     case "reforge": return `${whose} {${d.kind}} **${KP[d.kind!]}** count as {${d.toKind}} **${KP[d.toKind!]}**.`;
     case "turn": return `${whose} {${d.from}} **${d.from}** supports count as {${d.to}} **${d.to}**.`;

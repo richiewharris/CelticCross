@@ -40,7 +40,7 @@ export function DuelView(props: {
             {globals.map((g) => <span key={g.uid} className="tag geis">⊘ {g.def.name} (global)</span>)}
             {oath ? <span className="tag oath">✠ {oath.def.name}</span> : null}
             {omens.map((o, i) => <span key={i} className="tag omen">☽ {o.name}</span>)}
-            {(() => { const w = effWeakness(S, p, f); return w !== f.weakness ? <span className="tag attendant">cursed: weak to {w}</span> : null; })()}
+            {(() => { const w = effWeakness(S, p, f).filter((x) => x !== f.weakness); return w.length ? <span className="tag attendant">cursed: also weak to {w.join(", ")}</span> : null; })()}
           </div>
         </div>
         <div className="duel-supports">

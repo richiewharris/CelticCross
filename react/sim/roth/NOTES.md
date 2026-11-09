@@ -128,7 +128,7 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     supports, or the enemy's heroes for a curse), or global (everyone).
 50. Modes: enchant (supports of a kind count as an element), turn (one element counts as another), channel (as
     turn, primary Strike +1, and the user loses 1 Valour per use), reforge (one kind counts as another), curse
-    (fighters in reach are weak to an element instead of their printed weakness; the last curse called wins).
+    (fighters in reach are also weak to an element, as well as their printed weakness).
 51. Attendants apply in the order called, each seeing the earlier ones' changes. The changed element or kind
     counts for everything: kinship is untouched, but Focus, the element wheel, weakness, element and kind
     reinforcements, and geis/oath/crow prohibitions all read the changed card. Champions are reached like heroes.

@@ -210,7 +210,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
     what: "Smiths, druids, poets and thralls who change what a card **counts as**: its element, its kind, or what a hero is weak to.",
     when: "**Playing turn**, from your hand, like an oath. It stays for the rest of the match.",
     how: [
-      "**Enchant**: your Weapons (or Feats) count as an element. **Turn**: supports of one element count as another. **Channel**: the same, with Strike **+1**, but the hero using it loses **1 Valour**. **Reforge**: supports of one kind count as another. **Curse**: heroes in reach are weak to a new element.",
+      "**Enchant**: your Weapons (or Feats) count as an element. **Turn**: supports of one element count as another. **Channel**: the same, with Strike **+1**, but the hero using it loses **1 Valour**. **Reforge**: supports of one kind count as another. **Curse**: heroes in reach are also weak to a new element.",
       "{yours} **Your heroes**, {enemy} **the enemy's**, or {global} **every hero**: printed on the card.",
       "The new element or kind counts for everything: **Focus**, the element wheel, **weakness**, omens, and the **geasa and oaths** that forbid it. So an attendant can slip a geis (a Weapon reforged as a Word is free of the king's peace) or walk the enemy's cards into one.",
       "The Sídhe, who lean on Fire and Weapons, have the most: Goibniu's apprentice, Airmed's attendant, Ogma's scribe, the changeling and Bé Néit's shriek.",
