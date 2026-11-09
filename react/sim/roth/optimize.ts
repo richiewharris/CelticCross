@@ -3,7 +3,7 @@
 // both sides of each comparison keep the noise down. Writes src/games/roth/engine/computerDecks.json.
 //   npx tsx sim/roth/optimize.ts [--rounds 3] [--steps 30] [--n 30]
 import { fork } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { ALL_DEFS, DECK_IDS, FACTIONS, deckErrors, poolOf, type CardDef, type Faction } from "../../src/games/roth/engine/cards";
 import { newMatch, playOut, type Policy } from "../../src/games/roth/engine/engine";
@@ -36,7 +36,10 @@ if (process.argv.includes("--worker")) {
     }
   });
   const r = new Rng(17);
-  const best: Record<string, string[]> = Object.fromEntries(FACTIONS.map((f) => [f, buildDeck({ factions: [f], noise: 0 }, r).map((d) => d.id)]));
+  // --resume starts from the stored decks; --only f,g tunes just those factions
+  const stored = args.includes("--resume") ? (JSON.parse(readFileSync(new URL("../../src/games/roth/engine/computerDecks.json", import.meta.url), "utf8")) as Record<string, string[]>) : {};
+  const best: Record<string, string[]> = Object.fromEntries(FACTIONS.map((f) => [f, stored[f] ?? buildDeck({ factions: [f], noise: 0 }, r).map((d) => d.id)]));
+  const only = args.includes("--only") ? args[args.indexOf("--only") + 1].split(",") : FACTIONS;
   const field = () => [...FACTIONS.map((f) => DECK_IDS[f]), ...FACTIONS.map((f) => best[f])];
   let seedBase = 1;
   /** Mean score of each candidate against the field, all on the same seeds. */
@@ -59,7 +62,7 @@ if (process.argv.includes("--worker")) {
     return deckErrors(out.map((x) => ALL_DEFS[x] as CardDef)).length ? null : out;
   };
   for (let round = 0; round < rounds; round++) {
-    for (const f of FACTIONS) {
+    for (const f of FACTIONS.filter((x) => only.includes(x))) {
       seedBase++;
       let [cur] = await evalMany([best[f]]);
       for (let s = 0; s < steps; s++) {
