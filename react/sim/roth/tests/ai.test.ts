@@ -23,7 +23,7 @@ describe("AIs make only legal moves", () => {
   it("Novice vs Novice, 400 matches (incl. levers)", () => {
     expect(many(() => new NovicePolicy(), () => new NovicePolicy(), 200)).toBe(200);
     expect(many(() => new NovicePolicy(), () => new NovicePolicy(), 100, { blindHeroes: true, keepOmensUntilCombat: true, omenSpots: 3 })).toBe(100);
-    expect(many(() => new NovicePolicy(), () => new NovicePolicy(), 100, { startValour: 4, geisBreakCost: 1, initTie: "random" })).toBe(100);
+    expect(many(() => new NovicePolicy(), () => new NovicePolicy(), 100, { valourBonus: 1, geisBreakCost: 1, initTie: "random" })).toBe(100);
   });
   it("Casual vs Novice / Casual, 300 matches", () => {
     expect(many(() => new CasualPolicy(), () => new NovicePolicy(), 150)).toBe(150);
@@ -46,7 +46,9 @@ describe("AIs make only legal moves", () => {
 
 describe("Skilled duel solver", () => {
   it("finds the felling Strike (Gáe Bolga for Cú Chulainn) over a Shield", () => {
-    const S = combatState({ board: ["cu", "salmon", "gae_bolga", "emer", "salmon", "salmon", "conchobar", "salmon", "salmon", "conall", "salmon", "salmon"] });
+    // Cú (4) first: Gáe Bolga 4 + 1 kinship + 1 Ríastrad = 6 fells Conchobar (5) now; Láeg instead lets Conchobar's
+    // warp-spasm (4 + 1) wound Cú before he finishes, so felling at once is strictly better.
+    const S = combatState({ board: ["cu", "laeg", "gae_bolga", "emer", "salmon", "salmon", "conchobar", "warp", "salmon", "conall", "salmon", "salmon"] });
     const d = nextDecision(S)!;
     const r = solveChoice(S, S.combat!, 0, true);
     expect(d.options[r.best]).toMatchObject({ act: "use", spot: 2 });

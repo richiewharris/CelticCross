@@ -1,8 +1,8 @@
 // Exact duel solver (minimax over the tiny duel trees) and combat evaluation used by the AIs.
 
-import type { HeroDef, SupportDef } from "./cards";
+import { beats, isElement, unwillingPair, type HeroDef, type SupportDef } from "./cards";
 import {
-  combatApply, combatDecision, combatResult, cloneCombat, newCombat,
+  combatApply, combatDecision, combatResult, cloneCombat, kin, newCombat,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -24,7 +24,7 @@ export function firstDuelLeaf(C: CombatState, me: Side): number {
 function solverOptions(S: State, C: CombatState, opts: Option[], actor: Side): number[] {
   const out: number[] = [];
   let guestUid = -2;
-  const hurt = C.valour[actor] < S.rules.maxValour;
+  const hurt = C.valour[actor] < C.cap[actor];
   for (let i = 0; i < opts.length; i++) {
     const o = opts[i];
     if (o.t === "duel" && o.guest >= 0) {
@@ -102,6 +102,7 @@ export function boardKey(S: State, me: Side): string {
   let k = rk + me + (S.rules.initTie === "random" ? S.tieCoin.join("") : "");
   for (const c of S.board) k += "|" + (c ? c.def.id + c.owner : "-");
   for (const c of S.quadGeis) k += "|" + (c ? c.def.id : "-");
+  for (const c of S.quadOath) k += "|" + (c ? c.def.id : "-");
   for (const P of S.players) { k += "#"; for (const o of P.omens) if (o.faceUp) k += o.card.def.id + ","; }
   return k;
 }
@@ -147,28 +148,29 @@ function solveValue(S: State, C: CombatState, me: Side): number {
 
 /** Rough value of a support for hero h against e (e may be null = unknown). */
 export function quickSupportValue(s: SupportDef, h: HeroDef, e: HeroDef | null): number {
-  if ((s.alignment === "Ulaid" && h.alignment === "Connachta") || (s.alignment === "Connachta" && h.alignment === "Ulaid")) return -1;
+  if (unwillingPair(h.alignment, s.alignment)) return -1;
   let v = 0;
-  const effs = s.id === "gae_bolga" ? [{ type: "strike", n: h.id === "cu" ? 3 : 1 }]
-    : s.id === "furbaide" ? [{ type: "strike", n: e?.id === "medb" ? 3 : 1 }]
-    : s.id === "sling" ? [{ type: "strike", n: 1.5 }] : s.effects;
+  const effs = s.effects.map((x) => ({ ...x }));
+  if (s.forHero) effs[0].n = h.id === s.forHero.id ? s.forHero.n : effs[0].n;
+  if (s.vsHero && e?.id === s.vsHero.id) effs[0].n = s.vsHero.n;
+  if (s.firstBonus) effs[0].n += 0.5 * s.firstBonus;
+  if (s.vsBig) effs[0].n += e ? (e.valour >= 5 ? s.vsBig : 0) : 0.5 * s.vsBig;
   for (let i = 0; i < effs.length; i++) {
     let n = effs[i].n;
     if (i === 0) {
-      const kinB = s.alignment === "Unaligned" || h.alignment === "None" ? 0
-        : s.alignment === h.alignment || (s.alignment === "Deorad" && (h.alignment === "Ulaid" || h.alignment === "Connachta")) || (h.alignment === "Deorad" && (s.alignment === "Ulaid" || s.alignment === "Connachta")) ? (h.id === "medb" ? 2 : 1) : 0;
-      n += kinB;
-      if (h.focus && (h.focus === s.element || h.focus === s.kind)) n += 1;
+      n += kin(s.alignment, h.alignment) ? h.ab.kinBonus ?? 1 : 0;
+      if (h.ab.focusAny || (h.focus && (h.focus === s.element || h.focus === s.kind))) n += 1;
       if (effs[i].type === "strike" && e && s.element) {
         if (e.weakness === s.element) n += 1;
-        const ef = e.focus;
-        if ((s.element === "Fire" && ef === "Wind") || (s.element === "Wind" && ef === "Earth") || (s.element === "Earth" && ef === "Water") || (s.element === "Water" && ef === "Fire")) n += 1;
+        if (isElement(e.focus) && beats(s.element, e.focus)) n += 1;
       }
     }
-    v += effs[i].type === "strike" ? n : effs[i].type === "heal" ? 0.85 * n : 0.8 * n;
+    v += effs[i].type === "strike" ? n * (s.pierce ? 1.15 : 1) : effs[i].type === "heal" ? 0.85 * n : 0.8 * n;
   }
   if (s.invoke && e && e.tag === s.invoke) v += 2;
   if (s.selfLoss) v -= s.selfLoss;
+  if (s.drain) v += 0.5 * s.drain;
+  if (s.nextStrike) v += 0.8 * s.nextStrike;
   if (s.cathbad) v += 0.6;
   return v;
 }

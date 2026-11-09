@@ -28,14 +28,15 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "bind": return `${who} binds hero at ${d.spot! + 1} with ${cardName(S, o.uid)}`;
     case "supplant": return `${who} supplants ${S.board[d.spot!]!.def.name} at ${d.spot! + 1} with ${cardName(S, o.uid)}`;
     case "hold": return `${who} holds (facing ${d.spot! + 1})`;
+    case "swear": return `${who} swears ${cardName(S, o.uid)} on ${S.board[o.spot]?.def.name ?? "?"} (spot ${o.spot + 1})`;
     case "late": return `${who} turns omen ${cardName(S, o.uid)} before combat`;
     case "lateDone": return `${who} done turning omens`;
-    case "focus": return `${who}'s Morrígan Focus -> ${o.el ?? "unchanged"}`;
+    case "focus": return `${who}'s shape-shift: Focus -> ${o.el ?? "unchanged"}`;
     case "duel": {
       const C = S.combat!;
       const h = heroAt(S, C.hs[d.player]);
       const g = o.guest >= 0 ? ` [guest ${cardName(S, o.guest)} heals 1]` : "";
-      const m = o.mode === "break" ? " (breaks geis)" : o.mode === "ignore" ? " (Cathbad: ignores geis)" : "";
+      const m = o.mode === "break" ? " (breaks a geis/oath)" : o.mode === "ignore" ? " (Cathbad: ignores a geis/oath)" : "";
       const act = o.act === "rest" ? "rests" : `uses ${(S.board[o.spot]!.def as SupportDef).name}`;
       return `${who} ${h.name} [V${C.valour[0]}/${C.valour[1]} Sh${C.shield[0]}/${C.shield[1]}]${g} ${act}${m}`;
     }
@@ -52,6 +53,7 @@ export function traceMatch(S: State, policies: [Policy, Policy], rngs: [Rng, Rng
       if (S.phase === "combat" || S.phase === "end") {
         out.push(`-- board: ${S.board.map((c, i) => `${i + 1}:${c?.def.name ?? "-"}`).join(" | ")}`);
         out.push(`-- geasa: ${S.quadGeis.map((g, q) => `Q${q + 1}:${g?.def.name ?? "-"}`).join(" ")}`);
+        out.push(`-- oaths: ${S.quadOath.map((g, q) => `Q${q + 1}:${g?.def.name ?? "-"}`).join(" ")}`);
         out.push(`-- omens up: P1 ${S.players[0].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}; P2 ${S.players[1].omens.filter((o) => o.faceUp).map((o) => o.card.def.name).join(", ") || "-"}`);
       }
       out.push(`== ${S.phase}`);
@@ -63,10 +65,10 @@ export function traceMatch(S: State, policies: [Policy, Policy], rngs: [Rng, Rng
     applyDecision(S, d, i);
     if (S.combat && duelBefore !== undefined && (S.combat.duel !== duelBefore || S.combat.stage === "done")) {
       const C = S.combat;
-      out.push(`  -> duel ${duelBefore + 1} ends: valour ${C.endValour[duelBefore].join("/")}, felled ${C.felled[duelBefore].map((f) => (f ? "yes" : "no")).join("/")}`);
+      out.push(`  -> duel ${duelBefore + 1} ends: valour ${C.endValour[duelBefore].join("/")} (started ${C.startV[duelBefore].join("/")}), felled ${C.felled[duelBefore].map((f) => (f ? "yes" : "no")).join("/")}`);
     }
   }
   const r = S.result!;
-  out.push(`Result: ${r.winner === -1 ? "draw" : `P${r.winner + 1} wins`} by ${r.decidedBy}; felled P1 ${r.felled[0]} P2 ${r.felled[1]}; standing valour ${r.valour.join("/")}`);
+  out.push(`Result: ${r.winner === -1 ? "draw" : `P${r.winner + 1} wins`} by ${r.decidedBy}; felled P1 ${r.felled[0]} P2 ${r.felled[1]}; wounds dealt ${r.valour.join("/")}`);
   return out;
 }

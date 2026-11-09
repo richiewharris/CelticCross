@@ -1,9 +1,9 @@
 // AI players: Novice (random), Casual (rules of thumb), Skilled (static eval + exact duels),
 // Expert (Skilled + determinized Monte Carlo lookahead in drafting and the playing turn).
 
-import type { CardDef, HeroDef, SupportDef } from "./cards";
+import { unwillingPair, type CardDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
-  applyDecision, cloneCombat, cloneState, draftSpot, heroAt, isHeroSpot, nextDecision, playOut, quadOf, sameOption,
+  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, forbidsSupport, heroAt, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
 import { Rng } from "./rng";
@@ -32,18 +32,28 @@ function argmax(xs: number[]): number {
 }
 /** Base "biggest-looking" number of a support for a hero (Casual's eye). */
 function looks(s: SupportDef, h: HeroDef | null): number {
-  if (h && ((s.alignment === "Ulaid" && h.alignment === "Connachta") || (s.alignment === "Connachta" && h.alignment === "Ulaid"))) return -5;
-  let v = s.id === "gae_bolga" ? (h?.id === "cu" ? 3 : 1) : s.effects.reduce((a, e) => a + e.n, 0);
+  if (h && unwillingPair(h.alignment, s.alignment)) return -5;
+  let v = s.forHero && h?.id === s.forHero.id ? s.forHero.n : s.effects.reduce((a, e) => a + e.n, 0);
   if (s.cathbad) v = 0.5;
   if (h) {
-    if (s.alignment !== "Unaligned" && (s.alignment === h.alignment || s.alignment === "Deorad" || h.alignment === "Deorad")) v += 1;
-    if (h.focus === s.element || h.focus === s.kind) v += 1;
+    if (kin(s.alignment, h.alignment)) v += 1;
+    if (h.ab.focusAny || h.focus === s.element || h.focus === s.kind) v += 1;
   }
   return v;
 }
 
-const CASUAL_OMEN_ORDER = ["o_boyhood", "o_lugh", "o_ford", "o_emain", "o_crow", "o_truce", "o_mist", "o_debility"];
-const CASUAL_HERO_ORDER = ["cu", "medb", "ferdiad", "conall", "fergus", "morrigan", "conchobar", "emer"];
+/** Casual's fixed liking for an omen: simple rule-of-thumb weights by effect. */
+function casualOmen(fx: OmenEffect): number {
+  if (fx.startValour || fx.strikeDuel) return 8;
+  if (fx.shield) return 6;
+  if (fx.firstHitSoak || fx.shieldStart) return 7;
+  if (fx.element || fx.kind || fx.heal) return 6;
+  if (fx.ignoreGeis) return 5;
+  if (fx.mist) return 4;
+  return 2; // board omens hurt both sides: Casual turns them last
+}
+/** Casual's eye for a hero: big numbers. */
+const casualHero = (h: HeroDef) => h.valour + 0.5 * h.init + (h.rarity === "legendary" ? 2 : h.rarity === "rare" ? 1 : 0);
 
 // ---------------------------------------------------------------- Casual
 export class CasualPolicy implements Policy {
@@ -55,17 +65,17 @@ export class CasualPolicy implements Policy {
       case "musterOmen": {
         const rank = (uid: number) => {
           const c = ownOmen(V, me, uid) ?? (V.pendingOmen?.uid === uid ? V.pendingOmen : undefined);
-          return c ? CASUAL_OMEN_ORDER.indexOf(c.def.id) : 0;
+          return c && c.def.type === "omen" ? -casualOmen(c.def.fx) : 0;
         };
         return argmax(o.map((x) => rank((x as { uid: number }).uid)));
       }
       case "musterReturn": {
-        const val = (c: Card) => (c.def.type === "geis" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? c.def.init : 0));
+        const val = (c: Card) => (c.def.type === "geis" || c.def.type === "oath" ? 0 : c.def.type === "support" ? 1 + looks(c.def, null) : 10 + (c.def.type === "hero" ? casualHero(c.def) : 0));
         return argmax(o.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
       case "place": {
         const spot = d.spot!;
-        if (isHeroSpot(spot)) return argmax(o.map((x) => -CASUAL_HERO_ORDER.indexOf(cardOf(V, me, (x as { uid: number }).uid)!.def.id)));
+        if (isHeroSpot(spot)) return argmax(o.map((x) => casualHero(cardOf(V, me, (x as { uid: number }).uid)!.def as HeroDef)));
         const h = knownHero(V, quadOf(spot) * 3);
         return argmax(o.map((x) => looks(cardOf(V, me, (x as { uid: number }).uid)!.def as SupportDef, h)));
       }
@@ -75,7 +85,8 @@ export class CasualPolicy implements Policy {
           let best = -1, br = 99;
           o.forEach((x, i) => {
             if (x.t !== "omen") return;
-            const r = CASUAL_OMEN_ORDER.indexOf(ownOmen(V, me, x.uid)!.def.id);
+            const d = ownOmen(V, me, x.uid)!.def;
+            const r = d.type === "omen" ? -casualOmen(d.fx) : 0;
             if (r < br) { br = r; best = i; }
           });
           return best;
@@ -97,6 +108,15 @@ export class CasualPolicy implements Policy {
             if (wv < base(enemy)) return wi;
           }
         }
+        // swear an oath on a hero none of whose own supports it forbids
+        for (let i = 0; i < o.length; i++) {
+          const x = o[i];
+          if (x.t !== "swear") continue;
+          const v = cardOf(V, me, x.uid)!.def;
+          if (v.type !== "oath") continue;
+          const sups = [x.spot + 1, x.spot + 2].map((s) => V.board[s]?.def).filter((d): d is SupportDef => d?.type === "support");
+          if (!sups.some((s) => forbidsSupport(v.forbids, s))) return i;
+        }
         const om = omenIdx();
         return om >= 0 ? om : hold;
       }
@@ -111,13 +131,13 @@ export class CasualPolicy implements Policy {
         o.forEach((x, i) => {
           if (x.t !== "duel" || x.guest >= 0) return;
           let v: number;
-          if (x.act === "rest") v = h.id === "emer" ? -1 : -3;
+          if (x.act === "rest") v = h.ab.restHeal || h.ab.restShield ? -1 : -3;
           else v = looks(V.board[x.spot]!.def as SupportDef, h);
           if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 1.5;
           if (x.act === "rest" && x.mode === "break") v -= 5;
           if (v > bv) { bv = v; best = i; }
         });
-        if (C.valour[me] < V.rules.maxValour) {
+        if (C.valour[me] < C.cap[me]) {
           const b = o[best] as Extract<Option, { t: "duel" }>;
           const g = o.findIndex((x) => x.t === "duel" && x.guest >= 0 && x.act === b.act && x.spot === b.spot && x.mode === b.mode);
           if (g >= 0) return g;
@@ -129,12 +149,12 @@ export class CasualPolicy implements Policy {
 }
 
 // ---------------------------------------------------------------- Skilled
-const PH_HERO: HeroDef = { type: "hero", id: "placeholder", name: "Unknown hero", alignment: "None", init: 3, focus: null, weakness: null, quality: "", tag: null };
-const PH_SUP: SupportDef = { type: "support", id: "ph_sup", name: "Unknown support", element: null, kind: null, alignment: "Unaligned", effects: [{ type: "strike", n: 2 }], text: "" };
+const PH_HERO: HeroDef = { type: "hero", id: "placeholder", name: "Unknown hero", alignment: "None", rarity: "common", valour: 4, init: 3, focus: null, weakness: null, quality: "", tag: null, ab: {} };
+const PH_SUP: SupportDef = { type: "support", id: "ph_sup", name: "Unknown support", element: null, kind: null, alignment: "Unaligned", rarity: "common", effects: [{ type: "strike", n: 2 }], text: "" };
 
 function heroRating(h: HeroDef, hand: Card[]): number {
   const vals = hand.filter((c) => c.def.type === "support").map((c) => quickSupportValue(c.def as SupportDef, h, null)).sort((a, b) => b - a);
-  return 0.5 * h.init + (vals[0] ?? 0) + (vals[1] ?? 0);
+  return 0.5 * h.init + 0.8 * h.valour + (h.ab.strikeAll ?? 0) * 1.5 + (vals[0] ?? 0) + (vals[1] ?? 0);
 }
 
 /** Fill empty/unknown board spots: own spots greedily from hand, enemy spots with placeholders (or overrides). */
@@ -184,23 +204,32 @@ export function unseenEnemyHeroes(V: State, me: Side): HeroDef[] {
   return out;
 }
 
-function omenStatic(id: string, V: State, me: Side): number {
+function omenStatic(def: CardDef, V: State, me: Side): number {
+  if (def.type !== "omen") return 0;
+  const fx = def.fx;
   const mine = V.players[me].deckList, theirs = V.players[1 - me].deckList;
   const n = (deck: CardDef[], f: (d: CardDef) => boolean) => deck.filter(f).length;
-  const ulaid = (d: CardDef) => d.type === "hero" && (d.alignment === "Ulaid" || d.alignment === "Deorad") && d.id !== "cu";
   const heals = (d: CardDef) => d.type === "support" && d.effects.some((e) => e.type === "heal");
-  const big = (d: CardDef) => d.type === "support" && (d.id === "gae_bolga" || d.id === "warp" || d.effects.some((e) => e.type === "strike" && e.n >= 2));
-  switch (id) {
-    case "o_boyhood": return 1.5;
-    case "o_lugh": return 1.5;
-    case "o_emain": return 0.3 * n(theirs, (d) => d.type === "geis");
-    case "o_ford": return 0.7 * n(mine, (d) => d.type === "support" && d.element === "Water");
-    case "o_crow": return 0.5 * (n(theirs, heals) - n(mine, heals));
-    case "o_truce": return 0.3 * (n(theirs, big) - n(mine, big));
-    case "o_mist": return me === 1 ? 1 : -0.5;
-    case "o_debility": return 0.8 * (n(theirs, ulaid) - n(mine, ulaid));
-  }
-  return 0;
+  const shields = (d: CardDef) => d.type === "support" && d.effects.some((e) => e.type === "shield");
+  const big = (d: CardDef) => d.type === "support" && (d.effects.some((e) => e.type === "strike" && e.n >= 2) || !!d.forHero);
+  const avgInit = (deck: CardDef[]) => { const h = deck.filter((d): d is HeroDef => d.type === "hero"); return h.reduce((a, x) => a + x.init, 0) / Math.max(1, h.length); };
+  let v = 0;
+  if (fx.startValour) v += 1.2;
+  if (fx.strikeDuel) v += 1.2;
+  if (fx.shield) v += 0.6 * n(mine, shields);
+  if (fx.firstHitSoak) v += 1.5;
+  if (fx.shieldStart) v += 1.5;
+  if (fx.ignoreGeis) v += 0.3 * n(theirs, (d) => d.type === "geis");
+  if (fx.element) v += 0.7 * n(mine, (d) => d.type === "support" && d.element === fx.element!.el);
+  if (fx.kind) v += 0.7 * n(mine, (d) => d.type === "support" && d.kind === fx.kind!.kind);
+  if (fx.heal) v += 0.6 * n(mine, heals);
+  if (fx.noHeals || fx.healMod) v += 0.5 * (n(theirs, heals) - n(mine, heals));
+  if (fx.shieldMod) v += 0.5 * (n(mine, shields) - n(theirs, shields));
+  if (fx.truce) v += 0.3 * (n(theirs, big) - n(mine, big));
+  if (fx.mist) v += 1;
+  if (fx.darkness) v += 0.5 * (avgInit(theirs) - avgInit(mine));
+  if (fx.debility) v += 0.8 * (n(theirs, (d) => d.type === "hero" && debilitated(d, fx.debility!)) - n(mine, (d) => d.type === "hero" && debilitated(d, fx.debility!)));
+  return v;
 }
 
 export class SkilledPolicy implements Policy {
@@ -216,14 +245,14 @@ export class SkilledPolicy implements Policy {
         const vals = d.options.map((x) => {
           const uid = (x as { uid: number }).uid;
           const c = ownOmen(V, me, uid) ?? V.pendingOmen!;
-          return -omenStatic(c.def.id, V, me);
+          return -omenStatic(c.def, V, me);
         });
         return argmax(vals);
       }
       case "musterReturn": {
         const me = d.player;
         const heroes = V.players[me].deckList.filter((x): x is HeroDef => x.type === "hero");
-        const val = (c: Card) => c.def.type === "geis" ? 1.2 : c.def.type === "hero" ? 2 + 0.5 * c.def.init
+        const val = (c: Card) => c.def.type === "geis" || c.def.type === "oath" ? 1.2 : c.def.type === "hero" ? 2 + 0.5 * c.def.init + 0.3 * c.def.valour
           : c.def.type === "support" ? Math.max(...heroes.map((h) => quickSupportValue(c.def as SupportDef, h, null))) : 0;
         return argmax(d.options.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
@@ -271,7 +300,7 @@ export class SkilledPolicy implements Policy {
       const W = cloneState(V);
       applyDecision(W, d, i, false);
       let v = evalBoardCombat(completeBoard(W, me), me);
-      if (x.t === "bind" || x.t === "supplant") v -= 0.05;
+      if (x.t === "bind" || x.t === "supplant" || x.t === "swear") v -= 0.05;
       if (x.t === "omen" || x.t === "late") v -= 0.01;
       return v;
     });
@@ -288,6 +317,7 @@ export function determinize(V: State, me: Side, rng: Rng): State {
   const drop = (def: CardDef) => { const i = pool.findIndex((x) => x.id === def.id); if (i >= 0) pool.splice(i, 1); };
   for (const c of D.board) if (c && c.owner === o && c.def.type !== "unknown") drop(c.def);
   for (const c of D.quadGeis) if (c && c.owner === o) drop(c.def);
+  for (const c of D.quadOath) if (c && c.owner === o) drop(c.def);
   for (const P of D.players) for (const c of P.discard) if (c.owner === o && c.def.type !== "unknown") drop(c.def);
   for (const s of O.omens) if (s.faceUp) drop(s.card.def);
   rng.shuffle(pool);
@@ -346,7 +376,7 @@ export class ExpertPolicy implements Policy {
     d.options.forEach((x, i) => {
       const uid = (x as { uid?: number }).uid;
       const c = uid !== undefined ? cardOf(V, me, uid) ?? ownOmen(V, me, uid) : undefined;
-      const key = x.t + ":" + (c ? c.def.id : "");
+      const key = x.t + ":" + (c ? c.def.id : "") + (x.t === "swear" ? ":" + x.spot : "");
       if (!seen.has(key)) { seen.set(key, i); cands.push(i); }
     });
     if (cands.length === 1) return cands[0];

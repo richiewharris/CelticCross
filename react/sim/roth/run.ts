@@ -139,7 +139,7 @@ async function main() {
   if (want("deck") || want("texture")) for (const L of levels) deckRows.push(row(L, L, "cross", {}, eCount(L, L, 1.2), undefined, L === "skilled" || L === "expert"));
   const leverVariants: [string, Partial<Rules>][] = [
     ["rules as written", {}],
-    ["starting Valour 4", { startValour: 4 }],
+    ["starting Valour +1", { valourBonus: 1 }],
     ["geis break cost 1", { geisBreakCost: 1 }],
     ["geis break cost 3", { geisBreakCost: 3 }],
     ["3 Omen spots", { omenSpots: 3 }],

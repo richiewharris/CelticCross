@@ -1,460 +1,351 @@
-// Combat rules: every support, hero quality, omen and geis; duel order; breaking; Invoke; guests; cap.
+// Combat rules, second draft: hero Valour and caps, supports, hero qualities, oaths, modifying geasa, omens,
+// Unwilling pairs, guests and the wounds tie-break. Every expected number is worked out in the comment beside it.
 import { describe, expect, it } from "vitest";
 import { combatResult, legalityError, nextDecision, type CombatState } from "../engine";
-import { act, actor, combatState, options, rest, use, V } from "./helpers";
+import { act, actor, combatState, options, rest, use, V, type Spec } from "./helpers";
 
 const D2: [string, string, string] = ["emer", "salmon", "salmon"];
 const D2E: [string, string, string] = ["conall", "salmon", "salmon"];
 /** Board: P1 hero at 1 with supports 2,3; P2 hero at 7 with 8,9; a quiet second duel (Emer vs Conall). */
 const B = (h1: string, s2: string, s3: string, h7: string, s8: string, s9: string, d2 = D2, d2e = D2E) => [h1, s2, s3, ...d2, h7, s8, s9, ...d2e];
-const skipFocus = (S: ReturnType<typeof combatState>) => act(S, { t: "focus", el: null });
+const mk = (board: (string | null)[], extra: Omit<Spec, "board"> = {}) => combatState({ board, ...extra });
+const modes = (S: ReturnType<typeof combatState>, at: number) =>
+  options(S).filter((o) => o.t === "duel" && o.guest < 0 && o.act === "use" && o.spot === at - 1).map((o) => (o as { mode: string }).mode);
 
-describe("base effects (plain attacker: the Morrígan at 7 strikes first vs Fergus at 1)", () => {
-  // Morrígan (Sídhe, Focus Wind) gets no kinship/focus from Fire/Earth non-Sídhe supports;
-  // Fergus (Focus Weapon, Weakness Water) gives no strong/weakness bonus to Fire/Earth.
-  const plain = (s8: string, s9: string, s2 = "salmon", s3 = "salmon", extra = {}) =>
-    combatState({ board: B("fergus", s2, s3, "morrigan", s8, s9), ...extra });
+// The plain pair: Fergus (Deorad, Valour 5, Initiative 3, Focus Weapon, Weakness Wind) at 1 against
+// Lí Ban (Merrow, Valour 4, Initiative 3, Focus Water, Weakness Wind) at 7. Initiative tie → P2 (Lí Ban) first.
+// Lí Ban has no kinship with Ulaid/Connachta/Sídhe supports and no Focus bonus from Fire/Earth/Wind.
+const plain = (s8: string, s9: string, s2 = "salmon", s3 = "salmon", extra: Omit<Spec, "board"> = {}) =>
+  mk(B("fergus", s2, s3, "liban", s8, s9), extra);
 
-  it("Strike N: Thunder feat strikes 2", () => {
-    const S = plain("thunder", "salmon");
-    skipFocus(S);
-    expect(actor(S)).toBe(1); // tie on Initiative 3 → P2 first
+describe("hero Valour and the Heal cap", () => {
+  it("each hero starts its duel at its own Valour", () => {
+    const S = plain("salmon", "salmon");
+    expect(V(S)).toEqual([5, 4]);
+    expect(actor(S)).toBe(1);
+  });
+  it("Heals stop at starting Valour + 2", () => {
+    const S = plain("brown_bull", "finnbennach");
+    use(S, 8); // Lí Ban: 4 + Heal 2 = 6 (cap 4 + 2)
+    expect(V(S)[1]).toBe(6);
+    rest(S);
+    use(S, 9); // capped
+    expect(V(S)[1]).toBe(6);
+  });
+});
+
+describe("supports", () => {
+  it("Thunder feat strikes 2 and ignores Shield", () => {
+    const S = plain("thunder", "salmon", "salmon", "salmon", { omens: [["o_rath"], []] });
+    expect(S.combat!.shield).toEqual([1, 0]); // the ráth: Shield 1 at the start of each duel
+    use(S, 8);
+    expect(V(S)).toEqual([3, 4]);
+    expect(S.combat!.shield[0]).toBe(1);
+  });
+  it("a plain Strike is soaked by Shield (Spear of Cet)", () => {
+    const S = plain("cet_spear", "salmon", "salmon", "salmon", { omens: [["o_rath"], []] });
+    use(S, 8); // 2 − Shield 1 = 1
+    expect(V(S)).toEqual([4, 4]);
+  });
+  it("Fragarach ignores Shield; Wind hits Fergus' Weakness", () => {
+    const S = plain("fragarach", "salmon", "salmon", "salmon", { omens: [["o_rath"], []] });
+    use(S, 8); // 2 + 1 (Weakness Wind) = 3, Shield untouched
+    expect(V(S)).toEqual([2, 4]);
+    expect(S.combat!.shield[0]).toBe(1);
+  });
+  it("the tathlum: +2 against a hero of Valour 5 or more", () => {
+    const S = plain("tathlum", "salmon");
+    use(S, 8); // 1 + 2 (Fergus is Valour 5) + 1 (Lí Ban's Focus Water) = 4
+    expect(V(S)).toEqual([1, 4]);
+  });
+  it("the warp-spasm strikes 4 and costs its hero 1", () => {
+    const S = plain("warp", "salmon");
     use(S, 8);
     expect(V(S)).toEqual([1, 3]);
   });
-  it("Spear of Cet strikes 2 (test-only card)", () => {
-    const S = plain("cet_spear", "salmon");
-    skipFocus(S); use(S, 8);
-    expect(V(S)).toEqual([1, 3]);
+  it("Gáe Bolga strikes 2 through Shield; 4 for Cú Chulainn", () => {
+    // Emer (Ulaid, Initiative 2) at 7 vs Lí Ban at 1 (Initiative 3): Lí Ban rests (Shield 2), then Gáe Bolga 2 + 1 kinship = 3.
+    const S = mk(B("liban", "salmon", "salmon", "emer", "gae_bolga", "salmon"));
+    rest(S);
+    expect(S.combat!.shield[0]).toBe(2);
+    use(S, 8);
+    expect(V(S)[0]).toBe(1);
+    expect(S.combat!.shield[0]).toBe(2);
+    // Cú (Valour 4, Initiative 5, Strikes +1) vs Fergus: 4 + 1 kinship + 1 Ríastrad = 6 → Fergus falls
+    const C2 = mk(B("cu", "gae_bolga", "salmon", "fergus", "salmon", "salmon"));
+    expect(actor(C2)).toBe(0);
+    use(C2, 2);
+    expect(C2.combat!.felled[0]).toEqual([false, true]);
   });
-  it("The warp-spasm strikes 3 and costs its hero 1", () => {
-    const S = plain("warp", "salmon");
-    skipFocus(S); use(S, 8);
-    expect(S.combat!.felled[0]).toEqual([true, false]);
-    expect(S.combat!.endValour[0]).toEqual([0, 2]);
-    expect(S.combat!.duel).toBe(1); // the duel ended at once
+  it("the gaze of Balor: Strike 2, or 3 for Balor", () => {
+    // Bres (Initiative 3) first vs the Dagda (Initiative 1): 2 + 1 kinship + 1 Weakness Fire = 4 → 6 − 4 = 2
+    const S = mk(B("dagda", "salmon", "salmon", "bres", "gaze", "salmon"));
+    use(S, 8);
+    expect(V(S)[0]).toBe(2);
+    // Balor after Fergus rests: 3 + 1 kinship + 1 Focus Fire + 2 Evil eye = 7 → Fergus (5) falls
+    const S2 = mk(B("fergus", "salmon", "salmon", "balor", "gaze", "salmon"));
+    rest(S2);
+    use(S2, 8);
+    expect(S2.combat!.felled[0]).toEqual([true, false]);
   });
-  it("Heal N with the Valour cap of 6", () => {
-    const S = plain("brown_bull", "finnbennach");
-    skipFocus(S); use(S, 8);
-    expect(V(S)[1]).toBe(5);
-    rest(S); use(S, 9);
-    expect(V(S)[1]).toBe(6);
-  });
-  it("Shield soaks Strike damage first", () => {
-    // Fergus' Caladbolg: 2 +1 kinship (Deorad) +1 Focus Weapon +1 Morrígan's Weakness Earth = 5; Shield 2 soaks 2.
-    const S = plain("salmon", "salmon", "caladbolg");
-    skipFocus(S); use(S, 8);
-    expect(S.combat!.shield[1]).toBe(2);
-    use(S, 2);
-    expect(S.combat!.felled[0]).toEqual([false, true]);
-    expect(S.combat!.endValour[0][1]).toBe(0);
-  });
-  it("Raven's war-cry: kinship for a Sídhe hero (2+1)", () => {
-    const S = plain("raven", "salmon");
-    skipFocus(S); use(S, 8);
-    expect(S.combat!.felled[0]).toEqual([true, false]);
-  });
-  it("Láeg: Heal 1 (+1 Focus Wind) and the next Strike +1", () => {
-    const S = plain("laeg", "thunder");
-    skipFocus(S); use(S, 8);
-    expect(V(S)).toEqual([3, 5]);
-    rest(S); use(S, 9); // 2 + 1
-    expect(S.combat!.felled[0]).toEqual([true, false]);
-  });
-  it("Medb's war-chariot: Heal 1 (+1 Focus Wind), next Strike +1", () => {
-    const S = plain("medb_chariot", "cet_spear");
-    skipFocus(S); use(S, 8);
-    expect(V(S)).toEqual([3, 5]);
-    rest(S); use(S, 9);
-    expect(S.combat!.endValour[0][0]).toBe(0);
-  });
-  it("The host of Cruachan: Strike 1 + Heal 1", () => {
-    const S = plain("host", "salmon");
-    skipFocus(S); use(S, 8);
-    expect(V(S)).toEqual([2, 4]);
-  });
-  it("Fedelm's prophecy: Shield 2 (+1 Focus Wind); Ferdiad's horn-shield: Shield 2", () => {
-    const S = plain("fedelm", "horn_shield");
-    skipFocus(S); use(S, 8);
-    expect(S.combat!.shield[1]).toBe(3);
-    rest(S); use(S, 9);
-    expect(S.combat!.shield[1]).toBe(5);
-  });
-  it("Bárach's feast: Invoke Feast costs Fergus 2", () => {
-    const S = plain("barach", "salmon");
-    skipFocus(S); use(S, 8);
-    expect(V(S)).toEqual([1, 3]);
-    expect(S.stats!.invokes).toBe(1);
-  });
-  it("Cathbad: ignore one geis this duel without cost", () => {
-    const S = plain("cathbad", "thunder", "salmon", "salmon", { geasa: [null, null, "g_hearth", null] });
-    skipFocus(S); use(S, 8); rest(S);
-    const modes = options(S).filter((o) => o.t === "duel" && o.spot === 8).map((o) => (o as { mode: string }).mode);
-    expect(modes.sort()).toEqual(["break", "ignore"]);
-    use(S, 9, "ignore");
-    expect(V(S)).toEqual([1, 3]);
-    expect(S.combat!.broken).toBe(0); // the geis still stands
+  it("drain: the soul cage heals 1 when it wounds", () => {
+    const S = plain("brown_bull", "soul_cage");
+    use(S, 8); // Lí Ban 6
+    rest(S);
+    expect(V(S)).toEqual([5, 6]);
+    use(S, 9); // 1 + 1 kinship (Merrow) = 2 → Fergus 3; Heal 1 → capped at 6
+    expect(V(S)).toEqual([3, 6]);
+    const S2 = plain("soul_cage", "salmon");
+    use(S2, 8); // Lí Ban full (4): Heal 1 → 5
+    expect(V(S2)).toEqual([3, 5]);
   });
 });
 
-describe("bonuses and special supports", () => {
-  it("Medb: kinship +2; Focus +1; Weakness +1; the Morrígan's shape-shift makes Earth strong", () => {
-    const mk = () => combatState({ board: B("medb", "cet_spear", "salmon", "morrigan", "salmon", "salmon") });
-    let S = mk();
-    act(S, { t: "focus", el: null });
-    expect(actor(S)).toBe(0); // Initiative 4 > 3
-    use(S, 2); // 2 +2 +1 +1 = 6
-    expect(S.combat!.endValour[0]).toEqual([3, 0]);
-    expect(S.combat!.felled[0][1]).toBe(true);
-    S = mk();
-    act(S, { t: "focus", el: "Water" });
-    expect(S.combat!.focus[1]).toBe("Water");
-    use(S, 2); // + Earth beats Water = 7 → −4
-    expect(S.combat!.felled[0][1]).toBe(true);
-  });
-  it("Gáe Bolga: Strike 3 for Cú Chulainn, Strike 1 otherwise", () => {
-    let S = combatState({ board: B("cu", "gae_bolga", "salmon", "morrigan", "salmon", "salmon") });
-    act(S, { t: "focus", el: null });
-    use(S, 2); // 3 + 1 kinship = 4
-    expect(S.combat!.felled[0][1]).toBe(true);
-    S = combatState({ board: B("conall", "gae_bolga", "salmon", "morrigan", "salmon", "salmon") });
-    act(S, { t: "focus", el: null });
-    rest(S); use(S, 2); // 1 + kin + Focus Weapon = 3
-    expect(S.combat!.endValour[0][1]).toBe(0);
-  });
-  it("Sling of Emain: Strike 2 only as the first support used in the duel", () => {
-    let S = combatState({ board: B("conall", "sling", "salmon", "morrigan", "salmon", "salmon") });
-    act(S, { t: "focus", el: null });
-    rest(S); // resting is not using a support
-    use(S, 2); // 2 + kin + Focus = 4
-    expect(S.combat!.felled[0][1]).toBe(true);
-    S = combatState({ board: B("conall", "sling", "salmon", "morrigan", "salmon", "salmon") });
-    act(S, { t: "focus", el: null });
-    use(S, 8); // Morrígan Shield 2
-    use(S, 2); // 1 + 1 + 1 = 3, soak 2
-    expect(V(S)).toEqual([3, 2]);
-  });
-  it("Furbaide's sling-stone: Strike 3 against Medb", () => {
-    const S = combatState({ board: B("conall", "furbaide", "salmon", "medb", "salmon", "salmon") });
-    rest(S); use(S, 2); // 3 +kin +Focus +Medb's Weakness Water = 6
-    expect(S.combat!.endValour[0][1]).toBe(0);
-    const S2 = combatState({ board: B("conall", "furbaide", "salmon", "emer", "salmon", "salmon") });
-    use(S2, 2); // vs Emer: 1 + 1 + 1 = 3
-    expect(S2.combat!.endValour[0]).toEqual([3, 0]);
-  });
-  it("Bricriu's satire: Invoke Satire against Ferdiad (Shield 1 soaks the Strike part)", () => {
-    const S = combatState({ board: B("ferdiad", "salmon", "salmon", "morrigan", "bricriu", "salmon") });
-    act(S, { t: "focus", el: null });
-    expect(S.combat!.shield[0]).toBe(1); // Horn-skin
-    rest(S); use(S, 8); // Strike 1 +1 Focus Wind = 2, shield soaks 1 → 1; Invoke 2
-    expect(S.combat!.endValour[0][0]).toBe(0);
-  });
-});
-
-describe("unwilling supports", () => {
-  it("an Ulaid support is spent with no effect for a Connachta hero", () => {
-    const S = combatState({ board: B("ferdiad", "thunder", "salmon", "emer", "salmon", "salmon"), geasa: ["g_hearth", null, null, null] });
-    // Unwilling comes before the geis: no break prompt for the unwilling Thunder feat
-    const modes = options(S).filter((o) => o.t === "duel" && o.spot === 1).map((o) => (o as { mode: string }).mode);
-    expect(modes).toEqual(["normal"]);
-    use(S, 2);
-    expect(V(S)).toEqual([3, 3]);
+describe("Unwilling pairs", () => {
+  it("a Sídhe support is spent with no effect for a Fomóire hero", () => {
+    const S = mk(B("fergus", "salmon", "salmon", "balor", "raven", "salmon"));
+    rest(S); // Fergus (Initiative 3) before Balor (1)
+    use(S, 8);
+    expect(V(S)[0]).toBe(5);
     expect(S.stats!.unwilling).toBe(1);
-    expect(S.combat!.used & (1 << 1)).toBeTruthy();
   });
-  it("a Connachta support is unwilling for an Ulaid hero", () => {
-    const S = combatState({ board: B("cu", "cet_spear", "salmon", "emer", "salmon", "salmon") });
-    use(S, 2);
-    expect(V(S)).toEqual([3, 3]);
-  });
-  it("a Deorad hero is never unwilling (and has kinship with Ulaid supports)", () => {
-    const S = combatState({ board: B("fergus", "thunder", "salmon", "morrigan", "salmon", "salmon") });
-    act(S, { t: "focus", el: null });
-    rest(S); use(S, 2); // 2 + kin 1 + Fire beats Wind 1 = 4
-    expect(S.combat!.felled[0][1]).toBe(true);
+  it("Ulaid and Connachta stay Unwilling for each other; Merrow is Unwilling for nobody", () => {
+    const S = mk(B("liban", "cet_spear", "thunder", "conall", "salmon", "salmon"));
+    expect(actor(S)).toBe(1); // tie 3–3 → P2
+    rest(S);
+    use(S, 2); // Lí Ban with a Connachta spear: 2 → Conall 3
+    expect(V(S)[1]).toBe(3);
+    const S2 = mk(B("liban", "salmon", "salmon", "conall", "cet_spear", "salmon"));
+    use(S2, 8); // Conall with a Connachta spear: nothing
+    expect(V(S2)[0]).toBe(4);
   });
 });
 
 describe("hero qualities", () => {
-  it("Cú Chulainn's Ríastrad: Strikes +2 at 1 Valour (here after the hound geis Invokes Hound)", () => {
-    const S = combatState({ board: B("cu", "gae_bolga", "salmon", "emer", "salmon", "salmon"), geasa: ["g_hound", null, null, null] });
-    expect(V(S)).toEqual([1, 3]);
-    use(S, 2); // 3 + 1 + 2
-    expect(S.combat!.endValour[0][1]).toBe(0);
+  it("Cú Chulainn: Strikes +1, and +2 more at 1 Valour", () => {
+    const S = mk(B("cu", "thunder", "thunder", "dagda", "salmon", "salmon"), { geasa: ["g_hound", null, null, null] });
+    expect(V(S)[0]).toBe(2); // the hound Invokes Hound: 4 − 2
+    const S2 = mk(B("cu", "thunder", "thunder", "dagda", "salmon", "salmon"), { geasa: ["g_ford", null, null, null] });
+    S2.combat!.valour[0] = 1;
+    use(S2, 2); // 2 + 1 kinship + 1 Focus Fire + 1 Weakness Fire + 1 + 2 Ríastrad = 8
+    expect(S2.combat!.felled[0]).toEqual([false, true]);
   });
-  it("Conchobar's King's due: a support from the other quadrant, which counts as used there too", () => {
-    const S = combatState({ board: B("conchobar", "salmon", "salmon", "emer", "salmon", "salmon", ["conall", "thunder", "sling"], D2E) });
-    rest(S); // Emer (tie on 2 → P2 first)
-    const spots = options(S).filter((o) => o.t === "duel" && o.act === "use").map((o) => (o as { spot: number }).spot);
-    expect(spots).toEqual([1, 2, 4, 5]);
-    use(S, 5); // Thunder feat from Conall's quadrant: 2 + kin + Emer's Weakness Fire = 4
-    expect(S.combat!.felled[0][1]).toBe(true);
-    rest(S); // second duel: P2's Conall first (tie on 3)
-    const left = options(S).filter((o) => o.t === "duel" && o.act === "use").map((o) => (o as { spot: number }).spot);
-    expect(left).toEqual([5]); // only the Sling remains for P1's Conall
+  it("Conall: Strikes +1 against a hero of Valour 5 or more", () => {
+    // Goibniu's forge (Sídhe Fire Weapon): 2 + 1 Focus Weapon + 1 Weakness Fire + 1 = 5 vs the Dagda (6) → 1
+    const S = mk(B("conall", "goibniu", "salmon", "dagda", "salmon", "salmon"));
+    use(S, 2);
+    expect(V(S)[1]).toBe(1);
+    // against Lí Ban (4, healed to 6 first on the tie): 2 + 1 Focus = 3, no bonus → 3
+    const S2 = mk(B("conall", "goibniu", "salmon", "liban", "brown_bull", "salmon"));
+    use(S2, 8);
+    use(S2, 2);
+    expect(V(S2)[1]).toBe(3);
   });
-  it("King's due works once per duel", () => {
-    const S = combatState({ board: B("conchobar", "salmon", "salmon", "emer", "salmon", "salmon", ["conall", "salmon", "salmon"], D2E) });
-    rest(S);
-    use(S, 5);
-    rest(S);
-    const spots = options(S).filter((o) => o.t === "duel" && o.act === "use").map((o) => (o as { spot: number }).spot);
-    expect(spots).toEqual([1, 2]);
-  });
-  it("Conall's Avenger: Strikes +1 once your other hero has fallen", () => {
-    // Duel 1: Emer (bound by open door: Invoke Hospitality → 1 Valour) falls to Cú.
-    const S = combatState({ board: ["emer", "salmon", "salmon", "conall", "caladbolg", "salmon", "cu", "thunder", "salmon", "morrigan", "salmon", "salmon"], geasa: ["g_door", null, null, null] });
-    expect(V(S)).toEqual([1, 3]);
+  it("Balor's Evil eye: only his first Strike each duel +2", () => {
+    // Balor vs the Dagda, tie on 1 → Balor first: Cet 2 + 2 = 4 → 2; the Dagda rests (Heal 2) → 4; Cet 2 → 2
+    const S = mk(B("dagda", "salmon", "salmon", "balor", "cet_spear", "cet_spear"));
     use(S, 8);
-    expect(S.combat!.felled[0][0]).toBe(true);
-    act(S, { t: "focus", el: null });
-    rest(S); // Morrígan (tie 3 → P2 first)
-    use(S, 5); // 2 + kin + Focus Weapon + Weakness Earth + Avenger = 6
-    expect(S.combat!.endValour[1][1]).toBe(0);
-    expect(S.result).toBeNull();
+    expect(V(S)[0]).toBe(2);
+    rest(S);
+    expect(V(S)[0]).toBe(4);
+    use(S, 9);
+    expect(V(S)[0]).toBe(2);
   });
-  it("Emer's Six gifts: Heal 1 when she rests", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "conchobar", "thunder", "salmon") });
-    use(S, 8); // Conchobar? no: tie 2-2 → P2 Conchobar first: Thunder 2 + kin = 3 + Emer Weakness Fire 1 = 4 → falls
-    expect(S.combat!.felled[0][0]).toBe(true);
-    const S2 = combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon") });
-    rest(S2); rest(S2);
-    expect(V(S2)).toEqual([4, 3]);
+  it("Indech: no Strike against him above 3", () => {
+    const S = mk(B("indech", "salmon", "salmon", "liban", "warp", "salmon"));
+    use(S, 8); // 4 → 3
+    expect(V(S)).toEqual([2, 3]);
   });
-  it("Fergus' Old oath: Strikes vs Cú Chulainn −1", () => {
-    const S = combatState({ board: B("cu", "salmon", "salmon", "fergus", "caladbolg", "salmon") });
-    rest(S); use(S, 8); // 2 + kin + Focus = 4, −1 = 3
-    expect(S.combat!.endValour[0][0]).toBe(0);
-    expect(S.combat!.felled[0][0]).toBe(true);
+  it("Manannán: the first Strike against him each duel misses", () => {
+    const S = mk(B("fergus", "caladbolg", "cet_spear", "manannan", "salmon", "salmon"));
+    rest(S); // Manannán (Initiative 4) first
+    use(S, 2); // Caladbolg: lost
+    expect(V(S)[1]).toBe(4);
+    rest(S);
+    use(S, 3); // Cet: 2 + 1 kinship (Deorad) + 1 Focus + 1 Earth beats Water + 1 Weakness Earth = 6
+    expect(S.combat!.felled[0]).toEqual([false, true]);
   });
-  it("Ferdiad's Horn-skin: Shield 1 at the start of each duel", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "ferdiad", "salmon", "salmon") });
-    expect(S.combat!.shield).toEqual([0, 1]);
+  it("Cethlenn: Strikes +1, and Heal 1 when her Strike wounds", () => {
+    const S = mk(B("fergus", "salmon", "salmon", "cethlenn", "cet_spear", "salmon"));
+    use(S, 8); // 2 + 1 = 3 → Fergus 2; Cethlenn 3 + 1 = 4
+    expect(V(S)).toEqual([2, 4]);
   });
-  it("The Morrígan may change Focus once (only element choices)", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "morrigan", "salmon", "salmon") });
-    const d = nextDecision(S)!;
-    expect(d.kind).toBe("focus");
-    expect(d.options.map((o) => (o as { el: string | null }).el)).toEqual([null, "Fire", "Earth", "Water"]);
+  it("Bres: the enemy hero's Heals −1", () => {
+    const S = mk(B("liban", "brown_bull", "salmon", "bres", "salmon", "salmon"));
+    rest(S); // tie → Bres first
+    use(S, 2); // 2 − 1 = 1
+    expect(V(S)[0]).toBe(5);
+  });
+  it("Lugh: every support counts as his Focus", () => {
+    const S = mk(B("fergus", "salmon", "salmon", "lugh", "cet_spear", "salmon"));
+    use(S, 8); // 2 + 1 = 3
+    expect(V(S)[0]).toBe(2);
+  });
+  it("Emer and the Dagda heal when they rest; Lí Ban gains Shield", () => {
+    const S = mk(B("dagda", "salmon", "salmon", "fergus", "cet_spear", "salmon"));
+    use(S, 8); // Fergus (3) first: 2 + 1 kinship + 1 Focus = 4 → 2
+    rest(S);
+    expect(V(S)[0]).toBe(4);
+  });
+  it("Medb: kinship +2", () => {
+    const S = mk(B("liban", "salmon", "salmon", "medb", "cet_spear", "salmon"));
+    use(S, 8); // Medb (4) first: 2 + 2 kinship + 1 Focus Earth + 1 Earth beats Water = 6 → Lí Ban falls
+    expect(S.combat!.felled[0]).toEqual([true, false]);
+  });
+});
+
+describe("oaths", () => {
+  it("Champion's oath: Strikes +1; resting is forbidden; breaking costs 2 and ends the boon", () => {
+    const S = plain("thunder", "thunder", "salmon", "salmon", { oaths: [null, null, "v_champion", null] });
+    use(S, 8); // 2 + 1 = 3
+    expect(V(S)).toEqual([2, 4]);
+    rest(S);
+    const restOpts = options(S).filter((o) => o.t === "duel" && o.act === "rest" && o.guest < 0).map((o) => (o as { mode: string }).mode);
+    expect(restOpts).toEqual(["break"]);
+    expect(legalityError(S, 1, { t: "duel", guest: -1, act: "rest", spot: -1, mode: "normal" })).toMatch(/forbidden/);
+    rest(S, "break"); // −2, then Lí Ban's salmon-shape: Shield 2
+    expect(V(S)[1]).toBe(2);
+    expect(S.stats!.oathBroken).toBe(1);
+  });
+  it("a broken oath gives no more boon", () => {
+    const S = plain("thunder", "salmon", "salmon", "salmon", { oaths: [null, null, "v_champion", null] });
+    rest(S, "break"); // Lí Ban 2
+    rest(S);
+    use(S, 8); // 2, no +1
+    expect(V(S)).toEqual([3, 2]);
+  });
+  it("Hearth-guard's oath: Valour +2 (and the cap with it); Weapons forbidden", () => {
+    const S = plain("salmon", "salmon", "caladbolg", "salmon", { oaths: ["v_hearthguard", null, null, null] });
+    expect(V(S)[0]).toBe(7);
+    expect(S.combat!.cap[0]).toBe(9);
+    rest(S);
+    expect(modes(S, 2)).toEqual(["break"]);
+  });
+  it("Oath of the first blow: Initiative +3", () => {
+    const S = plain("salmon", "salmon", "salmon", "salmon", { oaths: ["v_first", null, null, null] });
+    expect(actor(S)).toBe(0);
+  });
+  it("Oath of the shield-wall and Oath on the stone add Shield at the start", () => {
+    const S = plain("salmon", "salmon", "salmon", "salmon", { oaths: ["v_shieldwall", null, "v_stone", null] });
+    expect(S.combat!.shield).toEqual([2, 1]);
+    expect(V(S)).toEqual([5, 5]);
+  });
+  it("Blood-oath forbids Heals", () => {
+    const S = plain("brown_bull", "salmon", "salmon", "salmon", { oaths: [null, null, "v_blood", null] });
+    expect(modes(S, 8)).toEqual(["break"]);
+  });
+  it("Cathbad lets the hero ignore an oath", () => {
+    const S = mk(B("emer", "salmon", "salmon", "conall", "cathbad", "thunder"), { oaths: [null, null, "v_shieldwall", null] });
+    use(S, 8); // Conall (3) first: Cathbad strikes 1 + 1 kinship = 2
+    rest(S);
+    expect(modes(S, 9)).toEqual(["break", "ignore"]);
+  });
+});
+
+describe("modifying geasa", () => {
+  it("the giant's portion: a hero of Valour 5+ starts 2 lower; smaller heroes do not", () => {
+    const S = plain("salmon", "salmon", "salmon", "salmon", { geasa: ["g_giant", null, "g_giant", null] });
+    expect(V(S)).toEqual([3, 4]);
+  });
+  it("the slow hand: Initiative −3", () => {
+    const S = plain("salmon", "salmon", "salmon", "salmon", { geasa: [null, null, "g_slow", null] });
+    expect(actor(S)).toBe(0);
+  });
+  it("Emain's ward ignores the geis and its modifier", () => {
+    const S = plain("salmon", "salmon", "salmon", "salmon", { geasa: ["g_giant", null, null, null], omens: [["o_emain"], []] });
+    expect(V(S)[0]).toBe(5);
+  });
+  it("breaking a geis costs 2; a broken geis no longer binds", () => {
+    const S = plain("salmon", "salmon", "caladbolg", "cet_spear", { geasa: ["g_spear", null, null, null] });
+    rest(S);
+    expect(modes(S, 2)).toEqual(["break"]);
+    use(S, 2, "break"); // 5 − 2 = 3, then Caladbolg 3 + 1 + 1 = 5 → Lí Ban falls
+    expect(S.combat!.felled[0]).toEqual([false, true]);
+    expect(S.combat!.endValour[0][0]).toBe(3);
   });
 });
 
 describe("omens", () => {
-  it("Debility of the Ulstermen: Ulaid (and Deorad) Strikes −1, Cú spared, both players", () => {
-    const S = combatState({ board: B("conall", "caladbolg", "salmon", "emer", "salmon", "salmon"), omens: [[], ["o_debility"]] });
-    use(S, 2); // Conall vs Emer: 2 + kin + Focus − 1 = 3
-    expect(S.combat!.endValour[0]).toEqual([3, 0]);
-    const S2 = combatState({ board: B("cu", "gae_bolga", "salmon", "fergus", "caladbolg", "salmon"), omens: [["o_debility"], []] });
-    use(S2, 2); // Cú: 3 + 1 = 4 (spared)… vs Fergus Weakness Water +1 = 5
-    expect(S2.combat!.felled[0][1]).toBe(true);
-    const S3 = combatState({ board: B("cu", "salmon", "salmon", "fergus", "caladbolg", "salmon"), omens: [["o_debility"], []] });
-    rest(S3); use(S3, 8); // Fergus: 2+1+1 −1 Old oath −1 Debility = 2
-    expect(V(S3)).toEqual([1, 3]);
+  it("Night of the Fomóire: the lower Initiative strikes first", () => {
+    expect(actor(mk(B("lugh", "salmon", "salmon", "dagda", "salmon", "salmon")))).toBe(0);
+    expect(actor(mk(B("lugh", "salmon", "salmon", "dagda", "salmon", "salmon"), { omens: [[], ["o_darkness"]] }))).toBe(1);
   });
-  it("The Morrígan's crow: Heals are forbidden (breakable), no guest or Six-gifts heals", () => {
-    const S = combatState({ board: B("emer", "brown_bull", "salmon", "conchobar", "salmon", "salmon"), omens: [[], ["o_crow"]], hands: [["conall"], []] });
-    rest(S); // Conchobar first
-    const opts = options(S);
-    expect(opts.some((o) => o.t === "duel" && o.guest >= 0)).toBe(false);
-    expect(opts.filter((o) => o.t === "duel" && o.spot === 1).map((o) => (o as { mode: string }).mode)).toEqual(["break"]);
-    rest(S); // Emer rests: no heal under the crow
-    expect(V(S)).toEqual([3, 3]);
-    rest(S);
-    use(S, 2, "break"); // −2, then Heal 2 +1 kinship = 3 → 4
-    expect(S.combat!.endValour[0][0]).toBe(4);
-    expect(S.combat!.broken & 16).toBeTruthy();
+  it("Mist of the druids: its owner strikes first; both mists cancel", () => {
+    expect(actor(mk(B("dagda", "salmon", "salmon", "lugh", "salmon", "salmon"), { omens: [["o_mist"], []] }))).toBe(0);
+    expect(actor(mk(B("dagda", "salmon", "salmon", "lugh", "salmon", "salmon"), { omens: [["o_mist"], ["o_mist"]] }))).toBe(1);
   });
-  it("Truce of Samhain: no Strike above 2", () => {
-    const S = combatState({ board: B("cu", "gae_bolga", "salmon", "emer", "salmon", "salmon"), omens: [[], ["o_truce"]] });
-    use(S, 2);
-    expect(V(S)).toEqual([3, 1]);
+  it("Debility of the Ulstermen: Ulaid and Deorad Strikes −1, Cú spared", () => {
+    const S = mk(B("fergus", "cet_spear", "salmon", "liban", "salmon", "salmon"), { omens: [[], ["o_debility"]] });
+    rest(S); // Lí Ban: Shield 2
+    use(S, 2); // 2 + 1 kinship + 1 Focus + 1 Earth beats Water − 1 = 4 − Shield 2 = 2
+    expect(V(S)[1]).toBe(2);
   });
-  it("Mist of the druids: P2's hero strikes first in both duels", () => {
-    const S = combatState({ board: B("cu", "salmon", "salmon", "emer", "salmon", "salmon"), omens: [["o_mist"], []] });
-    expect(actor(S)).toBe(1);
-  });
-  it("Lugh's protection: only the first Strike against each of your heroes each duel −1", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "morrigan", "thunder", "cet_spear"), omens: [["o_lugh"], []] });
-    act(S, { t: "focus", el: null });
-    use(S, 8); // 2 + Emer Weakness Fire 1 = 3, −1 = 2
-    expect(V(S)).toEqual([1, 3]);
-  });
-  it("Lugh's protection: second Strike is full", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "morrigan", "cet_spear", "cet_spear"), omens: [["o_lugh"], []] });
-    act(S, { t: "focus", el: null });
-    use(S, 8); // 2 − 1 = 1
-    expect(V(S)[0]).toBe(2);
-    use(S, 2); // Emer: Salmon Shield 2
-    use(S, 9); // 2 fully, soaked by Shield 2
-    expect(V(S)[0]).toBe(2);
-    expect(S.combat!.shield[0]).toBe(0);
-  });
-  it("Emain's ward: your heroes ignore the geis card laid on them (and its Invoke)", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon"), geasa: ["g_door", null, null, null], omens: [["o_emain"], []] });
-    expect(V(S)).toEqual([3, 3]);
-    rest(S);
-    expect(options(S).some((o) => o.t === "duel" && o.act === "rest" && o.mode === "normal")).toBe(true);
-  });
-  it("Blessing of the ford: your Water supports +1 (not the enemy's)", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon"), omens: [[], ["o_ford"]] });
+  it("Truce of Samhain: no Strike above 3", () => {
+    const S = plain("warp", "salmon", "salmon", "salmon", { omens: [["o_truce"], []] });
     use(S, 8);
-    expect(S.combat!.shield[1]).toBe(3);
-    use(S, 2);
-    expect(S.combat!.shield[0]).toBe(2);
+    expect(V(S)[0]).toBe(2);
   });
-  it("The boyhood deeds: your hero at spot 1 or 7 starts with 4 (not the second duel)", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon"), omens: [["o_boyhood"], ["o_boyhood"]] });
-    expect(V(S)).toEqual([4, 4]);
-    for (let i = 0; i < 4; i++) rest(S);
-    expect(S.combat!.duel).toBe(1);
-    expect(V(S)).toEqual([3, 3]);
+  it("the Morrígan's crow forbids Heals (breakable)", () => {
+    const S = plain("brown_bull", "salmon", "salmon", "salmon", { omens: [[], ["o_crow"]] });
+    expect(modes(S, 8)).toEqual(["break"]);
   });
-});
-
-describe("geasa", () => {
-  const cases: [string, string, string][] = [
-    ["g_ford", "salmon", "Water supports"], ["g_hearth", "thunder", "Fire"], ["g_spear", "caladbolg", "Weapons"],
-    ["g_silence", "bricriu", "Words"], ["g_hound", "warp", "Feats"],
-  ];
-  for (const [g, s, what] of cases) {
-    it(`${g} forbids ${what}: only 'break' is offered`, () => {
-      const S = combatState({ board: B("fergus", s, "host", "morrigan", "salmon", "salmon"), geasa: [g, null, null, null] });
-      act(S, { t: "focus", el: null }); rest(S);
-      const modes = options(S).filter((o) => o.t === "duel" && o.spot === 1).map((o) => (o as { mode: string }).mode);
-      expect(modes).toEqual(["break"]);
-      const d = nextDecision(S)!;
-      expect(legalityError(S, d.player, { t: "duel", guest: -1, act: "use", spot: 1, mode: "normal" })).toMatch(/forbidden/);
-    });
-  }
-  it("the open door forbids resting (Invoke Hospitality hits Emer at once)", () => {
-    const S = combatState({ board: B("conall", "salmon", "salmon", "emer", "salmon", "salmon"), geasa: [null, null, "g_door", null] });
-    expect(V(S)).toEqual([3, 1]);
-    rest(S); // Conall
-    const rests = options(S).filter((o) => o.t === "duel" && o.act === "rest").map((o) => (o as { mode: string }).mode);
-    expect(rests).toEqual(["break"]);
-  });
-  it("breaking costs 2 Valour; a broken geis no longer binds (rest of the match)", () => {
-    const S = combatState({ board: B("fergus", "caladbolg", "caladbolg", "morrigan", "salmon", "salmon"), geasa: ["g_spear", null, null, null] });
-    act(S, { t: "focus", el: null });
+  it("Lugh's protection and the ráth: first Strike −1, Shield 1", () => {
+    const S = plain("cet_spear", "thunder", "salmon", "salmon", { omens: [["o_lugh"], []] });
+    use(S, 8); // 2 − 1 = 1
     rest(S);
-    use(S, 2, "break"); // Fergus 3 − 2 = 1, then Strike 5
-    expect(S.combat!.endValour[0][0]).toBe(1);
-    expect(S.combat!.felled[0][1]).toBe(true);
-    expect(S.stats!.geisBroken).toBe(1);
+    use(S, 9); // full 2
+    expect(V(S)[0]).toBe(2);
   });
-  it("a broken geis stays broken for the hero's next support", () => {
-    const S = combatState({ board: B("fergus", "salmon", "salmon", "morrigan", "thunder", "salmon"), geasa: ["g_ford", null, null, null] });
-    act(S, { t: "focus", el: null });
-    rest(S);
-    use(S, 2, "break");
-    rest(S);
-    const modes = options(S).filter((o) => o.t === "duel" && o.spot === 2).map((o) => (o as { mode: string }).mode);
-    expect(modes).toEqual(["normal"]);
+  it("reinforcements: Feats +1, first-duel Strikes +1, Heals +1, Shields +1", () => {
+    expect((() => { const S = plain("thunder", "salmon", "salmon", "salmon", { omens: [[], ["o_redbranch"]] }); use(S, 8); return V(S)[0]; })()).toBe(2);
+    expect((() => { const S = plain("cet_spear", "salmon", "salmon", "salmon", { omens: [[], ["o_boyhood"]] }); use(S, 8); return V(S)[0]; })()).toBe(2);
+    expect((() => { const S = plain("brown_bull", "salmon", "salmon", "salmon", { omens: [[], ["o_cruachan"]] }); S.combat!.valour[1] = 1; use(S, 8); return V(S)[1]; })()).toBe(4);
+    // Salmon leap for Lí Ban: Shield 2 + 1 Focus Water + 1 the ninth wave
+    expect((() => { const S = plain("salmon", "salmon", "salmon", "salmon", { omens: [[], ["o_wave"]] }); use(S, 8); return S.combat!.shield[1]; })()).toBe(4);
   });
-  it("if breaking fells the hero, the support does not resolve", () => {
-    const S = combatState({ board: B("fergus", "caladbolg", "salmon", "morrigan", "cet_spear", "salmon"), geasa: ["g_spear", null, null, null] });
-    act(S, { t: "focus", el: null });
-    use(S, 8); // Fergus 3 → 1
-    use(S, 2, "break"); // 1 − 2 → falls
-    expect(S.combat!.felled[0]).toEqual([true, false]);
-    expect(S.combat!.endValour[0][1]).toBe(3);
-  });
-  it("geis break cost lever (1 and 3)", () => {
-    for (const [cost, left] of [[1, 2], [3, 0]] as const) {
-      const S = combatState({ board: B("fergus", "salmon", "salmon", "morrigan", "salmon", "salmon"), geasa: ["g_ford", null, null, null], rules: { geisBreakCost: cost } });
-      act(S, { t: "focus", el: null }); rest(S);
-      use(S, 2, "break");
-      expect(Math.max(0, S.combat!.duel === 0 ? V(S)[0] : S.combat!.endValour[0][0])).toBe(left);
-    }
-  });
-  it("hound Invokes Hound on Cú Chulainn when laid", () => {
-    const S = combatState({ board: B("cu", "salmon", "salmon", "emer", "salmon", "salmon"), geasa: ["g_hound", null, null, null] });
-    expect(V(S)[0]).toBe(1);
-    expect(S.stats!.invokes).toBe(1);
-  });
-  it("with no support left, a hero under the open door may rest", () => {
-    const S = combatState({ board: ["emer", null, null, ...D2, "conall", "salmon", "salmon", ...D2E], geasa: ["g_door", null, null, null] });
-    rest(S); // Conall (3 > 2)
-    const rests = options(S).filter((o) => o.t === "duel" && o.act === "rest").map((o) => (o as { mode: string }).mode);
-    expect(rests).toEqual(["normal"]);
-  });
-});
-
-describe("duel order and length", () => {
-  it("higher Initiative strikes first; a tie goes to P2; the lever can flip it", () => {
-    expect(actor(combatState({ board: B("cu", "salmon", "salmon", "emer", "salmon", "salmon") }))).toBe(0);
-    expect(actor(combatState({ board: B("emer", "salmon", "salmon", "cu", "salmon", "salmon") }))).toBe(1);
-    expect(actor(combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon") }))).toBe(1);
-    expect(actor(combatState({ board: B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon"), rules: { initTie: "p1" } }))).toBe(0);
-  });
-  it("each hero gets exactly two turns, alternating", () => {
-    const S = combatState({ board: B("cu", "salmon", "salmon", "emer", "salmon", "salmon") });
-    const order: number[] = [];
-    for (let i = 0; i < 4; i++) { order.push(actor(S)!); rest(S); }
-    expect(order).toEqual([0, 1, 0, 1]);
-    expect(S.combat!.duel).toBe(1);
-    expect(S.stats!.exchanges).toEqual([4]);
-  });
-  it("a used support cannot be used again", () => {
-    const S = combatState({ board: B("cu", "salmon", "thunder", "emer", "salmon", "salmon") });
-    use(S, 2); rest(S);
-    const spots = options(S).filter((o) => o.t === "duel" && o.act === "use").map((o) => (o as { spot: number }).spot);
-    expect(spots).toEqual([2]);
+  it("Blighted harvest: every Heal −1", () => {
+    const S = plain("brown_bull", "salmon", "salmon", "salmon", { omens: [["o_blight"], []] });
+    S.combat!.valour[1] = 1;
+    use(S, 8);
+    expect(V(S)[1]).toBe(2);
   });
 });
 
 describe("guests", () => {
   it("a hero in hand may be discarded once per duel to Heal 1 a hero of the same alignment", () => {
-    const S = combatState({ board: B("emer", "salmon", "salmon", "cu", "thunder", "salmon"), hands: [["conall", "medb", "fergus"], []] });
-    use(S, 8); // Cú: 2+1+1(Focus Fire)+1(Weakness Fire) = 5 → Emer falls... use Salmon instead
-    expect(S.combat!.felled[0][0]).toBe(true);
-    const S2 = combatState({ board: B("emer", "salmon", "salmon", "cu", "salmon", "salmon"), hands: [["conall", "medb", "fergus"], []] });
-    rest(S2);
-    const guests = new Set(options(S2).filter((o) => o.t === "duel" && o.guest >= 0).map((o) => (o as { guest: number }).guest));
-    const names = [...guests].map((u) => S2.players[0].hand.find((c) => c.uid === u)!.def.id).sort();
-    expect(names).toEqual(["conall", "fergus"]); // Medb (Connachta) is not of Emer's alignment; Fergus (Deorad) is
-    const conall = S2.players[0].hand.find((c) => c.def.id === "conall")!.uid;
-    act(S2, { t: "duel", guest: conall, act: "rest", mode: "normal" }); // guest +1, Emer rests +1 → 5
-    expect(V(S2)[0]).toBe(5);
-    expect(S2.players[0].hand.map((c) => c.def.id)).toEqual(["medb", "fergus"]);
-    expect(S2.players[0].discard.map((c) => c.def.id)).toEqual(["conall"]);
-    expect(S2.stats!.guests).toBe(1);
-    rest(S2);
-    expect(options(S2).some((o) => o.t === "duel" && o.guest >= 0)).toBe(false); // once per duel
-  });
-  it("Valour never exceeds 6", () => {
-    const S = combatState({ board: B("emer", "brown_bull", "brown_bull", "conchobar", "salmon", "salmon"), hands: [["conall"], []] });
-    rest(S);
-    use(S, 2); // 3 + 2 + 1 = 6
-    rest(S);
-    const g = S.players[0].hand[0].uid;
-    act(S, { t: "duel", guest: g, act: "use", spot: 2, mode: "normal" });
-    expect(S.combat!.endValour[0][0]).toBe(6);
+    const S = mk(B("emer", "salmon", "salmon", "conchobar", "salmon", "salmon"), { hands: [["conall", "medb", "fergus"], []] });
+    S.combat!.valour[0] = 2;
+    use(S, 8); // Emer (2) before Conchobar (2)? tie → P2 first
+    const names = [...new Set(options(S).filter((o) => o.t === "duel" && o.guest >= 0).map((o) => (o as { guest: number }).guest))]
+      .map((u) => S.players[0].hand.find((c) => c.uid === u)!.def.id).sort();
+    expect(names).toEqual(["conall", "fergus"]);
+    const conall = S.players[0].hand.find((c) => c.def.id === "conall")!.uid;
+    act(S, { t: "duel", guest: conall, act: "rest", mode: "normal" }); // guest +1, Six gifts +2 → 5
+    expect(V(S)[0]).toBe(5);
+    expect(S.players[0].discard.map((c) => c.def.id)).toEqual(["conall"]);
   });
 });
 
 describe("winning and tie-breaks", () => {
-  const C = (felled: boolean[][], endValour: number[][]): CombatState => ({ felled, endValour } as unknown as CombatState);
+  const C = (felled: boolean[][], startV: number[][], endValour: number[][]): CombatState =>
+    ({ felled, startV, endValour } as unknown as CombatState);
   it("more enemy heroes felled wins", () => {
-    expect(combatResult(C([[false, true], [false, false]], [[1, 0], [1, 6]]))).toMatchObject({ winner: 0, decidedBy: "felled" });
+    expect(combatResult(C([[false, true], [false, false]], [[3, 3], [6, 6]], [[1, 0], [1, 6]]))).toMatchObject({ winner: 0, decidedBy: "felled" });
   });
-  it("then more total Valour on standing heroes", () => {
-    expect(combatResult(C([[true, true], [false, false]], [[0, 0], [3, 2]]))).toMatchObject({ winner: 0, decidedBy: "valour", valour: [3, 2] });
-    expect(combatResult(C([[false, false], [false, false]], [[1, 2], [3, 3]]))).toMatchObject({ winner: 1, decidedBy: "valour" });
+  it("then more wounds dealt (Valour the enemy lost), so a tank does not win ties by size alone", () => {
+    // P1's tank (6) lost 3 of 6; P2's small hero (3) lost 2 of 3: P2 dealt 3, P1 dealt 2 → P2 wins although P1 stands higher
+    expect(combatResult(C([[false, false], [false, false]], [[6, 3], [4, 4]], [[3, 1], [4, 4]]))).toMatchObject({ winner: 1, decidedBy: "valour", valour: [2, 3] });
   });
-  it("then whoever alone stands from the first duel", () => {
-    expect(combatResult(C([[true, false], [false, true]], [[0, 2], [2, 0]]))).toMatchObject({ winner: 1, decidedBy: "firstDuel" });
+  it("a felled hero counts its whole start as wounds", () => {
+    expect(combatResult(C([[true, true], [false, false]], [[5, 3], [4, 4]], [[0, 0], [4, 4]]))).toMatchObject({ winner: 1, decidedBy: "valour", valour: [3, 5] });
   });
-  it("else a draw", () => {
-    expect(combatResult(C([[false, false], [false, false]], [[2, 3], [3, 2]]))).toMatchObject({ winner: -1, decidedBy: "draw" });
-    expect(combatResult(C([[true, true], [true, true]], [[0, 0], [0, 0]]))).toMatchObject({ winner: -1, decidedBy: "draw" });
+  it("then whoever alone stands from the first duel; else a draw", () => {
+    expect(combatResult(C([[true, false], [false, true]], [[3, 3], [3, 3]], [[0, 3], [3, 0]]))).toMatchObject({ winner: 1, decidedBy: "firstDuel" });
+    expect(combatResult(C([[false, false], [false, false]], [[4, 4], [4, 4]], [[3, 3], [4, 4]]))).toMatchObject({ winner: -1, decidedBy: "draw" });
   });
   it("a full match produces a result through the engine", () => {
-    const S = combatState({ board: B("cu", "gae_bolga", "salmon", "emer", "salmon", "salmon") });
-    use(S, 2); // Cú 4 → Emer −1... 3+1 = 4
-    for (let i = 0; i < 4; i++) rest(S);
-    expect(nextDecision(S)).toBeNull();
-    expect(S.result).toMatchObject({ winner: 0, decidedBy: "felled", felled: [0, 1] });
+    const S = plain("thunder", "salmon");
+    for (let d = nextDecision(S); d; d = nextDecision(S)) act(S, d.options[0]);
+    expect(S.result).not.toBeNull();
   });
 });

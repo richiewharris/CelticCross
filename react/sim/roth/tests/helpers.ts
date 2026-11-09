@@ -14,7 +14,8 @@ export const card = (id: string, owner: Side): Card => {
 export interface Spec {
   /** 12 card ids for spots 1–12; "id@0" / "id@1" overrides the owner (e.g. a supplanted card). */
   board: (string | null)[];
-  geasa?: (string | null)[]; // per quadrant 1–4
+  geasa?: (string | null)[]; // per quadrant 1–4 (laid by the enemy)
+  oaths?: (string | null)[]; // per quadrant 1–4 (sworn by the owner)
   omens?: [string[], string[]]; // face-up omens per player
   hands?: [string[], string[]];
   rules?: Partial<Rules>;
@@ -30,6 +31,7 @@ export function combatState(spec: Spec): State {
     return card(id, o !== undefined ? (Number(o) as Side) : ownerOfSpot(i));
   });
   S.quadGeis = (spec.geasa ?? [null, null, null, null]).map((g, q) => (g ? card(g, q < 2 ? 1 : 0) : null));
+  S.quadOath = (spec.oaths ?? [null, null, null, null]).map((g, q) => (g ? card(g, q < 2 ? 0 : 1) : null));
   if (spec.omens) spec.omens.forEach((ids, p) => { S.players[p].omens = ids.map((id) => ({ card: card(id, p as Side), faceUp: true })); });
   if (spec.hands) spec.hands.forEach((ids, p) => { S.players[p].hand = ids.map((id) => card(id, p as Side)); });
   S.phase = "combat";

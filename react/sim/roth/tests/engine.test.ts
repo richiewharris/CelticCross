@@ -1,6 +1,6 @@
 // Setup, muster, drafting and the playing turn.
 import { describe, expect, it } from "vitest";
-import { ALL_DEFS, CONNACHT, deckErrors, defsFromIds, ULSTER, ULSTER_IDS } from "../cards";
+import { ALL_DEFS, CONNACHT, DECKS, DECK_IDS, deckErrors, defsFromIds, ULSTER } from "../cards";
 import {
   applyDecision, facedSpot, isHeroSpot, legalityError, newMatch, nextDecision, observe, playOut,
   type Decision, type Side, type State,
@@ -21,24 +21,29 @@ function runUntil(S: State, stop: (S: State, d: Decision) => boolean, seed = 1):
 }
 const replace = (ids: string[], from: string, to: string) => { const a = ids.slice(); a[a.indexOf(from)] = to; return a; };
 
+const ULSTER_IDS = DECK_IDS.ulster;
 describe("deck building", () => {
-  it("the two scenario decks are legal 24-card decks", () => {
-    expect(deckErrors(ULSTER)).toEqual([]);
-    expect(deckErrors(CONNACHT)).toEqual([]);
+  it("the five faction decks are legal 24-card decks", () => {
+    for (const [k, d] of Object.entries(DECKS)) expect([k, deckErrors(d)]).toEqual([k, []]);
   });
   it("rejects wrong size, too many copies, and more than two hero alignments", () => {
     expect(deckErrors(ULSTER.slice(1))).toContain("deck has 23 cards, needs 24");
-    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "bricriu", "thunder"))).join()).toMatch(/thunder x3/);
-    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_crow", "o_lugh"))).join()).toMatch(/o_lugh x2/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "thunder"))).join()).toMatch(/thunder x3/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "o_boyhood"))).join()).toMatch(/o_boyhood x2/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "cu"))).join()).toMatch(/cu x2/);
     const three = replace(replace(ULSTER_IDS, "emer", "medb"), "conall", "morrigan");
     expect(deckErrors(defsFromIds(three)).join()).toMatch(/alignments/);
-    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_crow", "g_hound"))).join()).toMatch(/omens 3/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "g_hound"))).join()).toMatch(/omens 3/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "v_stone"))).join()).toMatch(/oaths 4|omens 3/);
+  });
+  it("rarity: commons ×2, rares and legendaries ×1, at most 2 legendaries", () => {
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "warp"))).join()).toMatch(/warp x2 \(max 1\)/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "spear_assal"))).join()).toMatch(/legendaries 3/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "sling", "salmon")))).toEqual([]);
   });
   it("a Deorad hero counts as one of your alignments", () => {
-    // Connachta + Sídhe + Deorad (the Connacht deck) is legal; Ulaid + Connachta + Deorad too
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "fergus")))).toEqual([]);
-    expect(deckErrors(defsFromIds(replace(replace(ULSTER_IDS, "emer", "fergus"), "conall", "medb")))).toEqual([]);
+    expect(deckErrors(defsFromIds(replace(replace(ULSTER_IDS, "emer", "fergus"), "conall", "ailill")))).toEqual([]);
   });
 });
 
@@ -66,6 +71,7 @@ describe("muster", () => {
   });
   it("a fifth Omen asks which to keep", () => {
     const deck = defsFromIds([...ULSTER_IDS.filter((x) => !x.startsWith("o_")), "o_boyhood", "o_lugh", "o_emain", "o_crow", "o_mist", "o_truce"]).slice(2);
+    expect(deck.length).toBe(24);
     const S = newMatch([deck, CONNACHT], {}, 1);
     const omens = deck.filter((d) => d.type === "omen").map((def) => card(def.id, 0));
     const rest = S.players[0].deck.filter((c) => c.def.type !== "omen");
@@ -213,6 +219,22 @@ describe("playing turn", () => {
     applyDecision(S, d2, 4);
     expect(S.phase).toBe("combat");
     expect(S.players.map((P) => P.omens.length)).toEqual([1, 0]);
+  });
+  it("Swear lays an oath from hand on one of your own unsworn heroes, at any step", () => {
+    const S = toPlay(11);
+    const d = nextDecision(S)!; // P1 faces 7
+    const sw = d.options.filter((o) => o.t === "swear") as { t: "swear"; uid: number; spot: number }[];
+    expect(sw.length).toBeGreaterThan(0);
+    expect(new Set(sw.map((o) => o.spot))).toEqual(new Set([0, 3]));
+    expect(legalityError(S, 0, { t: "swear", uid: sw[0].uid, spot: 6 })).toMatch(/own hero/);
+    const g = S.players[0].hand.find((c) => c.def.type === "geis");
+    if (g) expect(legalityError(S, 0, { t: "swear", uid: g.uid, spot: 0 })).toMatch(/oath in hand/);
+    applyDecision(S, d, d.options.indexOf(sw[0]));
+    expect(S.quadOath[0]?.uid ?? S.quadOath[1]?.uid).toBe(sw[0].uid);
+    const e = nextDecision(S)!; applyDecision(S, e, e.options.length - 1); // P2 holds
+    const f = nextDecision(S)!;
+    const again = f.options.filter((o) => o.t === "swear") as { spot: number }[];
+    expect(again.every((o) => o.spot !== sw[0].spot)).toBe(true); // one oath per hero
   });
   it("whole random matches finish with a result, and the engine is deterministic per seed", () => {
     const r1 = playOut(newMatch([ULSTER, CONNACHT], {}, 99), [nov, nov], [new Rng(1), new Rng(2)]);
