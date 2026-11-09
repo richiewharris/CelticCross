@@ -533,9 +533,9 @@ export const MONSTERS: Record<string, MonsterDef> = {
   fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 3, 1, "Earth", { foeHealMalus: 1 }, "The red man: Initiative +1; the enemy's Heals −1"),
   bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 3, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1"),
   marbh: mon("marbh", "The restless dead", C, 4, -1, "Fire", {}, "Many and slow: Initiative −1"),
-  each_uisce: mon("each_uisce", "The Each-uisce", R, 4, 1, "Earth", {}, "Water-horse: Initiative +1"),
+  each_uisce: mon("each_uisce", "The Each-uisce", R, 3, 1, "Earth", {}, "Water-horse: Initiative +1"),
   fear_gorta: mon("fear_gorta", "The Fear Gorta", C, 4, -1, "Wind", { foeHealMalus: 1 }, "The hungry man: Initiative −1; the enemy's Heals −1"),
-  bananach: mon("bananach", "The Bánánach", C, 3, 1, "Water", { firstStrike: 1 }, "Shrieker of the air: Initiative +1; its first Strike each duel +1"),
+  bananach: mon("bananach", "The Bánánach", C, 2, 1, "Water", { firstStrike: 1 }, "Shrieker of the air: Initiative +1; its first Strike each duel +1"),
 };
 
 // ---------------------------------------------------------------- attendants
@@ -601,9 +601,10 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
   for (const w of [h.weakness, ...members.map((m) => m.weakness)]) if (!weaknesses.includes(w)) weaknesses.push(w);
   const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0);
   const init = h.init + members.reduce((a, m) => a + m.init, 0);
-  const names = members.map((m) => m.name.replace(/^The /, "")).join(", ");
+  const short = members.map((m) => m.name.replace(/^The /, ""));
+  const names = short.length > 1 ? `${short.slice(0, -1).join(", ")} and ${short[short.length - 1]}` : short.join("");
   return {
-    type: "hero", id: `${h.id}:${members.map((m) => m.id).join("+")}`, name: members.length ? `${h.name}: ${names}` : h.name,
+    type: "hero", id: `${h.id}:${members.map((m) => m.id).join("+")}`, name: members.length ? `${h.name}, ${names}` : h.name,
     alignment: "Sluagh", rarity: h.rarity, valour: Math.max(1, valour), init, focus: h.focus, weakness: weaknesses[0], weaknesses,
     quality: [h.quality, ...members.map((m) => `${m.name}: ${m.quality}`)].join(". "), tag: h.tag, ab, host: { def: h, members },
   };

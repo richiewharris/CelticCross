@@ -21,13 +21,13 @@ const kindIcon = (d: CardDef): string => {
   }
 };
 const PEOPLE: Record<string, string> = {
-  Ulaid: "of the Ulaid", Connachta: "of the Connachta", Sidhe: "of the Sídhe", Fomoire: "of the Fomóire", Merrow: "of the Merrow", Deorad: "of the Deorad (exiles)",
+  Ulaid: "of the Ulaid", Connachta: "of the Connachta", Sidhe: "of the Aos Sídhe", Sluagh: "of the Slúagh", Fomoire: "of the Fomóire", Merrow: "of the Merrow", Deorad: "of the Deorad (exiles)",
 };
 const KIND_WORD: Record<string, string> = { Weapon: "weapon", Feat: "feat", Ally: "ally", Word: "word" };
 /** The type line in words: "Hero of the Ulaid", "Water weapon of the Sídhe", "Geis on every hero". */
 export function subtype(d: CardDef): string {
   switch (d.type) {
-    case "hero": return `Hero ${PEOPLE[d.alignment] ?? ""}`.trim();
+    case "hero": return d.host ? `Host of the Slúagh · the ${d.host.def.kind}, ${d.host.members.length} monsters` : `Hero ${PEOPLE[d.alignment] ?? ""}`.trim();
     case "champion": return `Champion ${PEOPLE[d.alignment] ?? ""}`.trim();
     case "support": {
       const k = `${d.element ?? ""} ${KIND_WORD[d.kind ?? "Weapon"]}`.trim();
@@ -114,7 +114,7 @@ function Tokens({ d }: { d: CardDef }) {
   }
 }
 
-function FighterChips({ f }: { f: FighterDef }) {
+function FighterChips({ f }: { f: Pick<FighterDef, "focus" | "weakness" | "weaknesses"> }) {
   return (
     <span className="cf-chips">
       {f.focus ? <span className="chip focus" title={`Focus: ${f.focus}. Supports of this element or kind get +1.`}>Focus <Icon name={f.focus} className={`ink-${f.focus}`} /><b>{f.focus}</b></span> : null}
@@ -159,7 +159,7 @@ function FullBody({ d }: { d: CardDef }) {
       </div>
       <div className="cf-type"><Icon name={kindIcon(d)} /><span>{subtype(d)}</span></div>
       <div className="cf-text">
-        {fighter ? <FighterChips f={fighter} /> : null}
+        {fighter ? <FighterChips f={fighter} /> : d.type === "host" ? <FighterChips f={{ focus: d.focus, weakness: d.weakness }} /> : d.type === "monster" ? <FighterChips f={{ focus: null, weakness: d.weakness }} /> : null}
         {lines.map((l, i) => (
           <span key={i} className={`ln ln-${l.kind}`}>{l.kind === "ability" ? l.text : <Rich text={l.text} />}</span>
         ))}

@@ -134,6 +134,22 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     reinforcements, and geis/oath/crow prohibitions all read the changed card. Champions are reached like heroes.
 52. Built decks carry one attendant (8 supports); the optimizer may swap supports and attendants.
 
+## The Slúagh (a monster deck)
+
+53. A sixth people, the Slúagh. Instead of heroes they have hosts (the Hunt, the Prey, the Taboo; one each) and
+    monsters. A host is placed on a hero spot in the Drafting turn with 2 or 3 monsters joined from hand (all of
+    them if fewer than 2). Host and monsters become one fighter (it keeps the host card's uid): Valour = the sum of
+    the monsters' Valour (+1 each for the Prey), Initiative = the host's + each monster's, qualities summed, and it
+    is weak to every element its host type and its monsters bring. It counts as a hero for everything else.
+54. Spirit (anam) is a support element outside the wheel: no beats, no weakness to it; a Spirit Strike ignores
+    Shield and heals its user 1 when it wounds. Every host's Focus is Spirit.
+55. New support effects: the enemy's next Strike −n (foeNext), the enemy loses n Valour outright (foeLoss).
+56. Deck rules with hosts: hosts and heroes together 3–6, monsters 4–9, one copy of each host and monster. The
+    Muster also guarantees 4 monsters in hand for a host deck. Slúagh and Aos Sídhe are Unwilling.
+57. Starter: 3 hosts, 2 champions (the Banshee, Fear Doirich), 5 monsters, 8 supports, 2 geasa, 4 omens. It
+    scores about 50% against the five other starters at Skilled; the tuned Slúagh deck about 53% against the
+    tuned field. The Aos Sídhe beat them (about 65–70%) and the Fomóire lose to them.
+
 ## Puzzles
 
 Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where

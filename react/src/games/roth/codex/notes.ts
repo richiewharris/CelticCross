@@ -162,7 +162,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
 };
 
 /** What each type of card is, when it's played, and how it works with the rest. */
-export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen" | "attendant"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
+export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen" | "attendant" | "host"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
   {
     type: "hero", title: "Heroes", sample: "cu",
     what: "The fighters. Each quadrant of the wheel is one hero and the two supports behind it, and the heroes fight the two duels at the ford.",
@@ -223,6 +223,17 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
       "{yours} **For your heroes**: wards that soften blows and reinforcements that add +1.",
       "{targeted} **On one hero**: Strikes ±1, Initiative −3, or Shield 1, on any hero, yours or theirs.",
       "In a tie-break's backwards round, geasa and omens reset.",
+    ],
+  },
+  {
+    type: "host", title: "Hosts and monsters", sample: "hunt",
+    what: "The Slúagh have no heroes. A **host** (the Hunt, the Prey or the Taboo) gathers **2 or 3 monsters** and fights as one, in a hero's place.",
+    when: "**Drafting turn**, on a hero spot: the host goes down with the monsters you join to it from your hand.",
+    how: [
+      "The host's {valour} **Valour** is its monsters' added together; its {init} **Initiative** is the host's own plus each monster's (which can be negative).",
+      "It is weak to **every** element its monsters and its host type bring, so a bigger host is tougher but easier to hit hard.",
+      "The host type changes the nature of the monsters in it: the Hunt **Strikes +1**, the Prey gets **+1 Valour** a monster and turns the first blow, the Taboo **drinks life** and spoils the enemy's Heals.",
+      "Its Focus is {Spirit} **Spirit**: Slúagh supports of Spirit ignore Shield and steal 1 when they wound. Oaths, geasa, omens and attendants treat a host just like a hero.",
     ],
   },
   {

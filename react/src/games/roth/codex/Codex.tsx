@@ -2,7 +2,7 @@
 // does and when it's played, then the icons and how a blow's number is worked out. "Decks": the five decks.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
-import { ALL_DEFS, DECK_IDS, FACTIONS, peopleOf, poolOf, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
+import { ALL_DEFS, DECK_IDS, FACTIONS, peopleOf, poolOf, type MonsterDef, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
 import { CardFace, Rich, Token } from "../components/Card";
 import { Emblem, Icon } from "../components/Icons";
 import { FACTION_TITLE } from "../text";
@@ -114,6 +114,18 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
       { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "Who the omen touches." },
       { sel: ".ln-text", at: [0.97, 0.5], title: "Effect", text: "What holds from the moment it turns until the match ends." },
       { sel: ".ln-lore", at: [0.97, 0.5], title: "Lore", text: "A line from the old tales. Small cards drop it first." },
+    ],
+  },
+  host: {
+    def: "hunt",
+    parts: [
+      ...COMMON_TOP,
+      { sel: ".cf-stats", at: [0.5, 0.2], title: "Initiative", text: "The host's own Initiative; each monster adds its own to it (and the Prey adds +1 Valour a monster)." },
+      { sel: ".cf-pic", at: [0.6, 0.4], title: "Art", text: "The host's flock of the dead, over the grey field of Spirit." },
+      { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "A host of the Slúagh, and which: the Hunt, the Prey or the Taboo." },
+      { sel: ".cf-chips", at: [0.97, 0.5], title: "Focus and weakness", text: "Its Focus is Spirit. The weakness here is the host type's own; each monster adds its weakness too." },
+      { sel: ".ln-text", at: [0.97, 0.5], title: "What the host does", text: "Its bonus for the monsters joined to it, and its own weakness." },
+      { sel: ".ln-rule", at: [0.97, 0.5], title: "How it is played", text: "On a hero spot, with 2 or 3 monsters from your hand." },
     ],
   },
   attendant: {
@@ -342,7 +354,7 @@ function Blow() {
 const PEOPLE_OF: Record<Faction, string> = { ulster: "Ulaid", connacht: "Connachta", sidhe: "Sidhe", fomoire: "Fomoire", merrow: "Merrow", sluagh: "Sluagh" };
 const GROUPS: { type: CardDef["type"]; title: string }[] = [
   { type: "hero", title: "Heroes" }, { type: "champion", title: "Champions" }, { type: "support", title: "Supports" },
-  { type: "geis", title: "Geasa" }, { type: "oath", title: "Oaths" }, { type: "omen", title: "Omens" }, { type: "attendant", title: "Attendants" },
+  { type: "geis", title: "Geasa" }, { type: "oath", title: "Oaths" }, { type: "omen", title: "Omens" }, { type: "attendant", title: "Attendants" }, { type: "host", title: "Hosts" }, { type: "monster", title: "Monsters" },
 ];
 const ELS = ["Fire", "Wind", "Earth", "Water"] as const;
 const KINDS = ["Weapon", "Feat", "Ally", "Word"] as const;
@@ -356,7 +368,7 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
   for (const id of ids) copies.set(id, (copies.get(id) ?? 0) + 1);
   const unique = [...copies.keys()].map((id) => ALL_DEFS[id]);
   const sups = ids.map((id) => ALL_DEFS[id]).filter((d): d is SupportDef => d.type === "support");
-  const fighters = unique.filter((d): d is FighterDef => d.type === "hero" || d.type === "champion");
+  const fighters = unique.filter((d): d is FighterDef | MonsterDef => d.type === "hero" || d.type === "champion" || d.type === "monster");
   const extra = poolOf(faction).filter((d) => !copies.has(d.id) && peopleOf(d) !== null);
   const open = Object.values(ALL_DEFS).filter((d) => d.type !== "unknown" && peopleOf(d) === null);
   const shared = { geis: open.filter((d) => d.type === "geis").length, oath: open.filter((d) => d.type === "oath").length, omen: open.filter((d) => d.type === "omen").length };
@@ -396,12 +408,12 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
             <tbody>
               {fighters.map((h) => (
                 <tr key={h.id} tabIndex={0} onFocus={() => setFocus(h)} onMouseEnter={() => setFocus(h)}>
-                  <th scope="row">{h.name}{h.type === "champion" ? <span className="cx-chip">champion</span> : null}</th>
+                  <th scope="row">{h.name}{h.type === "champion" ? <span className="cx-chip">champion</span> : h.type === "monster" ? <span className="cx-chip">monster</span> : null}</th>
                   <td><Token kind="valour" n={h.valour} title={`Valour ${h.valour}`} /></td>
-                  <td>{h.type === "hero" ? <Token kind="init" n={h.init} title={`Initiative ${h.init}`} /> : <span className="cx-dash">—</span>}</td>
-                  <td><span className="cx-fw"><Icon name={h.focus ?? ""} />{h.focus}</span></td>
+                  <td>{h.type === "hero" || h.type === "monster" ? <Token kind="init" n={h.init} title={`Initiative ${h.init}`} /> : <span className="cx-dash">—</span>}</td>
+                  <td>{h.type === "monster" ? <span className="cx-dash">host's</span> : <span className="cx-fw"><Icon name={h.focus ?? ""} />{h.focus}</span>}</td>
                   <td><span className="cx-fw"><Icon name={h.weakness ?? ""} />{h.weakness}</span></td>
-                  <td>{h.tag ?? <span className="cx-dash">—</span>}</td>
+                  <td>{("tag" in h ? h.tag : null) ?? <span className="cx-dash">—</span>}</td>
                   <td>{note.roles[h.id] ?? ""}</td>
                 </tr>
               ))}

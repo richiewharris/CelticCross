@@ -128,5 +128,31 @@
   "o_truce",
   "o_fog",
   "o_mantle"
+ ],
+ "sluagh": [
+  "hunt",
+  "prey",
+  "taboo",
+  "dearg_due",
+  "bean_nighe",
+  "each_uisce",
+  "bananach",
+  "puca",
+  "fear_doirich",
+  "banshee",
+  "harvest",
+  "spine_whip",
+  "hungry_grass",
+  "death_coach",
+  "hungry_grass",
+  "grave_dirt",
+  "famine",
+  "cold_touch",
+  "g_slow",
+  "g_still",
+  "o_sleep",
+  "o_portion",
+  "o_herolight",
+  "o_keen"
  ]
 }

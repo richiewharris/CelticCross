@@ -3,13 +3,13 @@ import type { CardDef, Faction, FighterDef } from "./engine/cards";
 import type { Decision, Option, Side, State } from "./engine/engine";
 
 export const ALIGN: Record<string, string> = {
-  Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Sluagh: "Slúagh", Unaligned: "Unaligned", None: "",
+  Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Aos Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Sluagh: "Slúagh", Unaligned: "Unaligned", None: "",
 };
 export const FACTION_NAME: Record<Faction, string> = {
-  ulster: "Ulster", connacht: "Connacht", sidhe: "the Sídhe", fomoire: "the Fomóire", merrow: "the Merrow", sluagh: "the Slúagh",
+  ulster: "Ulster", connacht: "Connacht", sidhe: "the Aos Sídhe", fomoire: "the Fomóire", merrow: "the Merrow", sluagh: "the Slúagh",
 };
 export const FACTION_TITLE: Record<Faction, string> = {
-  ulster: "Ulster", connacht: "Connacht", sidhe: "Sídhe", fomoire: "Fomóire", merrow: "Merrow", sluagh: "Slúagh",
+  ulster: "Ulster", connacht: "Connacht", sidhe: "Aos Sídhe", fomoire: "Fomóire", merrow: "Merrow", sluagh: "Slúagh",
 };
 const RAR: Record<string, string> = { common: "Common", rare: "Rare", legendary: "Legendary" };
 
