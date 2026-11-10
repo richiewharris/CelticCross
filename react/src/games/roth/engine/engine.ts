@@ -985,14 +985,15 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
 }
 
 /** Heal side p by n plus every Heal modifier (hero, oath, own reinforcement, board, the enemy's blight). */
-export function heal(S: State, C: CombatState, p: Side, n: number) {
+export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: number) {
   const h = fighter(S, C, p);
   const e = fighter(S, C, 1 - p);
   const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
     + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0);
   const v0 = C.valour[p];
-  if (n > 0) C.valour[p] = Math.min(Math.max(C.cap[p], C.valour[p]), C.valour[p] + n);
+  const cap = capTo ?? C.cap[p];
+  if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   if (NARRATE.lines) {
     const bits: string[] = [];
     if (h.ab.healBonus) bits.push(`${sgn(h.ab.healBonus)} ${h.name}'s quality`);
@@ -1001,7 +1002,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number) {
     for (const x of namedBoardFx(S)) if (x.fx.healMod) bits.push(`${sgn(x.fx.healMod)} ${x.name}`);
     if (e.ab.foeHealMalus) bits.push(`−${e.ab.foeHealMalus} ${e.name}'s quality`);
     const capped = n > 0 && C.valour[p] - v0 < n;
-    say(`${h.name} heals: ${n1}${bits.length ? " " + bits.join(" ") + ` = ${Math.max(0, n)}` : ""}${n <= 0 ? ", so nothing" : ""}${capped ? ` (capped: no more than ${Math.max(C.cap[p], v0)})` : ""}. Valour ${v0} → ${C.valour[p]}.`);
+    say(`${h.name} heals: ${n1}${bits.length ? " " + bits.join(" ") + ` = ${Math.max(0, n)}` : ""}${n <= 0 ? ", so nothing" : ""}${capped ? ` (capped: no more than ${Math.max(cap, v0)})` : ""}. Valour ${v0} → ${C.valour[p]}.`);
   }
 }
 
@@ -1079,7 +1080,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const dmg = n - soak;
   C.valour[b] -= dmg;
   const dr = (ab.drain ?? 0) + drain;
-  if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
+  // in a duel to the death, what a blow steals back never lifts a hero above the Valour it started the duel with
+  if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr, toDeath(S) ? Math.min(C.cap[a], C.startV[C.duel][a]) : undefined);
   // the uninvited guest: wound it and pay for it
   if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;
   if (N) {
