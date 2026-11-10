@@ -584,3 +584,10 @@ body.gm-roth .ln-reuse b { color: #5b4a2c; }
 body.gm-roth .duel-pile { font-size: .8rem; color: var(--muted); }
 body.gm-roth .duel-drawn { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 body.gm-roth .duel-drawn .zone-label { flex-basis: 100%; }
+
+/* ---- section navigation: Play · Build a deck · Game guide, and the guide's own pages ---- */
+body.gm-roth .roth-nav { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 16px; }
+body.gm-roth .roth-nav .tabs:not(.sub) label { padding: 9px 18px; font-size: 1rem; }
+body.gm-roth .roth-nav .tabs.sub { border-color: transparent; border-radius: 999px; gap: 4px; }
+body.gm-roth .roth-nav .tabs.sub label { border-radius: 999px; padding: 5px 12px; font-size: .85rem; border: 1px solid var(--line); }
+body.gm-roth .roth-nav .tabs.sub input:checked + label { background: transparent; color: var(--bronze-hi); border-color: var(--bronze); }

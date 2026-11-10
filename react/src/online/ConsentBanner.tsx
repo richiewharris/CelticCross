@@ -10,6 +10,11 @@ export function ConsentBanner() {
     window.addEventListener("consentchange", on);
     return () => window.removeEventListener("consentchange", on);
   }, []);
+  // while the banner shows, leave room under the page so it never covers the last buttons
+  useEffect(() => {
+    document.body.classList.toggle("has-consent", c === null);
+    return () => document.body.classList.remove("has-consent");
+  }, [c]);
   if (c !== null) return null;
   return (
     <div className="consent" role="region" aria-label="Visit statistics">

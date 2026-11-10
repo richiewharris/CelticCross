@@ -16,6 +16,7 @@
 .online .online-list span { color: var(--muted, #8a8a80); font-size: .85rem; }
 .consent { position: fixed; z-index: 20; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(560px, calc(100% - 28px)); display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px; background: #221b15; color: #efe6d2; border: 1px solid #3d3328; box-shadow: 0 12px 30px rgb(0 0 0 / .45); font-family: "Spectral", Georgia, serif; font-size: .95rem; line-height: 1.45; }
 .consent p { margin: 0; }
+body.has-consent { padding-bottom: 200px; }
 .consent-buttons { display: flex; gap: 8px; justify-content: flex-end; }
 .consent button { font: inherit; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; border: 1px solid #b08d55; background: transparent; color: #efe6d2; }
 .consent button.consent-yes { background: #b08d55; color: #17130f; }

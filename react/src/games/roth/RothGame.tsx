@@ -13,11 +13,18 @@ import { Walkthrough } from "./walkthrough/Walkthrough";
 import { FACTION_TITLE } from "./text";
 import { useMatch } from "./useMatch";
 
-type Tab = "play" | "walk" | "build" | "puzzles" | "cards" | "decks";
+type Tab = "play" | "build" | "guide";
+type Guide = "walk" | "puzzles" | "cards" | "decks";
+const OLD_GUIDE: Record<string, Guide> = { walk: "walk", puzzles: "puzzles", cards: "cards", decks: "decks" };
 
 export function RothGame() {
-  const [tab, setTab] = useStoredState<Tab>("roth-react-tab", "play");
+  const [stored, setTab] = useStoredState<string>("roth-react-tab", "play");
+  const [guideStored, setGuide] = useStoredState<Guide>("roth-react-guide", "walk");
+  // saved from before the Game guide existed: an old guide tab opens the guide on that page
+  const tab: Tab = stored in OLD_GUIDE ? "guide" : (stored as Tab);
+  const guide: Guide = stored in OLD_GUIDE ? OLD_GUIDE[stored] : guideStored;
   const [focus, setFocus] = useState<CardDef | null>(null);
+  const goGuide = (g: Guide) => { setGuide(g); setTab("guide"); };
   return (
     <div className="wrap">
       <header>
@@ -25,9 +32,19 @@ export function RothGame() {
         <p className="lede">The wheel of battle. Draft heroes and their supports onto a round board, bind your rival's heroes with geasa, swear oaths, turn omens, then fight to the death at the ford. Six decks from the Ulster Cycle and beyond.</p>
         <p className="private-note">Private preview: only you can see this page.</p>
       </header>
-      <Segmented label="Mode" value={tab} onChange={setTab} className="tabs"
-        options={[{ value: "play", label: "Play the computer" }, { value: "walk", label: "Guided game" }, { value: "build", label: "Build a deck" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
-      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "walk" ? <Walkthrough focus={focus} setFocus={setFocus} /> : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
+      <nav className="roth-nav" aria-label="Roth Catha">
+        <Segmented label="Section" value={tab} onChange={(t) => (t === "guide" ? goGuide(guide) : setTab(t))} className="tabs"
+          options={[{ value: "play", label: "Play" }, { value: "build", label: "Build a deck" }, { value: "guide", label: "Game guide" }] as { value: Tab; label: string }[]} />
+        {tab === "guide" ? (
+          <Segmented label="Game guide" value={guide} onChange={goGuide} className="tabs sub"
+            options={[{ value: "walk", label: "Guided game" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Guide; label: string }[]} />
+        ) : null}
+      </nav>
+      {tab === "play" ? <Match focus={focus} setFocus={setFocus} />
+        : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} />
+        : guide === "walk" ? <Walkthrough focus={focus} setFocus={setFocus} />
+        : guide === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} />
+        : guide === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );
 }
