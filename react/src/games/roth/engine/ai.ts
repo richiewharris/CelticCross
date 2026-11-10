@@ -3,7 +3,7 @@
 
 import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
-  applyDecision, cloneCombat, cloneState, debilitated, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
+  applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
 import { Rng } from "./rng";
@@ -359,7 +359,7 @@ export class SkilledPolicy implements Policy {
       case "drawn":
       case "focus":
       case "duel": {
-        if (toDeath(V)) return deathChoice(V, d, rng);
+        if (toDeath(V)) return this.fast ? new CasualPolicy().choose(V, d, rng) : deathChoice(V, d, rng);
         const C2 = cloneCombat(V.combat!);
         stripGuests(C2, d.player);
         return solveChoice(V, C2, d.player, !this.fast).best;
@@ -411,10 +411,101 @@ export class SkilledPolicy implements Policy {
   }
 }
 
-/** Placeholder until the long-duel search lands: Casual's eye. */
-function deathChoice(V: State, d: Decision, rng: Rng): number {
-  return new CasualPolicy().choose(V, d, rng);
+// ---------------------------------------------------------------- duels to the death: a short look-ahead
+/**
+ * The duels are long and every draw is a chance, so nothing is solved exactly: Skilled looks one turn of its own and
+ * one of the enemy's ahead (a draw is averaged over what the Reserve could give), and judges the board it reaches.
+ */
+function deathEval(S: State, me: Side): number {
+  if (S.result) return S.result.winner === -1 ? 0 : S.result.winner === me ? 1000 : -1000;
+  const C = S.combat;
+  if (!C) return 0;
+  const o = (1 - me) as Side;
+  let felled = 0;
+  for (const f of C.felled) felled += (f[o] ? 1 : 0) - (f[me] ? 1 : 0);
+  if (C.stage === "done") return 60 * felled;
+  const hm = fighter(S, C, me), ho = fighter(S, C, o);
+  // how hard each side can hit with what is ready now
+  const pot = (p: Side) => {
+    const h = p === me ? hm : ho, e = p === me ? ho : hm;
+    let best = 1.5; // a draw is worth about this much
+    for (const hs of [C.hs[p]]) for (const sp of [hs + 1, hs + 2]) {
+      const c = S.board[sp];
+      if (!c || c.def.type !== "support") continue;
+      if (C.uses[sp] && !supportReady(S, C, p, sp)) continue;
+      best = Math.max(best, quickSupportValue(c.def, h as HeroDef, e as HeroDef));
+    }
+    return best + C.nextStrike[p] + (h.ab.strikeAll ?? 0);
+  };
+  const vm = C.valour[me] + 0.7 * C.shield[me], vo = C.valour[o] + 0.7 * C.shield[o];
+  // turns each side needs to fell the other, roughly; fewer is better
+  const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o));
+  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2);
 }
+/** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */
+function topCards(S: State, p: Side): { uid: number; w: number }[] {
+  const P = S.players[p];
+  const pile = P.reserve.length ? P.reserve : P.discard;
+  const by = new Map<string, { uid: number; n: number }>();
+  for (const c of pile) { const k = c.def.id; const x = by.get(k); if (x) x.n++; else by.set(k, { uid: c.uid, n: 1 }); }
+  return [...by.values()].map((x) => ({ uid: x.uid, w: x.n / pile.length }));
+}
+/** A copy of S with the card uid on top of p's Reserve (the discards shuffled back first, if it is empty). */
+function withTop(S: State, p: Side, uid: number): State {
+  const W = cloneState(S);
+  const P = W.players[p];
+  if (!P.reserve.length) { P.reserve = P.discard; P.discard = []; }
+  const i = P.reserve.findIndex((c) => c.uid === uid);
+  const [c] = P.reserve.splice(i, 1);
+  P.reserve.unshift(c);
+  return W;
+}
+const turnKey = (S: State) => (S.combat ? S.combat.duel * 1000 + S.combat.turn : -1) + (S.phase === "end" ? 1e6 : 0);
+/** Expectiminimax over whole turns: budget = turns still to look into. */
+function deathNode(S: State, me: Side, budget: number, stats: { n: number }): number {
+  stats.n++;
+  const d = S.phase === "combat" ? nextDecision(S) : null;
+  if (!d || budget <= 0 || stats.n > 20000) return deathEval(S, me);
+  return deathPick(S, d, me, budget, stats).v;
+}
+function deathPick(S: State, d: Decision, me: Side, budget: number, stats: { n: number }): { v: number; i: number } {
+  const max = d.player === me;
+  const k0 = turnKey(S);
+  let best = { v: max ? -Infinity : Infinity, i: 0 };
+  let guestSeen = false;
+  d.options.forEach((x, i) => {
+    if (x.t === "duel" && x.guest >= 0) {
+      if (guestSeen || S.combat!.valour[d.player] >= S.combat!.cap[d.player]) return;
+      guestSeen = true;
+    }
+    let v: number;
+    if (x.t === "draw") {
+      v = 0;
+      for (const t of topCards(S, d.player)) {
+        const W = withTop(S, d.player, t.uid);
+        const d2 = nextDecision(W)!;
+        applyDecision(W, d2, d2.options.findIndex((y) => y.t === "draw"), false);
+        v += t.w * deathNode(W, me, budget, stats);
+      }
+    } else {
+      const W = cloneState(S);
+      applyDecision(W, d, i, false);
+      v = deathNode(W, me, turnKey(W) !== k0 ? budget - 1 : budget, stats);
+    }
+    if (max ? v > best.v : v < best.v) best = { v, i };
+  });
+  return best;
+}
+function deathChoice(V: State, d: Decision, rng: Rng): number {
+  if (d.options.length === 1) return 0;
+  if (d.kind === "focus") return new CasualPolicy().choose(V, d, rng);
+  // the enemy's hidden cards (its hand and Reserve) are filled in with a plausible sample
+  const D = determinize(V, d.player, rng);
+  if (DEATH.budget === 0) return new CasualPolicy().choose(V, d, rng);
+  return deathPick(D, d, d.player, DEATH.budget, { n: 0 }).i;
+}
+/** Look-ahead depth in whole turns for long duels (a lever for experiments; 0 = Casual's eye). */
+export const DEATH = { budget: 2 };
 
 // ---------------------------------------------------------------- Expert
 /** Replace the opponent's unknown cards with a sample consistent with what has been seen. */
