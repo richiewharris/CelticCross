@@ -57,6 +57,8 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [sel, setSel] = useState<Sel>(null);
   const [join, setJoin] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  /** The drafting slider opens from the open slot's "+" (or a card in hand). */
+  const [placeOpen, setPlaceOpen] = useState(false);
   const narrow = useNarrow(1100);
   // while a match is on, the page header steps back
   useEffect(() => {
@@ -66,7 +68,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [showResult, setShowResult] = useState(true);
   const [act, setAct] = useState<Pick>(NO_PICK);
   const [group, setGroup] = useState<string | null>(null);
-  useEffect(() => { setSel(null); setJoin(null); setAct((a) => ({ ...NO_PICK, guest: a.guest })); }, [m.d]);
+  useEffect(() => { setSel(null); setJoin(null); setPlaceOpen(false); setAct((a) => ({ ...NO_PICK, guest: a.guest })); }, [m.d]);
   useEffect(() => { if (m.over) setShowResult(true); }, [m.over]);
 
   if (!m.S) {
@@ -87,12 +89,14 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   // tapping the table only picks: the panel's button (or a second tap) commits
   const onCard = (uid: number) => {
     if (!d) return;
-    if (d.kind === "place") { setSel(sel?.uid === uid ? null : { uid }); setJoin(null); return; } // pick it in the row, then confirm
+    if (d.kind === "place") { setSel({ uid }); setJoin(null); setPlaceOpen(true); return; } // pick it in the slider, then confirm
     const a = acts.find((x) => x.uid === uid);
     if (a) { setGroup(a.group); setAct({ key: a.key, target: new Set(a.variants.map((v) => v.target)).size === 1 ? a.variants[0].target ?? null : null, guest: act.guest }); }
   };
   const onSpot = (spot: number) => {
     if (!d) return;
+    // the open slot's "+": choose a card for it
+    if (d.kind === "place" && spot === d.spot) { setPlaceOpen(true); return; }
     // a target for the picked card?
     if (actNow && actNow.variants.some((v) => v.target === spot)) { setAct({ ...act, target: spot }); return; }
     // the spot you face in the Playing turn: show what you can do to it
@@ -126,8 +130,18 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
         <Table S={S} me={m.me} d={d} sel={tableSel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} last={m.last}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
-            <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
-              onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
+            placeOpen ? (
+              <div className="place-sheet" role="dialog" aria-modal="false" aria-label={`Choose a card for spot ${d.spot! + 1}`}>
+                <button type="button" className="btn quiet small place-close" onClick={() => setPlaceOpen(false)} aria-label="Close the card choice">Close ✕</button>
+                <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
+                  onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
+              </div>
+            ) : (
+              <div className="place-hint">
+                <p><b>Spot {d.spot! + 1}</b>: tap the <span className="plus">+</span> to choose a {d.spot! % 3 === 0 ? "hero" : "support"}.</p>
+                <button type="button" className="btn primary" onClick={() => setPlaceOpen(true)}>Choose a card</button>
+              </div>
+            )
           ) : narrow ? panel : null} />
         {m.over && !showResult ? <button type="button" className="btn" onClick={() => setShowResult(true)}>Show the result</button> : null}
       </section>
