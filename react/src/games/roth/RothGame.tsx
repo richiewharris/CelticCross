@@ -6,6 +6,7 @@ import type { CardDef } from "./engine/cards";
 import { ActionPanel, NO_PICK, buildActs, type Pick } from "./components/ActionPanel";
 import { PlaceView } from "./components/PlaceView";
 import { CardFocusProvider } from "./components/CardFocus";
+import { useNarrow } from "./components/DuelView";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
 import { Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
@@ -56,6 +57,12 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [sel, setSel] = useState<Sel>(null);
   const [join, setJoin] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const narrow = useNarrow(1100);
+  // while a match is on, the page header steps back
+  useEffect(() => {
+    document.body.classList.toggle("roth-in-match", !!m.S && !m.over);
+    return () => document.body.classList.remove("roth-in-match");
+  }, [m.S, m.over]);
   const [showResult, setShowResult] = useState(true);
   const [act, setAct] = useState<Pick>(NO_PICK);
   const [group, setGroup] = useState<string | null>(null);
@@ -92,6 +99,8 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
     if (a) { setGroup(a.group); setAct({ key: a.key, target: null, guest: act.guest }); }
   };
   const tableSel: Sel = d && d.kind === "place" ? sel : actNow ? (actNow.uid !== undefined ? { uid: actNow.uid } : actNow.spot !== undefined ? { spot: actNow.spot } : null) : null;
+  const panel = m.myTurn && d && d.kind !== "muster" && d.kind !== "place"
+    ? <ActionPanel S={S} d={d} pick={act} group={group} onPick={setAct} onGroup={setGroup} onCommit={pick} /> : null;
   const status = m.over ? "The match is over." : m.myTurn ? "Your move." : m.thinking ? "The computer is thinking…" : "…";
   return (
     <div className="game">
@@ -113,14 +122,17 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
           afterWheel={m.myTurn && d && d.kind === "place" ? (
             <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
               onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
-          ) : null} />
-        {m.myTurn && d && d.kind !== "muster" && d.kind !== "place" ? <ActionPanel S={S} d={d} pick={act} group={group} onPick={setAct} onGroup={setGroup} onCommit={pick} /> : null}
+          ) : narrow ? panel : null} />
         {m.over && !showResult ? <button type="button" className="btn" onClick={() => setShowResult(true)}>Show the result</button> : null}
       </section>
       <aside>
+        {narrow ? null : panel}
         <Inspector def={focus} />
         <LogPanel log={m.log} />
-        <SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch record={m.record} />
+        <details className="panel-fold" open={m.over || undefined}>
+          <summary>New match</summary>
+          <SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch record={m.record} />
+        </details>
         <RulesPanel />
       </aside>
       {m.over && showResult && S.result ? <ResultDialog r={S.result} me={m.me} onAgain={() => m.start()} onClose={() => setShowResult(false)} /> : null}

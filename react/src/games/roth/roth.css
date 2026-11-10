@@ -717,3 +717,76 @@ body.gm-roth .act-commit { display: flex; flex-wrap: wrap; gap: 8px; justify-con
 body.gm-roth .act-commit .btn { min-height: 46px; }
 body.gm-roth .act-go { flex: 1 1 220px; }
 body.gm-roth .act-go:disabled { opacity: .55; cursor: default; }
+
+/* ---- the duel on one screen ---- */
+body.gm-roth .duel-fighter { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+body.gm-roth .duel-info { display: grid; gap: 6px; min-width: 0; }
+body.gm-roth .duel-name { margin: 0; font-size: 1rem; }
+body.gm-roth .duel-name small { color: var(--muted); font-size: .8rem; }
+body.gm-roth .duel-tags .tag { display: inline-flex; align-items: center; gap: 4px; }
+body.gm-roth .duel-pile { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+body.gm-roth .vbar { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+body.gm-roth .vbar-pips { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+body.gm-roth .vbar .pip { width: 14px; height: 14px; border-radius: 4px; border: 2px solid #c9483b; box-sizing: border-box; }
+body.gm-roth .vbar .pip.on { background: #c9483b; }
+body.gm-roth .vbar .pip.lost { border-style: solid; background: transparent; opacity: .75; }
+body.gm-roth .vbar .pip.room { border: 1px dashed #7c5a50; opacity: .7; }
+body.gm-roth .vbar .pip.shield { border-color: #6f9fd8; background: #6f9fd8; border-radius: 50% 50% 45% 45%; }
+body.gm-roth .vbar-n { font-variant-numeric: tabular-nums; color: var(--muted); }
+body.gm-roth .vbar-n b { color: #f0e2c8; font-size: 1.05rem; }
+body.gm-roth .vbar-sh { color: #9cc0ea; }
+body.gm-roth .duel-side.felled .vbar { opacity: .6; }
+
+/* small cards in hand and Omen spots */
+body.gm-roth .hand.small > .card.compact, body.gm-roth .zone.mine .omens > .card.compact { width: 9.5rem; flex: 0 0 auto; font-size: 12px; }
+body.gm-roth .zone.mine .omens:has(.card.compact) { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; }
+body.gm-roth .hand-size { margin-left: 8px; }
+body.gm-roth .card.compact .c-badge { position: static; display: block; font-size: .7em; color: var(--bronze-hi); }
+
+/* setup folds away during a match */
+body.gm-roth .panel-fold { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+body.gm-roth .panel-fold > summary { cursor: pointer; font-variant: small-caps; letter-spacing: .08em; color: var(--bronze-hi); }
+body.gm-roth .panel-fold > .panel { border: 0; padding: 8px 0 0; background: none; }
+
+/* desktop: the choices sit at the top of the right column, beside the fight */
+body.gm-roth aside > .actions { position: sticky; top: 10px; z-index: 4; max-height: calc(100vh - 20px); overflow: auto; }
+
+@media (max-width: 1100px) {
+  /* phone and tablet: the choices are a sheet pinned to the bottom of the screen */
+  body.gm-roth .stage .actions { position: sticky; bottom: 0; z-index: 8; max-height: 56vh; overflow: auto; margin-inline: -4px; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px rgb(0 0 0 / .55); }
+}
+@media (max-width: 760px) {
+  body.gm-roth .duel-side { flex-direction: column; flex-wrap: nowrap; gap: 8px; padding: 8px; }
+  body.gm-roth .duel-side.mine { flex-direction: column-reverse; }
+  body.gm-roth .duel-portrait { width: 8.5rem; }
+  body.gm-roth .duel-portrait .card.compact { font-size: 12px; }
+  body.gm-roth .duel-supports { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; width: 100%; }
+  body.gm-roth .duel-supports .card.compact { width: 100%; }
+  body.gm-roth .duel-supports .empty-spot { width: auto; aspect-ratio: auto; min-height: 4em; }
+  body.gm-roth .duel-ford { padding: 2px; font-size: .85rem; }
+  body.roth-in-match.gm-roth header .lede, body.roth-in-match.gm-roth header .private-note { display: none; }
+  body.roth-in-match.gm-roth header h1 { font-size: 1.6rem; margin: 0; }
+}
+body.gm-roth .act-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.gm-roth .act-fold { display: none; }
+body.gm-roth .actions.folded .act-tabs, body.gm-roth .actions.folded .act-rows, body.gm-roth .actions.folded .act-targets, body.gm-roth .actions.folded .act-guest { display: none; }
+@media (max-width: 1100px) {
+  body.gm-roth .act-fold { display: inline-flex; }
+  body.gm-roth .stage .actions { max-height: 48vh; padding: 10px; gap: 8px; }
+  body.gm-roth .stage .actions .prompt { font-size: .92rem; }
+  body.gm-roth .stage .actions .act-row { min-height: 44px; padding: 7px 10px; }
+  body.gm-roth .stage .actions .act-tab { min-height: 36px; padding: 6px 10px; }
+}
+@media (min-width: 761px) {
+  /* desktop duel: the fighter, its numbers and its two supports side by side */
+  body.gm-roth .duel-side { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 8px; align-items: start; }
+  body.gm-roth .duel-fighter { display: contents; }
+  body.gm-roth .duel-portrait { grid-row: span 2; }
+  body.gm-roth .duel-supports { grid-column: 2; }
+}
+body.gm-roth .zone.theirs .omens { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; scrollbar-width: none; }
+body.gm-roth .zone.theirs .omens > .card { flex: 0 0 auto; }
+@media (max-width: 760px) {
+  body.gm-roth .zone.theirs .omens .card.compact { width: 8.5rem; font-size: 11px; }
+  body.gm-roth .zone.theirs .omens .card.compact .c-rule { -webkit-line-clamp: 1; }
+}

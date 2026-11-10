@@ -2,6 +2,7 @@
 // would do; a target is a second step; a guest's heal is one switch, not a second copy of every row. Only the named
 // button (or a second tap on the same row, or Enter) commits.
 import { useEffect, useMemo } from "react";
+import { useStoredState } from "../../../kit/useStoredState";
 import { cardName, optionLabel } from "../text";
 import type { Decision, Option, State } from "../engine/engine";
 import { previewOf, prompt } from "./Choices";
@@ -80,6 +81,7 @@ export function ActionPanel(props: {
   onPick: (p: Pick) => void; onGroup: (g: string) => void; onCommit: (i: number) => void;
 }) {
   const { S, d, pick } = props;
+  const [folded, setFolded] = useStoredState<boolean>("roth-react-panel-folded", false);
   const acts = useMemo(() => buildActs(S, d), [S, d]);
   const groups = ORDER.filter((g) => acts.some((a) => a.group === g));
   const ends = acts.filter((a) => a.group === END);
@@ -121,8 +123,11 @@ export function ActionPanel(props: {
 
   const short = d.kind === "duel" ? (S.combat?.drew ? "You put the drawn card aside: choose something else." : "Your turn: choose one.") : prompt(S, d);
   return (
-    <div className="actions" aria-label="Your choices">
-      <p className="prompt">{short}</p>
+    <div className={`actions${folded ? " folded" : ""}`} aria-label="Your choices">
+      <div className="act-head">
+        <p className="prompt">{short}</p>
+        <button type="button" className="btn quiet small act-fold" aria-expanded={!folded} onClick={() => setFolded(!folded)}>{folded ? "Show choices ▴" : "Hide ▾"}</button>
+      </div>
       {groups.length > 1 ? (
         <div className="act-tabs" role="tablist" aria-label="Kinds of action">
           {groups.map((g) => {

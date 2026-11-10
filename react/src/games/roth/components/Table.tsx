@@ -1,5 +1,6 @@
 // The whole table from one seat: the enemy's hand and omens, the wheel, your omens and your hand.
 import { useState, type ReactNode } from "react";
+import { useStoredState } from "../../../kit/useStoredState";
 import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
@@ -56,6 +57,8 @@ export function Table(props: {
 }) {
   const { S, me, d, sel } = props;
   const [wide, setWide] = useState(false);
+  const [fullHand, setFullHand] = useStoredState<boolean>("roth-react-fullhand", false);
+  const small = !fullHand;
   const mineToAct = !!d && d.player === me && !!props.onCard;
   const playable = new Set<number>();
   const marks = new Map<number, Mark>();
@@ -87,8 +90,8 @@ export function Table(props: {
     const shown = mine || o.faceUp;
     const target = o.target !== undefined ? `on ${S.board[o.target]?.def.name ?? "spot " + (o.target + 1)}` : undefined;
     return (
-      <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"} variant={mine ? "full" : "compact"}
-        faceDown={mine && !o.faceUp} badge={o.faceUp ? target : undefined} onFocusCard={props.onFocusCard}
+      <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"}
+        variant={mine && !small ? "full" : "compact"} faceDown={mine && !o.faceUp} badge={o.faceUp ? target : mine && !o.faceUp && small ? "face down" : undefined} onFocusCard={props.onFocusCard}
         playable={mine && playable.has(o.card.uid)} selected={sel?.uid === o.card.uid}
         onClick={mine && playable.has(o.card.uid) ? () => props.onCard!(o.card.uid) : undefined} />
     );
@@ -134,10 +137,14 @@ export function Table(props: {
       ) : null}
       <div className="zone mine" aria-label="Your omens and hand">
         {P.omens.length ? <><span className="zone-label">{props.names?.[0] ?? "You"}: omens</span><div className="omens">{omenRow(me)}</div></> : null}
-        {P.hand.length ? <span className="zone-label">Hand · {P.hand.length} <small className="hint">swipe a card down to read it in full</small></span> : null}
-        <div className="hand">
+        {P.hand.length ? (
+          <span className="zone-label">Hand · {P.hand.length} <small className="hint">swipe a card down to read it in full</small>
+            <button type="button" className="btn quiet small hand-size" aria-pressed={fullHand} onClick={() => setFullHand(!fullHand)}>{fullHand ? "Small cards" : "Full cards"}</button>
+          </span>
+        ) : null}
+        <div className={`hand${small ? " small" : ""}`}>
           {P.hand.map((c) => (
-            <CardFace key={c.uid} def={c.def} owner="mine" onFocusCard={props.onFocusCard}
+            <CardFace key={c.uid} def={c.def} owner="mine" variant={small ? "compact" : "full"} onFocusCard={props.onFocusCard}
               playable={playable.has(c.uid)} selected={sel?.uid === c.uid}
               onClick={playable.has(c.uid) ? () => props.onCard!(c.uid) : undefined} />
           ))}

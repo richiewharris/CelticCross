@@ -1,5 +1,6 @@
 // The duel at the ford, up close: each fighter as a full card with its Valour and Shield, its geis and oath,
 // and the two supports of its quadrant (used ones dimmed). Your side at the bottom.
+import { useEffect, useState } from "react";
 import type { CardDef } from "../engine/cards";
 import { actorOf, effSupport, effWeakness, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
 import { reuseOf, type SupportDef } from "../engine/cards";
@@ -15,6 +16,34 @@ function waitText(s: SupportDef, n: number): string {
   return `used ×${n}${w.length ? ` · again: ${w.join(", ")}` : ""}`;
 }
 
+/** True on narrow screens, where the duel uses compact tiles so a whole turn fits on one screen. */
+export function useNarrow(max = 760): boolean {
+  const q = `(max-width: ${max}px)`;
+  const [on, setOn] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(q);
+    if (!m) return;
+    const f = () => setOn(m.matches);
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, [q]);
+  return on;
+}
+
+/** Valour as pips: filled for what the fighter has, hollow for what it has lost, faint for room to heal; Shield in blue. */
+export function ValourBar({ v, start, cap, shield }: { v: number; start: number; cap: number; shield: number }) {
+  const top = Math.max(cap, v, start);
+  return (
+    <span className="vbar" role="img" aria-label={`Valour ${v} of ${start}${cap > start ? `, can heal to ${cap}` : ""}${shield ? `, Shield ${shield}` : ""}`}>
+      <span className="vbar-pips" aria-hidden="true">
+        {Array.from({ length: top }, (_, i) => <i key={i} className={i < v ? "pip on" : i < start ? "pip lost" : "pip room"} />)}
+        {Array.from({ length: shield }, (_, i) => <i key={`s${i}`} className="pip shield" />)}
+      </span>
+      <span className="vbar-n" aria-hidden="true"><b>{v}</b>/{start}{shield ? <span className="vbar-sh"> +{shield}</span> : null}</span>
+    </span>
+  );
+}
+
 export function DuelView(props: {
   S: State; me: Side; usable?: Set<number>; chosen?: number; onSpot?: (spot: number) => void; onFocusCard?: (d: CardDef) => void;
 }) {
@@ -22,6 +51,7 @@ export function DuelView(props: {
   const C = S.combat;
   if (!C) return null;
   const death = toDeath(S);
+  const narrow = useNarrow();
   const side = (p: Side) => {
     const hs = C.hs[p];
     const q = quadOf(hs);
@@ -37,20 +67,21 @@ export function DuelView(props: {
     return (
       <div className={`duel-side ${mine ? "mine" : "theirs"}${felled ? " felled" : ""}${!done && (death || C.turn < 4) && actorOf(C) === p ? " acting" : ""}`}>
         <div className="duel-fighter">
-          <CardFace def={f} owner={hero.owner === me ? "mine" : "theirs"} onFocusCard={props.onFocusCard} label={`${f.name}, ${mine ? "your" : "the enemy's"} fighter: Valour ${v}${sh ? `, Shield ${sh}` : ""}`} />
-          <div className="duel-meter" aria-hidden="true">
-            <span className="hearts">{Array.from({ length: Math.max(v, 0) }, (_, i) => <Icon key={i} name="valour" />)}{v === 0 ? "felled" : ""}</span>
-            {sh ? <span className="shields">{Array.from({ length: sh }, (_, i) => <Icon key={i} name="shield" />)}</span> : null}
-            <span className="cap">of {C.cap[p]}</span>
+          <div className="duel-portrait">
+            <CardFace def={f} owner={hero.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} onFocusCard={props.onFocusCard} label={`${f.name}, ${mine ? "your" : "the enemy's"} fighter: Valour ${v}${sh ? `, Shield ${sh}` : ""}`} />
           </div>
-          {death ? <p className="duel-pile">Reserve {S.players[p].reserve.length} · discards {S.players[p].discard.length}</p> : null}
+          <div className="duel-info">
+            <p className="duel-name"><b>{f.name}</b> <small>{mine ? "you" : "the enemy"} · Initiative {C.init[p]}{felled ? " · felled" : ""}</small></p>
+            <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
+            {death ? <p className="duel-pile"><Icon name="omen" /> Reserve {S.players[p].reserve.length} · discards {S.players[p].discard.length}</p> : null}
           <div className="duel-tags">
-            {C.champ[p] ? <span className="tag champ">standing in for {hero.def.name}</span> : null}
-            {geis ? <span className="tag geis">⊘ {geis.def.name}</span> : null}
-            {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis">⊘ {g.text}</span>)}
-            {oath ? <span className="tag oath">✠ {oath.def.name}</span> : null}
-            {omens.map((o, i) => <span key={i} className="tag omen">☽ {o.name}</span>)}
+            {C.champ[p] ? <span className="tag champ"><Icon name="champion" /> standing in for {hero.def.name}</span> : null}
+            {geis ? <span className="tag geis"><Icon name="geis" /> {geis.def.name}</span> : null}
+            {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis"><Icon name="global" /> {g.text}</span>)}
+            {oath ? <span className="tag oath"><Icon name="oath" /> {oath.def.name}</span> : null}
+            {omens.map((o, i) => <span key={i} className="tag omen"><Icon name="omen" /> {o.name}</span>)}
             {(() => { const printed = f.weaknesses ?? (f.weakness ? [f.weakness] : []); const w = effWeakness(S, p, f).filter((x) => !printed.includes(x)); return w.length ? <span className="tag attendant">cursed: also weak to {w.join(", ")}</span> : null; })()}
+          </div>
           </div>
         </div>
         <div className="duel-supports">
@@ -64,7 +95,7 @@ export function DuelView(props: {
             const eff = effSupport(S, p, sd);
             const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${(eff.channel ?? 0) + (eff.attuned ?? 0) ? `, +${(eff.channel ?? 0) + (eff.attuned ?? 0)}` : ""}` : null;
             return (
-              <CardFace key={s} def={c.def} owner={c.owner === me ? "mine" : "theirs"} dim={used} playable={can} selected={props.chosen === s}
+              <CardFace key={s} def={c.def} owner={c.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} dim={used} playable={can} selected={props.chosen === s}
                 badge={death ? [again, c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined
                   : used ? "used" : [c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined}
                 onFocusCard={props.onFocusCard} onClick={can && props.onSpot ? () => props.onSpot!(s) : undefined} />
