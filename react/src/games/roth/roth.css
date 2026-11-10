@@ -645,3 +645,22 @@ body.gm-roth .place-confirm { display: flex; justify-content: center; position: 
 body.gm-roth .place-confirm .btn { min-height: 46px; padding-inline: 22px; box-shadow: 0 6px 18px rgb(0 0 0 / .45); }
 body.gm-roth .place-confirm .btn:disabled { opacity: .55; cursor: default; }
 @media (prefers-reduced-motion: reduce) { body.gm-roth .place-card { transition: none; } }
+
+/* ---- the deck builder, step by step ---- */
+body.gm-roth .b-steps { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+body.gm-roth .b-step { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: .88rem; cursor: pointer; }
+body.gm-roth .b-step-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgb(255 255 255 / .07); font-size: .8rem; font-weight: 700; }
+body.gm-roth .b-step.ok .b-step-n { background: #4f6b3f; color: #e4f1d8; }
+body.gm-roth .b-step.cur { border-color: var(--bronze); color: var(--bronze-hi); }
+body.gm-roth .b-step.cur .b-step-n { background: var(--bronze); color: #1a140e; }
+body.gm-roth .b-step:focus-visible { outline: 3px solid var(--bronze-hi); outline-offset: 2px; }
+body.gm-roth .b-stephead { display: grid; gap: 6px; }
+body.gm-roth .b-stephead h2 { margin: 4px 0 0; font-family: var(--font-display); color: var(--bronze-hi); font-weight: 400; }
+body.gm-roth .b-stephead p { margin: 0; max-width: 62ch; }
+body.gm-roth .b-tip { color: var(--muted); font-size: .92rem; }
+body.gm-roth .b-meters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+body.gm-roth .b-meters small { opacity: .75; }
+body.gm-roth .b-tools .b-k { align-self: center; margin-right: 4px; }
+body.gm-roth .b-nav { position: sticky; bottom: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; background: linear-gradient(transparent, var(--night) 35%); }
+body.gm-roth .b-nav .btn { min-height: 44px; }
+body.gm-roth .b-nav-n { color: var(--muted); font-variant-numeric: tabular-nums; }
