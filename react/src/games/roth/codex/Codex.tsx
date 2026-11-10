@@ -334,14 +334,14 @@ function Blow() {
         <div className="cx-ex-cards hand">
           {["cu", "thunder", "lugh"].map((id) => <CardFace key={id} def={ALL_DEFS[id]} owner={id === "lugh" ? "theirs" : "mine"} />)}
         </div>
-        <div className="cx-sum" aria-label="2 printed, plus 1 kinship, plus 1 Focus, plus 1 Fire beats Wind, plus 1 weakness, plus 1 Ríastrad, equals Strike 7, ignoring Shield">
-          <span className="cx-term"><Token kind="strike" n={2} title="Printed" /><small>printed</small></span>
+        <div className="cx-sum" aria-label="3 printed, plus 1 kinship, plus 1 Focus, plus 1 Fire beats Wind, plus 1 weakness, plus 1 Ríastrad, equals Strike 8, ignoring Shield">
+          <span className="cx-term"><Token kind="strike" n={3} title="Printed" /><small>printed</small></span>
           <span className="cx-op">+1</span><span className="cx-term"><small>kinship<br />Ulaid</small></span>
           <span className="cx-op">+1</span><span className="cx-term"><small>Focus<br /><Icon name="Fire" /> Fire</small></span>
           <span className="cx-op">+1</span><span className="cx-term"><small><Icon name="Fire" /> beats<br /><Icon name="Wind" /> Wind</small></span>
           <span className="cx-op">+1</span><span className="cx-term"><small>Lugh weak<br />to Fire</small></span>
           <span className="cx-op">+1</span><span className="cx-term"><small>Ríastrad</small></span>
-          <span className="cx-op">=</span><span className="cx-term"><Token kind="strike" n={7} title="Strike 7" /><small>through Shield</small></span>
+          <span className="cx-op">=</span><span className="cx-term"><Token kind="strike" n={8} title="Strike 8" /><small>through Shield</small></span>
         </div>
         <p className="cx-small">Lugh starts with Valour 4: the blow fells him outright. That is why where you place a hero, and whom it meets across the ford, matters as much as the cards themselves. Lugh's answer is to strike first: his Initiative 6 beats Cú Chulainn's 5.</p>
       </div>

@@ -38,11 +38,11 @@ describe("hero Valour and the Heal cap", () => {
 });
 
 describe("supports", () => {
-  it("Thunder feat strikes 2 and ignores Shield", () => {
+  it("Thunder feat strikes 3 and ignores Shield", () => {
     const S = plain("thunder", "salmon", "salmon", "salmon", { omens: [["o_rath"], []] });
     expect(S.combat!.shield).toEqual([1, 0]); // the ráth: Shield 1 at the start of each duel
     use(S, 8);
-    expect(V(S)).toEqual([3, 4]);
+    expect(V(S)).toEqual([2, 4]);
     expect(S.combat!.shield[0]).toBe(1);
   });
   it("a plain Strike is soaked by Shield (Spear of Cet)", () => {
@@ -127,10 +127,10 @@ describe("Unwilling pairs", () => {
 describe("hero qualities", () => {
   it("Cú Chulainn: Strikes +1, and +2 more at 1 Valour", () => {
     const S = mk(B("cu", "thunder", "thunder", "dagda", "salmon", "salmon"), { geasa: ["g_hound", null, null, null] });
-    expect(V(S)[0]).toBe(2); // the hound Invokes Hound: 4 − 2
+    expect(V(S)[0]).toBe(3); // the hound Invokes Hound: 5 − 2
     const S2 = mk(B("cu", "thunder", "thunder", "dagda", "salmon", "salmon"), { geasa: ["g_ford", null, null, null] });
     S2.combat!.valour[0] = 1;
-    use(S2, 2); // 2 + 1 kinship + 1 Focus Fire + 1 Weakness Fire + 1 + 2 Ríastrad = 8
+    use(S2, 2); // 3 + 1 kinship + 1 Focus Fire + 1 Weakness Fire + 1 + 2 Ríastrad = 9
     expect(S2.combat!.felled[0]).toEqual([false, true]);
   });
   it("Conall: Strikes +1 against a hero of Valour 5 or more", () => {
@@ -156,8 +156,9 @@ describe("hero qualities", () => {
   });
   it("Indech: no Strike against him above 4", () => {
     const S = mk(B("indech", "salmon", "salmon", "liban", "warp", "salmon"));
+    S.combat!.valour[0] = 9; // sturdy, so the cap shows
     use(S, 8); // the warp-spasm, 5 or more → 4
-    expect(V(S)).toEqual([1, 3]);
+    expect(V(S)).toEqual([5, 3]);
   });
   it("Manannán: the first Strike against him each duel misses", () => {
     const S = mk(B("fergus", "caladbolg", "cet_spear", "manannan", "salmon", "salmon"));
@@ -200,8 +201,8 @@ describe("hero qualities", () => {
 describe("oaths", () => {
   it("Champion's oath: Strikes +1; resting is forbidden; breaking costs 2 and ends the boon", () => {
     const S = plain("thunder", "thunder", "salmon", "salmon", { oaths: [null, null, "v_champion", null] });
-    use(S, 8); // 2 + 1 = 3
-    expect(V(S)).toEqual([2, 4]);
+    use(S, 8); // 3 + 1 = 4
+    expect(V(S)).toEqual([1, 4]);
     rest(S);
     const restOpts = options(S).filter((o) => o.t === "duel" && o.act === "rest" && o.guest < 0).map((o) => (o as { mode: string }).mode);
     expect(restOpts).toEqual(["break"]);
@@ -214,8 +215,8 @@ describe("oaths", () => {
     const S = plain("thunder", "salmon", "salmon", "salmon", { oaths: [null, null, "v_champion", null] });
     rest(S, "break"); // Lí Ban 2
     rest(S);
-    use(S, 8); // 2, no +1
-    expect(V(S)).toEqual([3, 2]);
+    use(S, 8); // 3, no +1
+    expect(V(S)).toEqual([2, 2]);
   });
   it("Hearth-guard's oath: Valour +2 (and the cap with it); Weapons forbidden", () => {
     const S = plain("salmon", "salmon", "caladbolg", "salmon", { oaths: ["v_hearthguard", null, null, null] });
@@ -296,11 +297,11 @@ describe("omens", () => {
     const S = plain("cet_spear", "thunder", "salmon", "salmon", { omens: [["o_lugh"], []] });
     use(S, 8); // 2 − 1 = 1
     rest(S);
-    use(S, 9); // full 2
-    expect(V(S)[0]).toBe(2);
+    use(S, 9); // full 3
+    expect(V(S)[0]).toBe(1);
   });
   it("reinforcements: Feats +1, first-duel Strikes +1, Heals +1, Shields +1", () => {
-    expect((() => { const S = plain("thunder", "salmon", "salmon", "salmon", { omens: [[], ["o_redbranch"]] }); use(S, 8); return V(S)[0]; })()).toBe(2);
+    expect((() => { const S = plain("thunder", "salmon", "salmon", "salmon", { omens: [[], ["o_redbranch"]] }); use(S, 8); return V(S)[0]; })()).toBe(1);
     expect((() => { const S = plain("cet_spear", "salmon", "salmon", "salmon", { omens: [[], ["o_boyhood"]] }); use(S, 8); return V(S)[0]; })()).toBe(2);
     expect((() => { const S = plain("brown_bull", "salmon", "salmon", "salmon", { omens: [[], ["o_cruachan"]] }); S.combat!.valour[1] = 1; use(S, 8); return V(S)[1]; })()).toBe(4);
     // Salmon leap for Lí Ban: Shield 2 + 1 Focus Water + 1 the ninth wave
@@ -426,9 +427,9 @@ describe("champions", () => {
     expect(S.combat!.shield[0]).toBe(1); // Shield-bearer
     expect(S.combat!.startV[0][0]).toBe(7); // 2 lost already + 5
     expect(S.players[0].hand.some((c) => c.uid === fiacha)).toBe(false);
-    use(S, 9); // Lí Ban: Thunder 2 ignores Shield → 3; four turns taken, the duel ends
+    use(S, 9); // Lí Ban: Thunder 3 ignores Shield → 2; four turns taken, the duel ends
     expect(S.combat!.duel).toBe(1);
-    expect(S.combat!.endValour[0][0]).toBe(3);
+    expect(S.combat!.endValour[0][0]).toBe(2);
   });
   it("a champion is bound by no geis or oath, and gets no oath boon", () => {
     const S = champ({ geasa: ["g_spear", null, null, null], oaths: ["v_hearthguard", null, null, null] });

@@ -41,7 +41,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Red Branch of Emain Macha",
     motto: "Fast, fiery and hard to stop. Ulster hits **through Shield** and tries to win each duel before the enemy settles.",
     plan: [
-      "Put Cú Chulainn in front of his Fire feats. Thunder feat and the warp-spasm are {Fire} Fire and Ulaid, so each gets **+1 kinship** and **+1 Focus**: a printed Strike 2 lands as 4 before any matchup bonus, and Ríastrad adds **+1** more.",
+      "Put Cú Chulainn in front of his Fire feats. Thunder feat and the warp-spasm are {Fire} Fire and Ulaid, so each gets **+1 kinship** and **+1 Focus**: Thunder feat's printed Strike 3 lands as 5 before any matchup bonus, and Ríastrad adds **+1** more.",
       "Gáe Bolga is **Strike 4** in Cú Chulainn's hands and, like Thunder feat, **ignores Shield**. Shield-heavy decks (Merrow, the Fomóire's tower) pay for it.",
       "Conall Cernach is the avenger: **+1** against big heroes (printed Valour 5+), and **+1 more** in the second duel if your first hero fell. He belongs on a second-duel spot (4 or 10).",
       "Conchobar and Emer are slow Word heroes in a deck with no Words, so they fight on kinship. Conchobar's King's due lets him **borrow** an unused support from your other quadrant; Emer **heals 2** when she rests.",
@@ -69,7 +69,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     plan: [
       "Medb's kinship is **+2**, not +1, and her Focus is {Earth} Earth: a Spear of Cet in her hands is Strike 2 **+2 +1 = 5**.",
       "Ferdiad and Fergus have **Focus Weapon**, so the spears, Caladbolg and the horn-shield all get +1. Fergus is an exile (Deorad): **Ulster and Connacht supports are both kin to him**. Caladbolg is Deorad too, so it is kin to every Connacht hero.",
-      "Ferdiad starts each duel with **Shield 1**. Add the Oath of the shield-wall (Shield 2) and the ráth of Cruachan (Shield 1) and he opens behind **Shield 4**.",
+      "Ferdiad starts each duel with **Shield 2**. Add the Oath of the shield-wall (Shield 2) and the ráth of Cruachan (Shield 1) and he opens behind **Shield 5**.",
       "Heals come from the host of Cruachan, Medb's war-chariot and Finnbennach, with Ailill's Pillow-talk and Cruachan's plenty each adding **+1**. A hero can't be healed more than **2 above** the Valour it started the duel with.",
       "Fedelm's prophecy and Medb's war-chariot make your **next Strike +1**: follow them with a spear.",
     ],
@@ -98,7 +98,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "The Dagda is the tank: **Valour 6**, Initiative 1, and resting **heals him 2**. Dian Cécht's well and the druid's oath keep him topped up.",
       "The Morrígan hits hard: **Valour 4** and **Strikes +1**, and once per match she may change her Focus to any element at the start of her duel.",
       "Brigid's Heals are **+1**; her Focus is {Fire} Fire, so Goibniu's forge and Raven's war-cry suit her.",
-      "Fragarach **ignores Shield**; the tathlum is **Strike 3** against any hero printed with Valour 5 or more (Balor, Indech, Ferdiad, the Coomara).",
+      "Fragarach **ignores Shield**; the tathlum is **Strike 3** against any hero printed with Valour 5 or more (Balor, Ferdiad, Conchobar, the Coomara).",
     ],
     watch: [
       "Lugh and the Dagda are **weak to {Fire} Fire** (Ulster's feats, Balor's gaze); the Morrígan is weak to {Earth} Earth.",

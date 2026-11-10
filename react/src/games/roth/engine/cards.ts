@@ -286,15 +286,15 @@ const C: Rarity = "common", R: Rarity = "rare", L: Rarity = "legendary";
 
 export const HEROES: Record<string, HeroDef> = {
   // Ulaid: fast, fiery, Feats
-  cu: hero("cu", "Cú Chulainn", "Ulaid", L, 4, 5, "Fire", "Wind", "Hound", "Ríastrad: Strikes +1; at 1 Valour, +2 more. Spared the Debility", { strikeAll: 1, rally: { at: 1, n: 2 }, sparedDebility: true }),
+  cu: hero("cu", "Cú Chulainn", "Ulaid", L, 5, 5, "Fire", "Wind", "Hound", "Ríastrad: Strikes +1; at 1 Valour, +2 more. Spared the Debility", { strikeAll: 1, rally: { at: 1, n: 2 }, sparedDebility: true }),
   conall: hero("conall", "Conall Cernach", "Ulaid", R, 5, 3, "Weapon", "Wind", "Vengeance", "Cet's bane: Strikes +1 against a hero of Valour 5 or more, +1 more once your other hero has fallen", { vsBig: 1, avenger: 1 }),
-  conchobar: hero("conchobar", "Conchobar mac Nessa", "Ulaid", R, 5, 2, "Word", "Fire", "Druid's word", "King's due: once per duel, may use an unused support from your other hero's quadrant", { kingsDue: true }),
+  conchobar: hero("conchobar", "Conchobar mac Nessa", "Ulaid", R, 6, 2, "Word", "Fire", "Druid's word", "King's due: once per duel, may use an unused support from your other hero's quadrant", { kingsDue: true }),
   emer: hero("emer", "Emer", "Ulaid", C, 4, 2, "Word", "Fire", "Hospitality", "Six gifts: when she rests, Heal 2", { restHeal: 2 }),
   // Connachta: Earth, weapons, attrition
   medb: hero("medb", "Medb", "Connachta", L, 4, 4, "Earth", "Water", "Bounty", "Queen of Cruachan: kinship gives her +2, not +1", { kinBonus: 2 }),
-  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Shield 1 at the start of each duel", { shieldStart: 1 }),
+  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Shield 2 at the start of each duel", { shieldStart: 2 }),
   fergus: hero("fergus", "Fergus mac Róich", "Deorad", R, 5, 3, "Weapon", "Wind", "Feast", "Old oath: Strikes vs Hound −1", { vsTag: { tag: "Hound", n: -1 } }),
-  ailill: hero("ailill", "Ailill mac Máta", "Connachta", C, 4, 3, "Word", "Fire", "Hoard", "Pillow-talk: his Heals +1", { healBonus: 1 }),
+  ailill: hero("ailill", "Ailill mac Máta", "Connachta", C, 5, 3, "Word", "Fire", "Hoard", "Pillow-talk: his Heals +1", { healBonus: 1 }),
   // Sídhe (Tuatha Dé Danann): Wind and Word, many-skilled, healers
   lugh: hero("lugh", "Lugh Lámhfhada", "Sidhe", L, 4, 6, "Wind", "Fire", "Many skills", "Samildánach: every support counts as his Focus", { focusAny: true }),
   dagda: hero("dagda", "The Dagda", "Sidhe", R, 6, 1, "Earth", "Fire", "Plenty", "Cauldron: when he rests, Heal 2", { restHeal: 2 }),
@@ -302,9 +302,9 @@ export const HEROES: Record<string, HeroDef> = {
   brigid: hero("brigid", "Brigid", "Sidhe", C, 4, 3, "Fire", "Water", "Forge", "Healer's well: her Heals +1", { healBonus: 1 }),
   // Fomóire: huge, slow, blighting
   balor: hero("balor", "Balor of the Evil Eye", "Fomoire", L, 5, 1, "Fire", "Water", "Evil eye", "Evil eye: his first Strike each duel +1", { firstStrike: 1 }),
-  bres: hero("bres", "Bres", "Fomoire", R, 4, 3, "Word", "Wind", "Hospitality", "Niggard king: the enemy hero's Heals −1", { foeHealMalus: 1 }),
+  bres: hero("bres", "Bres", "Fomoire", R, 3, 3, "Word", "Wind", "Hospitality", "Niggard king: the enemy hero's Heals −1", { foeHealMalus: 1 }),
   cethlenn: hero("cethlenn", "Cethlenn", "Fomoire", R, 3, 4, "Water", "Earth", "Prophecy", "Bloodied tooth: Strikes +1; when her Strike wounds, Heal 1", { strikeAll: 1, drain: 1 }),
-  indech: hero("indech", "Indech mac Dé Domnann", "Fomoire", C, 5, 2, "Earth", "Wind", "Sea", "Sea-giant: no Strike against him above 4", { capTaken: 4 }),
+  indech: hero("indech", "Indech mac Dé Domnann", "Fomoire", C, 4, 2, "Earth", "Wind", "Sea", "Sea-giant: no Strike against him above 4", { capTaken: 4 }),
   // Merrow: Water, shields, slippery
   manannan: hero("manannan", "Manannán mac Lir", "Merrow", L, 4, 4, "Water", "Earth", "Sea", "Cloak of mist: the first Strike against him each duel misses", { firstHitSoak: 9 }),
   fand: hero("fand", "Fand", "Merrow", R, 3, 5, "Wind", "Fire", "Beauty", "Sea-glamour: Strikes +1", { strikeAll: 1 }),
@@ -346,7 +346,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   salmon: sup("salmon", "Salmon leap", "Water", "Feat", "Unaligned", C, [Sh(2)], "Shield 2"),
   // Ulaid
   gae_bolga: sup("gae_bolga", "Gáe Bolga", "Water", "Weapon", "Ulaid", L, [S(2)], "Strike 2, ignores Shield; Strike 4 if Cú Chulainn uses it", { forHero: { id: "cu", n: 4 }, pierce: true }),
-  thunder: sup("thunder", "Thunder feat", "Fire", "Feat", "Ulaid", C, [S(2)], "Strike 2; ignores Shield", { pierce: true }),
+  thunder: sup("thunder", "Thunder feat", "Fire", "Feat", "Ulaid", C, [S(3)], "Strike 3; ignores Shield", { pierce: true }),
   warp: sup("warp", "The warp-spasm", "Fire", "Feat", "Ulaid", R, [S(4)], "Strike 4; your hero loses 1", { selfLoss: 1 }),
   sling: sup("sling", "Sling of Emain", "Wind", "Weapon", "Ulaid", C, [S(2)], "Strike 2; +1 if it is the first support used in the duel", { firstBonus: 1 }),
   ochain: sup("ochain", "Ochain, the roaring shield", "Wind", "Weapon", "Ulaid", R, [Sh(2)], "Shield 2"),
@@ -564,7 +564,7 @@ const mon = (id: string, name: string, rarity: Rarity, valour: number, init: num
   ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality, ...(hybrid ? { hybrid } : {}) });
 export const MONSTERS: Record<string, MonsterDef> = {
   // hybrid damage: the element opposite a monster's weakness (Fire against Water, Wind against Earth)
-  dullahan: mon("dullahan", "The Dullahan", L, 3, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1; the host's Spirit blows burn as Fire too", "Fire"),
+  dullahan: mon("dullahan", "The Dullahan", L, 4, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1; the host's Spirit blows burn as Fire too", "Fire"),
   puca: mon("puca", "The Púca", R, 2, 1, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +1; its first Strike each duel +1"),
   dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1; the host's Spirit blows run as Water too", "Water"),
   fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1, reflect: 1 }, "The red man: Initiative +1; the enemy's Heals −1. Uninvited guest: when a Strike wounds the host, the striker loses 1 Valour. The host's Spirit blows blow as Wind too", "Wind"),
@@ -650,6 +650,23 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
     hybrids: [...new Set(members.flatMap((m) => (m.hybrid ? [m.hybrid] : [])))],
   };
 }
+
+/**
+ * The cards as first printed, before the balance changes for duels to the death. The board puzzles were worked out
+ * with these numbers under the first Ford rules, so their positions keep them.
+ */
+const reprint = <T extends CardDef>(id: string, f: (d: T) => T): CardDef => f(structuredClone(ALL_DEFS[id]) as T);
+export const FIRST_PRINTING: Record<string, CardDef> = {
+  cu: reprint<HeroDef>("cu", (d) => ({ ...d, valour: 4 })),
+  conchobar: reprint<HeroDef>("conchobar", (d) => ({ ...d, valour: 5 })),
+  ailill: reprint<HeroDef>("ailill", (d) => ({ ...d, valour: 4 })),
+  ferdiad: reprint<HeroDef>("ferdiad", (d) => ({ ...d, quality: "Horn-skin: Shield 1 at the start of each duel", ab: { ...d.ab, shieldStart: 1 } })),
+  bres: reprint<HeroDef>("bres", (d) => ({ ...d, valour: 4 })),
+  indech: reprint<HeroDef>("indech", (d) => ({ ...d, valour: 5, quality: "Sea-giant: no Strike against him above 3", ab: { ...d.ab, capTaken: 3 } })),
+  balor: reprint<HeroDef>("balor", (d) => ({ ...d, quality: "Evil eye: his first Strike each duel +2", ab: { ...d.ab, firstStrike: 2 } })),
+  dullahan: reprint<MonsterDef>("dullahan", (d) => ({ ...d, valour: 3 })),
+  thunder: reprint<SupportDef>("thunder", (d) => ({ ...d, effects: [{ type: "strike", n: 2 }], text: "Strike 2; ignores Shield" })),
+};
 
 export function defsFromIds(ids: string[]): CardDef[] {
   return ids.map((id) => {

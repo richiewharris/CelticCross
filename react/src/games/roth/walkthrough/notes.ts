@@ -25,7 +25,7 @@ export const CHAPTERS: Chapter[] = [
   {
     at: 24, short: "Duel 1", title: "The Ford: duel 1, to the death",
     body: [
-      "Cú Chulainn: Valour 4, Initiative 5 (the slow hand would cut it by 3, but Emain's ward lets him ignore geasa). Ailill: Valour 4, Shield 3 (the ráth 1 + the shield-wall oath 2), Initiative 3. Cú acts first, then they take turns until one falls.",
+      "Cú Chulainn: Valour 5, Initiative 5 (the slow hand would cut it by 3, but Emain's ward lets him ignore geasa). Ailill: Valour 5, Shield 3 (the ráth 1 + the shield-wall oath 2), Initiative 3. Cú acts first, then they take turns until one falls.",
       "On a turn: **draw** the top card of your Reserve and play it, or put it aside and do something else; **use** a placed support (the first time free, then at its price); turn an omen, lay a geis or swear an oath from hand; call a **champion**; or **rest**.",
       "Every number on a support can grow: **+1 kinship**, **+1 Focus**, **+1 the wheel**, **+1 weakness**, then the hero's quality, oaths and omens. The grey box under each move shows all of it.",
     ],
@@ -40,7 +40,7 @@ export const CHAPTERS: Chapter[] = [
   {
     at: 70, short: "Final duel", title: "The final duel",
     body: [
-      "One hero fallen on each side, so the **survivors** meet: Conall Cernach, with the 5 Valour he kept, against Ailill with his 6. Wounds carry over; the supports beside each of them are the same as before, with what they have already been used for.",
+      "One hero fallen on each side, so the **survivors** meet: Conall Cernach, with the 5 Valour he kept, against Ailill with his 7. Wounds carry over; the supports beside each of them are the same as before, with what they have already been used for.",
       "This duel decides the match.",
     ],
   },
@@ -49,9 +49,9 @@ export const CHAPTERS: Chapter[] = [
 /** What a strong player was thinking, after a move (not every move has a note). */
 export const COACH: Record<number, string> = {
   0: "Cú Chulainn goes to the first duel. Initiative 5 means he nearly always acts first, and his ríastrad adds +1 to every Strike.",
-  1: "Ailill: Valour 4, and his Heals are +1. In a long duel a healer is hard to wear down.",
+  1: "Ailill: Valour 5, and his Heals are +1. In a long duel a healer is hard to wear down.",
   2: "The Brown Bull: a big Heal for Cú. In a duel to the death you want something to come back with, not just blows.",
-  4: "Thunder feat: Strike 2 that ignores Shield, Fire like Cú's Focus. A Feat can be used again after a rest.",
+  4: "Thunder feat: Strike 3 that ignores Shield, Fire like Cú's Focus. A Feat can be used again after a rest.",
   6: "Conall Cernach takes the second duel: Valour 5, +1 against big heroes, and +1 more if his first hero has fallen.",
   7: "Medb: kinship gives her +2, not +1. Every Connacht card hits harder (and heals more) in her hands.",
   8: "Gáe Bolga for Conall: Strike 2, ignores Shield. A Weapon: it can be used again any time, just not two turns running.",
@@ -64,16 +64,16 @@ export const COACH: Record<number, string> = {
   19: "Ailill swears the **shield-wall**: Shield 2 at the start of each duel, but no Feats. Your Salmon leap in his quadrant is now a Feat he can use only by breaking his vow.",
   20: "Champion's oath on Conall: Strikes +1. The vow: never rest. Conall plans to hit every turn anyway.",
   21: "The hero's light on Medb: her Strikes +1.",
-  24: "Cú opens by healing to 6 (Emer, a hero still in hand, heals 1 as a **guest** first). Ailill sits behind 3 Shield: better to be sturdy than to strike into it.",
+  24: "Cú opens by healing to 7, the most he can have (Emer, a hero still in hand, heals 1 as a **guest** first). Ailill sits behind 3 Shield: better to be sturdy than to strike into it.",
   27: "Ailill draws a Spear and puts it aside: he would rather turn the **Truce of Samhain**, an omen still face down. No Strike above 3, for everyone: a wall against Cú's big blows.",
   29: "Cú puts the warp-spasm aside (with the Truce it would be just 3, soaked by the Shield)…",
   30: "…and **casts out** the unwilling war-chariot. In a duel to the death a support that won't serve you goes back to its owner, and you draw in its place.",
   31: "The Sling, off the Reserve, takes all 3 of Ailill's Shield. Drawn cards are used once and then go to the discards.",
-  34: "Caladbolg: Strike 3, +1 kinship (an exile's sword is kin to Connacht), capped at 3 by the Truce. Cú is down to 3.",
+  34: "Caladbolg: Strike 3, +1 kinship (an exile's sword is kin to Connacht), capped at 3 by the Truce. Cú is down to 4.",
   36: "Lóegaire Búadach, a champion, comes off the Reserve. Kept in hand, he can be called next turn.",
   37: "Lóegaire stands in for Cú at full Valour 4. Wounds already dealt still count, and if he falls, Cú has fallen.",
   40: "Ailill breaks his oath (−2 Valour) to raise Shield with your Salmon leap: Fergus heals him first as a guest, and his quality makes it 2.",
-  45: "The host of Cruachan off the Reserve: a Strike (Culann's hound takes 1 off the first) and a Heal. Ailill climbs to 6.",
+  45: "The host of Cruachan off the Reserve: a Strike (Culann's hound takes 1 off the first) and a Heal. Ailill climbs to 7.",
   48: "A rest: it readies the Brown Bull again (a Heal needs a rest before it can be used again).",
   49: "Caladbolg again (a Weapon, not used last turn), and Lóegaire falls. Ulster has lost its first hero.",
   50: "Medb breaks the giant's portion (no Allies) to use Finnbennach: Heal 2, +2 kinship, +1 Focus. 4 − 2 + 5, capped at 6.",
@@ -89,7 +89,7 @@ export const COACH: Record<number, string> = {
   75: "The warp-spasm: Strike 4, and Ailill is weak to Fire. The Truce holds it to 3; the Shield takes 1.",
   78: "Ferdiad heals Ailill as a guest, then Caladbolg strikes.",
   80: "Conall puts the Blood-oath aside: he already has an oath, and a hero can hold only one.",
-  81: "Gáe Bolga again: a Weapon, last used in the second duel. Ailill to 3.",
+  81: "Gáe Bolga again: a Weapon, last used in the second duel. Ailill to 4.",
   84: "Nad Crantail stands in for Ailill: a fresh 4 Valour and a first Strike +1.",
   86: "Thunder feat through Nad Crantail's guard: he's on 1.",
   87: "Caladbolg answers: Conall to 3.",

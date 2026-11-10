@@ -25,7 +25,7 @@ export const FACE: Record<string, Face> = {
   conchobar: { ability: "King's due", text: "Once per duel, he may use an unused support from your other hero's quadrant." },
   emer: { ability: "Six gifts", text: "When she rests, {heal} **Heal 2**." },
   medb: { ability: "Queen of Cruachan", text: "**Kinship** gives her **+2**, not +1, when she uses a support of her own people." },
-  ferdiad: { ability: "Horn-skin", text: "Starts each duel with {shield} **Shield 1**." },
+  ferdiad: { ability: "Horn-skin", text: "Starts each duel with {shield} **Shield 2**." },
   fergus: { ability: "Old oath", text: "His Strikes are **−1** against a hero whose geis is **Hound**." },
   ailill: { ability: "Pillow-talk", text: "His Heals **+1**." },
   lugh: { ability: "Samildánach", text: "Every support counts as his **Focus**, so each one gets **+1**." },

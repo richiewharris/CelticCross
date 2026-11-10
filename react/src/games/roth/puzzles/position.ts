@@ -1,14 +1,15 @@
 // Puzzle positions: a match state stored compactly (card ids for card objects), and the exact value of each
 // choice under the puzzle's assumption that, after your choice, everyone holds through the rest of the Playing
 // turn and both duels are then played perfectly by both sides (no guests or champions).
-import { ALL_DEFS, UNKNOWN, type CardDef } from "../engine/cards";
+import { ALL_DEFS, FIRST_PRINTING, UNKNOWN, type CardDef } from "../engine/cards";
 import {
   applyDecision, cloneCombat, cloneState, combatApply, combatDecision, newCombat, nextDecision, upgradeState,
   type CombatState, type Decision, type Side, type State,
 } from "../engine/engine";
 import { finalUtil, stripGuests } from "../engine/solver";
 
-const defOf = (id: string): CardDef => (id === "unknown" ? UNKNOWN : ALL_DEFS[id]);
+/** Puzzle positions use the cards as first printed (see FIRST_PRINTING). */
+const defOf = (id: string): CardDef => (id === "unknown" ? UNKNOWN : FIRST_PRINTING[id] ?? ALL_DEFS[id]);
 
 export function packState(S: State): string {
   return JSON.stringify({ ...S, stats: null }, (k, v) => {
