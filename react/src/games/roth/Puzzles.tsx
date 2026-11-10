@@ -38,6 +38,7 @@ export function Puzzles({ focus, setFocus }: { focus: CardDef | null; setFocus: 
           })}
         </nav>
         <p className="note">{info.intro}</p>
+        {setId !== "deck" ? <p className="note"><b>Note:</b> these board puzzles were made for the first rules of the Ford, where each hero takes two turns and uses each support once. The game is now fought to the death.</p> : null}
         <nav className="chips small" aria-label="Puzzles in this set">
           {list.map((x, i) => (
             <button key={x.id} type="button" className={`${i === idx ? "cur" : ""}${solved[x.id] ? " done" : ""}`} aria-pressed={i === idx}
