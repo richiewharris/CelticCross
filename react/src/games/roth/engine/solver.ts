@@ -2,7 +2,7 @@
 
 import { beats, isElement, reuseOf, unwillingPair, type CardDef, type FighterDef, type HeroDef, type SupportDef } from "./cards";
 import {
-  activeOath, baseEffects, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
+  activeOath, baseEffects, effWeakness, giantKin, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -165,8 +165,10 @@ export function quickSupportValue(s: SupportDef, h: HeroDef, e: HeroDef | null):
       n += kin(s.alignment, h.alignment) ? h.ab.kinBonus ?? 1 : 0;
       if (h.ab.focusAny || (h.focus && (h.focus === s.element || h.focus === s.kind))) n += 1;
       if (effs[i].type === "strike" && e && s.element) {
-        if (e.weakness === s.element) n += 1;
         if (isElement(e.focus) && beats(s.element, e.focus)) n += 1;
+        // giant-kin take half of all but their weakness, which lands in full (no +1)
+        if (e.alignment === "Fomoire") { if (e.weakness !== s.element) n /= 2; }
+        else if (e.weakness === s.element) n += 1;
       }
     }
     v += effs[i].type === "strike" ? n * (s.pierce ? 1.15 : 1) : effs[i].type === "heal" ? 0.85 * n : 0.8 * n;
@@ -213,6 +215,7 @@ function supWorth(S: State, C: CombatState, a: Side, s0: SupportDef): number {
       n += (h.ab.strikeAll ?? 0) + (activeOath(S, C, a)?.boon.strike ?? 0);
       for (const fx of heroFx(S, C, a)) n += fx.strikeMod ?? 0;
       if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
+      if (giantKin(S, e) && !(isElement(s.element) && effWeakness(S, 1 - a as Side, e, C).includes(s.element))) n /= 2;
       v += Math.max(0, n) * (s.pierce || s.element === "Spirit" ? 1.1 : 1);
     } else v += 0.8 * Math.max(0, n);
   });

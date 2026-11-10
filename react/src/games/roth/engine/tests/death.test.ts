@@ -2,7 +2,7 @@
 // final duel between the survivors.
 import { describe, expect, it } from "vitest";
 import { DECKS, reuseOf, type SupportDef, ALL_DEFS } from "../cards";
-import { applyDecision, nextDecision, newMatch, observe, type Option, type Policy, type State } from "../engine";
+import { applyDecision, effWeakness, fighter, nextDecision, newMatch, observe, quadOf, NARRATE, type Option, type Policy, type State } from "../engine";
 import { NovicePolicy, CasualPolicy } from "../ai";
 import { Rng } from "../rng";
 import { act, card, combatState, rest, use } from "./helpers";
@@ -187,5 +187,40 @@ describe("the ford's defence", () => {
     const v = S.combat!.valour[0];
     rest(S);
     expect(S.combat!.valour[0]).toBe(v - 1);
+  });
+});
+
+describe("giant-kin: the Fomóire", () => {
+  // Conall (P1, spot 1: the warp-spasm, Fire; the Sling, Wind) against Indech (P2, spot 7: weak to Wind, no Strike above 4)
+  const duel = () => {
+    const S = combatState({ board: ["conall", "warp", "sling", "emer", "salmon", "salmon", "indech", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
+    S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
+    return S;
+  };
+  it("take half the wounds of a blow that is not of their weakness (rounded down)", () => {
+    const S = duel();
+    const v = S.combat!.valour[1];
+    use(S, 2); // the warp-spasm: Fire, at least 4, held to 4 by Indech, then halved
+    expect(v - S.combat!.valour[1]).toBe(2);
+  });
+  it("take their weakness in full, but with no +1", () => {
+    const S = duel();
+    NARRATE.lines = [];
+    use(S, 3); // the Sling: Wind
+    const txt = NARRATE.lines.join(" ");
+    NARRATE.lines = null;
+    expect(txt).toContain("lands in full");
+    expect(txt).not.toContain("+1 weakness");
+    expect(txt).not.toContain("giant-kin");
+  });
+  it("a geis can lay another weakness on them, until it is broken", () => {
+    const S = duel();
+    const C = S.combat!;
+    const q = quadOf(C.hs[1]);
+    S.quadGeis[q] = card("g_iron", 0);
+    expect(effWeakness(S, 1, fighter(S, C, 1))).toEqual(["Wind", "Earth"]);
+    C.broken |= 1 << q;
+    expect(effWeakness(S, 1, fighter(S, C, 1))).toEqual(["Wind"]);
   });
 });

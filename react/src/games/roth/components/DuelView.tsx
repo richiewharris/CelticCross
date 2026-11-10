@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MoveEvent } from "../useMatch";
 import type { CardDef } from "../engine/cards";
-import { actorOf, effSupport, effWeakness, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
+import { actorOf, effSupport, effWeakness, giantKin, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
 import { reuseOf, type SupportDef } from "../engine/cards";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
@@ -136,7 +136,8 @@ export function DuelView(props: {
             {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis"><Icon name="global" /> {g.text}</span>)}
             {oath ? <span className="tag oath"><Icon name="oath" /> {oath.def.name}</span> : null}
             {omens.map((o, i) => <span key={i} className="tag omen"><Icon name="omen" /> {o.name}</span>)}
-            {(() => { const printed = f.weaknesses ?? (f.weakness ? [f.weakness] : []); const w = effWeakness(S, p, f).filter((x) => !printed.includes(x)); return w.length ? <span className="tag attendant">cursed: also weak to {w.join(", ")}</span> : null; })()}
+            {(() => { const printed = f.weaknesses ?? (f.weakness ? [f.weakness] : []); const w = effWeakness(S, p, f).filter((x) => !printed.includes(x)); return w.length ? <span className="tag attendant">also weak to {w.join(", ")}</span> : null; })()}
+            {giantKin(S, f) ? <span className="tag armour" title="Takes half the wounds of every Strike except one of its weaknesses">giant-kin: ½ wounds but {effWeakness(S, p, f).join(", ")}</span> : null}
           </div>
           </div>
         </div>

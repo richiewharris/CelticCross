@@ -202,6 +202,8 @@ export interface GeisDef {
   bigLoss?: number;
   /** Modifying geasa: the bound hero's Initiative −n. */
   initLoss?: number;
+  /** Modifying geasa: the bound hero is also weak to this element (as well as its printed weakness). */
+  weak?: Element;
   text: string;
 }
 export interface OathDef {
@@ -497,6 +499,10 @@ export const GEASA: Record<string, GeisDef> = {
   g_road: geis("g_road", "Geis of the long road", R, { element: "Wind" }, "Forbids Wind; Invoke Many skills", { invoke: "Many skills" }),
   g_hoard: geis("g_hoard", "Geis of the hoard", R, { kind: "Weapon" }, "Forbids Weapons; Invoke Hoard", { invoke: "Hoard" }),
   g_burning: geis("g_burning", "Geis of the burning", R, { element: "Fire" }, "Global: every hero is forbidden Fire", { scope: "global" }),
+  g_tuired: geis("g_tuired", "Geis of Mag Tuired", R, { element: "Wind" }, "Forbids Wind; the hero is also weak to Water", { weak: "Water" }),
+  g_iron: geis("g_iron", "Geis of cold iron", R, { kind: "Weapon" }, "Forbids Weapons; the hero is also weak to Earth", { weak: "Earth" }),
+  g_pyre: geis("g_pyre", "Geis of the pyre", R, { element: "Water" }, "Forbids Water; the hero is also weak to Fire", { weak: "Fire" }),
+  g_gale: geis("g_gale", "Geis of the gale", R, { element: "Earth" }, "Forbids Earth; the hero is also weak to Wind", { weak: "Wind" }),
   g_still: geis("g_still", "Geis of the still water", R, { element: "Water" }, "Global: every hero is forbidden Water", { scope: "global" }),
 };
 

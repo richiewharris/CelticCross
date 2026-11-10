@@ -1134,6 +1134,7 @@ export const REST_SHIELD = 1;
 export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 ? 1 : 0);
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
+export const HALF = { up: false };
 /** Set while a placed support is being used again: a Spirit blow steals only the first time a card is used. */
 const REUSING = { on: false };
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
@@ -1142,7 +1143,9 @@ function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
 }
 
 /** `pierce`: ignores Shield, Armour and Blocks; `spirit`: a Spirit blow, which passes Shield but not Armour or Blocks. */
-export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false) {
+/** The Fomóire are giant-kin: in a duel to the death, half the wounds of any blow but one of their weaknesses. */
+export const giantKin = (S: State, f: FighterDef) => toDeath(S) && f.alignment === "Fomoire";
+export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false, el: Element | null = null) {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
@@ -1213,7 +1216,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); n = Math.max(0, n - arm); }
   const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
-  const dmg = n - soak;
+  let dmg = n - soak;
+  // giant-kin: half the wounds (rounded HALF_ROUND) unless the blow is of a weakness
+  const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
+  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); dmg = h2; }
   C.valour[b] -= dmg;
   // what a blow steals back: never more than 1 a Strike
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
@@ -1223,7 +1229,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
-    say(`${h.name} strikes: ${shown}.${sh} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}`);
+    say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}`);
   }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
@@ -1252,7 +1258,10 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) { n += 1; if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
-    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) { n += 1; if (N) N.push(`+1 weakness (${e.name} is weak to ${s.element})`); }
+    if (isElement(s.element) && effWeakness(S, b, e, C).includes(s.element)) {
+      if (giantKin(S, e)) { if (N) N.push(`(${e.name} is weak to ${s.element}: the blow lands in full)`); }
+      else { n += 1; if (N) N.push(`+1 weakness (${e.name} is weak to ${s.element})`); }
+    }
   }
   for (const x of N ? namedHeroFx(S, C, a) : heroFx(S, C, a).map((fx) => ({ name: "", fx }))) {
     const fx = x.fx;
@@ -1288,9 +1297,16 @@ export function effSupport(S: State, a: Side, s: SupportDef): SupportDef {
   if (el === s.element && kind === s.kind && !ch) return s;
   return { ...s, element: el, kind, ...(own ? { attuned: 1 } : {}), ...(ch ? { channel: ch, selfLoss: (s.selfLoss ?? 0) + ch } : {}) };
 }
-/** Side p's fighter's weaknesses: its printed one, plus one for each Curse attendant in reach. */
-export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
+/** Side p's fighter's weaknesses: its printed one, plus one for each Curse attendant in reach and each unbroken geis
+ * binding it that lays a weakness. */
+export function effWeakness(S: State, p: Side, f: FighterDef, C: CombatState | null = S.combat ?? null): Element[] {
   const w: Element[] = f.weaknesses ? f.weaknesses.slice() : f.weakness ? [f.weakness] : [];
+  if (C && C.hs && !ignoresGeis(S, p)) {
+    const q = quadOf(C.hs[p]);
+    const g = S.quadGeis[q];
+    if (g && g.def.type === "geis" && g.def.weak && !(C.broken & (1 << q)) && !w.includes(g.def.weak)) w.push(g.def.weak);
+    S.globalGeis.forEach((x, i) => { if (x.def.type === "geis" && x.def.weak && !(C.broken & globalBit(i, q)) && !w.includes(x.def.weak)) w.push(x.def.weak); });
+  }
   for (const c of S.attendants ?? []) {
     const d = c.def;
     if (d.type !== "attendant" || d.mode !== "curse") continue;
@@ -1319,7 +1335,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     if (s.effects[0]?.type === "strike" && s.element) {
       const ef = focusOf(C, b, e0);
       if (isElement(ef) && beats(s.element, ef)) F.beatsHits[a]++;
-      if (isElement(s.element) && effWeakness(S, b, e0).includes(s.element)) F.weakHits[a]++;
+      if (isElement(s.element) && effWeakness(S, b, e0, C).includes(s.element)) F.weakHits[a]++;
     }
   }
   const h = fighter(S, C, a);
@@ -1342,7 +1358,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     }
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow");
+    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null);
     else if (eff.type === "heal") {
       const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
       if (rb && NARRATE.lines) say(`+${rb} rested.`);

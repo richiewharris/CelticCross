@@ -302,6 +302,7 @@ function autoGeis(d: GeisDef): Face {
   if (d.invoke) return { ability: `Invoke ${d.invoke}`, text: `A bound hero whose geis is **${d.invoke}** starts its duel **2 Valour** lower.` };
   if (d.bigLoss) return { ability: "Fell the big ones", text: `If the bound hero is printed with Valour **5+**, it starts its duel **${d.bigLoss} Valour** lower.` };
   if (d.initLoss) return { ability: "Slow hand", text: `The bound hero's {init} **Initiative −${d.initLoss}**.` };
+  if (d.weak) return { ability: "A new weakness", text: `The bound hero is also **weak to {${d.weak}} ${d.weak}**. Against the Fomóire's giant-kin, that element lands in full.` };
   return {};
 }
 
@@ -358,6 +359,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       }
       push("ability", f.ability); push("text", f.text ?? d.quality);
       if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**.");
+      if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike, except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
       break;
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
