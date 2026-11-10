@@ -92,6 +92,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Tuatha Dé Danann of the mounds",
     motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
     plan: [
+      "**The mound**: the Aos Sídhe fight from their mound (**Valour 6**, for the whole match). While it stands, a Sídhe fighter gains **1 Valour** at the end of each of its turns. The enemy can aim any Strike at the mound instead; it takes plain damage, and no geis, oath or curse touches it. Once thrown down, it is gone.",
       "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
       "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
       "Lugh has the **highest Initiative** in the game (6), and every support counts as his Focus: everything he uses gets **+1**.",
@@ -120,6 +121,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The giants from under the sea",
     motto: "Huge, slow and blighting. Fomóire heroes **hit hard once** and starve the enemy of healing.",
     plan: [
+      "**Giant-kin**: in a duel to the death the Fomóire take **half** the wounds of every Strike (rounded up), except one of their **weaknesses**, which lands in full (no +1). A geis or a Curse attendant can lay more weaknesses on them: that is how to bring a giant down.",
       "Balor's first Strike each duel is **+1**, and the gaze of Balor is **Strike 3** in his hands. With kinship and Focus {Fire} Fire, that opening blow is **3 +1 +1 +1 = 6**.",
       "Balor and Indech are slow (Initiative 1 and 2). The **Night of the Fomóire** turns that round: in the first duel, the lower Initiative strikes first. **Druid's sleep** takes 3 Initiative from one enemy hero.",
       "Indech the sea-giant can't be hit for **more than 4** at once; behind Conand's tower (**Shield 3**) he soaks blow after blow.",

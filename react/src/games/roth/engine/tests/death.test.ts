@@ -224,3 +224,40 @@ describe("giant-kin: the Fomóire", () => {
     expect(effWeakness(S, 1, fighter(S, C, 1))).toEqual(["Wind"]);
   });
 });
+
+describe("the mound of the Aos Sídhe", () => {
+  // Conall (P1, spot 1: the Sling, Láeg) against the Dagda (P2, spot 7), whose side fights from a mound of 6
+  const duel = () => {
+    const S = combatState({ board: ["conall", "sling", "laeg", "emer", "salmon", "salmon", "dagda", "sling@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
+    S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
+    S.combat!.mound = [0, 6];
+    return S;
+  };
+  const aims = (S: State) => opts(S).filter((o) => (o.t === "duel" || o.t === "drawn") && o.aim === "mound");
+  it("a Sídhe fighter gains 1 Valour at the end of each of its turns while the mound stands", () => {
+    const S = duel();
+    rest(S); // Conall
+    const v = S.combat!.valour[1];
+    use(S, 8); // the Dagda's Sling
+    expect(S.combat!.valour[1]).toBe(v + 1);
+  });
+  it("any Strike may be aimed at the mound instead: plain damage, the hero untouched", () => {
+    const S = duel();
+    expect(aims(S).map((o) => (o as { spot: number }).spot)).toEqual([1]); // the Sling, not Láeg's Heal
+    const v = S.combat!.valour[1];
+    act(S, { t: "duel", act: "use", spot: 1, aim: "mound" } as never);
+    expect(S.combat!.valour[1]).toBe(v); // the hero is untouched
+    expect(S.combat!.mound![1]).toBeLessThan(6);
+    expect(S.combat!.mound![1]).toBe(1); // Strike 2 +1 (first support), +1 kinship, +1 Focus: 5
+  });
+  it("once thrown down, it gives nothing and can't be aimed at", () => {
+    const S = duel();
+    S.combat!.mound = [0, 0];
+    expect(aims(S)).toEqual([]);
+    rest(S);
+    const v = S.combat!.valour[1];
+    use(S, 8);
+    expect(S.combat!.valour[1]).toBe(v);
+  });
+});
