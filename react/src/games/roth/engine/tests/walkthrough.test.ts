@@ -7,11 +7,13 @@ import { COACH } from "../../walkthrough/notes";
 describe("the guided game", () => {
   it("replays to the game the notes describe", () => {
     const g = replayScript();
-    expect(g.end.result).toMatchObject({ winner: 0, decidedBy: "felled", felled: [0, 1] });
-    expect(g.steps.length).toBe(Object.keys(COACH).length);
-    expect(g.steps[16].line).toContain("supplanted Fedelm's prophecy with Salmon leap");
-    expect(g.steps[27].line).toContain("Break the geis or oath and use Salmon leap");
-    expect(g.steps[24].maths.join(" ")).toContain("Ferdiad 5 → 2");
-    expect(g.steps[31].maths.join(" ")).toContain("Medb 5 → 3");
+    expect(g.end.result).toMatchObject({ winner: 0, decidedBy: "felled", felled: [1, 2] });
+    expect(g.steps.length).toBe(89);
+    expect(Math.max(...Object.keys(COACH).map(Number))).toBeLessThan(g.steps.length);
+    expect(g.steps[16].line).toContain("supplanted Fráech's spear with Salmon leap");
+    expect(g.steps[30].line).toContain("Cast out Medb's war-chariot");
+    expect(g.steps[49].maths.join(" ")).toContain("Lóegaire Búadach 3 → 0");
+    expect(g.steps[53].maths.join(" ")).toContain("Medb 6 → 3");
+    expect(g.steps[88].maths.join(" ")).toContain("Nad Crantail 1 → -2");
   });
 });

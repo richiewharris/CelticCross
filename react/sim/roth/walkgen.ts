@@ -1,6 +1,7 @@
 // Finds a good teaching game for the guided walkthrough: Ulster starter (you, first) against the Connacht starter,
 // both played at Skilled, and keeps the seed whose game shows the most of the rules (a geis, an oath, an omen, a
-// supplant, Shields, Heals, the wheel and weaknesses, a hero felled) and ends cleanly. Writes the picks to
+// supplant, Shields, Heals, the wheel and weaknesses, draws played and put aside, a support used again, a final
+// duel) in a game short enough to read, and that Ulster wins on heroes felled. Writes the picks to
 // src/games/roth/walkthrough/script.json.   npx tsx sim/roth/walkgen.ts [--tries 200]
 import { writeFileSync } from "node:fs";
 import { DECKS } from "../../src/games/roth/engine/cards";
@@ -25,7 +26,9 @@ for (let t = 1; t <= tries; t++) {
     picks.push(i);
     const o = d.options[i];
     seen.add(`${o.t}${d.player}`);
-    if (o.t === "duel") { duelActs++; if (o.mode === "break") seen.add("break"); }
+    if (o.t === "drawn") seen.add(`drawn-${o.how}`);
+    if (o.t === "duel" && o.act === "use" && S.combat && S.combat.uses[o.spot] > 0) seen.add("reuse");
+    if (o.t === "duel" || o.t === "draw" || o.t === "duelCard") { duelActs++; if (o.t === "duel" && o.mode === "break") seen.add("break"); }
     NARRATE.lines = [];
     applyDecision(S, d, i);
     const txt = NARRATE.lines.join(" ");
@@ -34,9 +37,11 @@ for (let t = 1; t <= tries; t++) {
   }
   const r = S.result!;
   if (r.tiebreak || r.winner !== 0 || r.decidedBy !== "felled") continue;
-  const want = ["bind0", "bind1", "swear0", "swear1", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "first Strike against it", "break"];
+  if (S.combat!.startV[2][0] || S.combat!.startV[2][1]) seen.add("final");
+  const want = ["bind0", "swear0", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "draw0", "draw1", "drawn-play", "drawn-discard", "duelCard0", "reuse", "final", "break"];
   const got = want.filter((k) => seen.has(k));
-  const score = got.length + Math.min(duelActs, 8) / 4 - (r.felled[1] === 2 ? 1 : 0);
+  // a whole game, but one a person can read through: not too long
+  const score = got.length - Math.max(0, duelActs - 40) / 5;
   if (!best || score > best.score) best = { score, seed, picks, why: got };
 }
 if (!best) throw new Error("no game found");
