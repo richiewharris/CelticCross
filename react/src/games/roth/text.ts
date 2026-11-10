@@ -1,6 +1,37 @@
 // Words for cards, choices and the move log, from one seat's point of view.
 import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
-import { fighter, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
+import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
+import type { Element, SupportDef } from "./engine/cards";
+
+/** The geasa and oaths a move would break, by name: "the Geis of the hosting and the Blood-oath". */
+export function breaksWhat(S: State, p: Side, what: "rest" | SupportDef, as?: Element): string {
+  const C = S.combat;
+  if (!C) return "a geis or oath";
+  const m = what === "rest" ? restForbidMask(S, C, p) : forbidMask(S, C, p, what, as);
+  const q = quadOf(C.hs[p]);
+  const names: string[] = [];
+  if (m & (1 << q) && S.quadGeis[q]) names.push(S.quadGeis[q]!.def.name);
+  S.globalGeis.forEach((g, i) => { if (m & globalBit(i, q)) names.push(g.def.name); });
+  if (m & CROW_BIT) names.push("the Morrígan's crow");
+  if (m & (OATH_BIT << q) && S.quadOath[q]) names.push(S.quadOath[q]!.def.name);
+  if (!names.length) return "a geis or oath";
+  const uniq = [...new Set(names)];
+  return uniq.length === 1 ? uniq[0] : `${uniq.slice(0, -1).join(", ")} and ${uniq[uniq.length - 1]}`;
+}
+
+/** Global geasa, each named once with how many and whose: "Geis of the hosting ×2 (yours, theirs)". */
+export function globalGeasa(S: State, me: Side): { key: string; name: string; text: string }[] {
+  const by = new Map<string, { name: string; owners: Side[] }>();
+  for (const g of S.globalGeis) {
+    const e = by.get(g.def.id) ?? { name: g.def.name, owners: [] };
+    e.owners.push(g.owner);
+    by.set(g.def.id, e);
+  }
+  return [...by.entries()].map(([key, e]) => {
+    const whose = [...new Set(e.owners)].map((o) => (o === me ? "yours" : "theirs")).join(", ");
+    return { key, name: e.name, text: `${e.name}${e.owners.length > 1 ? ` ×${e.owners.length}` : ""} (${whose})` };
+  });
+}
 
 export const ALIGN: Record<string, string> = {
   Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Aos Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Sluagh: "Slúagh", Unaligned: "Unaligned", None: "",
@@ -84,8 +115,8 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const c = S.combat?.drawn?.def;
       const n = c?.name ?? "it";
       if (o.how === "discard") return `Put ${n} aside and do something else`;
-      if (o.how === "keep") return `Keep ${n} in your hand${c?.type === "hero" ? " (a guest)" : ""}`;
-      const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
+      if (o.how === "keep") return c?.type === "hero" ? `Keep ${n} in hand as a guest (can heal 1 first)` : `Keep ${n} in hand to call on later`;
+      const mode = o.mode === "break" ? `Break ${c?.type === "support" ? breaksWhat(S, d.player, c, o.as) : "the geis or oath"} (−2 each) and ` : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
       const t = o.target !== undefined ? ` on ${at(S, o.target)}` : "";
       const verb = c?.type === "champion" ? "call" : c?.type === "monster" ? "join" : c?.type === "geis" ? "lay" : c?.type === "oath" ? "swear" : c?.type === "omen" ? "turn" : "play";
       const x = (mode + `${verb} ${n}${o.as ? ` as ${o.as}` : ""}${t}`);
@@ -100,10 +131,11 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     }
     case "duel": {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
-      const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
+      const sup = o.act === "use" && S.board[o.spot]?.def.type === "support" ? (S.board[o.spot]!.def as SupportDef) : null;
+      const mode = o.mode === "break" ? `Break ${breaksWhat(S, d.player, o.act === "rest" ? "rest" : sup ?? "rest", o.as)} (−2 each) and ` : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
       const twin = o.act === "use" && d.options.some((x) => x.t === "duel" && x.act === "use" && x.spot !== o.spot && S.board[x.spot]?.def.name === S.board[o.spot]?.def.name);
       const out = o.act === "use" && toDeath(S) && S.combat && S.board[o.spot]?.def.type === "support" && unwilling(fighter(S, S.combat, d.player).alignment, (S.board[o.spot]!.def as { alignment: string }).alignment);
-      const act = o.act === "rest" ? "rest" : out ? `cast out ${at(S, o.spot)} (unwilling) and draw in its place` : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
+      const act = o.act === "rest" ? "rest" : out ? `cast out ${at(S, o.spot)} (it won't serve this hero) and draw in its place` : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
       const s = mode + act;
       return s[0].toUpperCase() + s.slice(1) + guest;
     }

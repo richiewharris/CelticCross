@@ -5,6 +5,7 @@ import { useStoredState } from "../../kit/useStoredState";
 import type { CardDef } from "./engine/cards";
 import { Choices } from "./components/Choices";
 import { PlaceView } from "./components/PlaceView";
+import { CardFocusProvider } from "./components/CardFocus";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
 import { optionAt, selFilter, Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
@@ -41,10 +42,10 @@ export function RothGame() {
             options={[{ value: "walk", label: "Guided game" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Guide; label: string }[]} />
         ) : null}
       </nav>
-      {tab === "play" ? <Match focus={focus} setFocus={setFocus} />
+      {tab === "play" ? <CardFocusProvider><Match focus={focus} setFocus={setFocus} /></CardFocusProvider>
         : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} />
-        : guide === "walk" ? <Walkthrough focus={focus} setFocus={setFocus} />
-        : guide === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} />
+        : guide === "walk" ? <CardFocusProvider><Walkthrough focus={focus} setFocus={setFocus} /></CardFocusProvider>
+        : guide === "puzzles" ? <CardFocusProvider><Puzzles focus={focus} setFocus={setFocus} /></CardFocusProvider>
         : guide === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );

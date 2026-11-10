@@ -18,7 +18,11 @@ export function prompt(S: State, d: Decision): string {
     case "duel": return toDeath(S)
       ? `${S.combat!.duel === 2 ? "The final duel" : `Duel ${S.combat!.duel + 1}`}, turn ${S.combat!.turn + 1}, to the death: draw from your Reserve, use a support (again, at its price), turn an omen, lay a geis, swear an oath, or rest.${S.combat!.drew ? " You have put a drawn card aside: choose something else." : ""}`
       : `Duel ${S.combat!.duel + 1}${S.reversed ? " (backwards round)" : ""}, turn ${S.combat!.turn + 1} of 4: use a support, rest, or call a champion.`;
-    case "drawn": return `You drew ${S.combat!.drawn?.def.name ?? "a card"}. Play it now, or put it aside and choose something else.`;
+    case "drawn": {
+      const c = S.combat!.drawn?.def;
+      const keep = c?.type === "hero" || c?.type === "champion";
+      return `You drew ${c?.name ?? "a card"}. ${keep ? "Keep it in hand" : "Play it now"}, or put it aside and choose something else.`;
+    }
     default: return "Your choice.";
   }
 }
@@ -33,7 +37,16 @@ export function previewOf(S: State, d: Decision, i: number): string | null {
   NARRATE.lines = lines;
   try { applyDecision(T, d, i, false); } catch { return null; } finally { NARRATE.lines = null; }
   const bits = lines.join(" ").split(/(?<=\.)\s+/).filter((x) => x.includes("→")).map((x) => x.replace(/\.$/, "").replace(/^\d+ wounds?: /, "").replace(/^0 wounds: /, ""));
-  return bits.length ? bits.join(" · ") : null;
+  if (!bits.length) return null;
+  // drop what doesn't change; a fighter brought to 0 or below is felled
+  const tidy = bits.map((b) => {
+    const m = b.match(/^(.*?)(-?\d+) → (-?\d+)$/);
+    if (!m) return b;
+    const [, who, x, y] = m;
+    if (x === y) return null;
+    return Number(y) <= 0 && /valour|^[A-ZÁÉÍÓÚ]/i.test(who) && !/Shield/.test(who) ? `${who}${x} → 0, felled` : b;
+  }).filter((b): b is string => !!b);
+  return tidy.length ? [...new Set(tidy)].join(" · ") : "no change";
 }
 
 export function Choices(props: { S: State; d: Decision; filter: ((o: Option) => boolean) | null; onPick: (i: number) => void; onClear: () => void }) {

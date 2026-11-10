@@ -5,6 +5,7 @@ import { actorOf, effSupport, effWeakness, fighter, ownerOfSpot, quadOf, support
 import { reuseOf, type SupportDef } from "../engine/cards";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
+import { globalGeasa } from "../text";
 
 const sdOf = (d: CardDef) => d as SupportDef;
 /** What a used support is waiting for before it can be used again. */
@@ -27,7 +28,6 @@ export function DuelView(props: {
     const f = fighter(S, C, p);
     const hero = S.board[hs]!;
     const geis = S.quadGeis[q], oath = S.quadOath[q];
-    const globals = S.globalGeis;
     const omens = S.players.flatMap((P) => P.omens.filter((o) => o.faceUp && o.target === hs).map((o) => o.card.def));
     const done = C.stage === "done";
     const v = done ? C.endValour[C.duel][p] : Math.max(0, C.valour[p]);
@@ -47,7 +47,7 @@ export function DuelView(props: {
           <div className="duel-tags">
             {C.champ[p] ? <span className="tag champ">standing in for {hero.def.name}</span> : null}
             {geis ? <span className="tag geis">⊘ {geis.def.name}</span> : null}
-            {globals.map((g) => <span key={g.uid} className="tag geis">⊘ {g.def.name} (global)</span>)}
+            {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis">⊘ {g.text}</span>)}
             {oath ? <span className="tag oath">✠ {oath.def.name}</span> : null}
             {omens.map((o, i) => <span key={i} className="tag omen">☽ {o.name}</span>)}
             {(() => { const printed = f.weaknesses ?? (f.weakness ? [f.weakness] : []); const w = effWeakness(S, p, f).filter((x) => !printed.includes(x)); return w.length ? <span className="tag attendant">cursed: also weak to {w.join(", ")}</span> : null; })()}

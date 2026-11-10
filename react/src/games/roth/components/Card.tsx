@@ -8,6 +8,7 @@ import { ALIGN, cardText, fighterStats, typeLine } from "../text";
 import { faceLines } from "../faceText";
 import { CardArt, Ogham } from "./Art";
 import { Icon } from "./Icons";
+import { useCardPull } from "./CardFocus";
 
 const ELEMENTS = new Set(["Fire", "Wind", "Earth", "Water", "Spirit"]);
 const kindIcon = (d: CardDef): string => {
@@ -241,10 +242,11 @@ export function CardFace(props: {
   const variant = props.variant ?? "full";
   const ref = useRef<HTMLElement>(null);
   useFit(ref, def.id, variant === "full" && def.type !== "unknown");
+  const pull = useCardPull(def, props.owner);
   const al = "alignment" in def ? def.alignment : "None";
   const art = def.type === "support" && def.element ? `x-${def.element}` : "";
   const cls = ["card", variant, `t-${def.type}`, `al-${al}`, art, props.owner ?? "", faceDown ? "down" : "", props.selected ? "sel" : "",
-    props.playable ? "playable" : "", props.dim ? "dim" : "", "rarity" in def ? `r-${def.rarity}` : ""].filter(Boolean).join(" ");
+    props.playable ? "playable" : "", props.dim ? "dim" : "", "rarity" in def ? `r-${def.rarity}` : "", pull ? "pullable" : ""].filter(Boolean).join(" ");
   const body = (
     <>
       {variant === "full" ? <FullBody d={def} /> : <CompactBody d={def} />}
@@ -257,14 +259,14 @@ export function CardFace(props: {
   if (props.onClick) {
     return (
       <button ref={ref as RefObject<HTMLButtonElement>} type="button" className={cls} aria-label={aria} aria-pressed={props.selected || undefined}
-        onClick={props.onClick} onFocus={() => props.onFocusCard?.(def)} onMouseEnter={() => props.onFocusCard?.(def)}>
+        onClick={() => { if (!pull?.swiped()) props.onClick!(); }} onFocus={() => props.onFocusCard?.(def)} onMouseEnter={() => props.onFocusCard?.(def)} {...pull?.handlers}>
         {body}
       </button>
     );
   }
   return (
     <div ref={ref as RefObject<HTMLDivElement>} className={cls} role="img" aria-label={aria} tabIndex={props.onFocusCard ? 0 : undefined}
-      onFocus={() => props.onFocusCard?.(def)} onMouseEnter={() => props.onFocusCard?.(def)}>
+      onFocus={() => props.onFocusCard?.(def)} onMouseEnter={() => props.onFocusCard?.(def)} {...pull?.handlers}>
       {body}
     </div>
   );

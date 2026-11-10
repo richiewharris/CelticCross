@@ -5,6 +5,7 @@ import { draftSpot, facedSpot, type Decision, type Option, type Side, type State
 import { CardFace } from "./Card";
 import { DuelView } from "./DuelView";
 import { MusterView } from "./MusterView";
+import { globalGeasa } from "../text";
 import { Wheel, type Mark } from "./Wheel";
 
 /** The spot the zoomed wheel turns to the front: the one you're filling or facing. */
@@ -86,7 +87,7 @@ export function Table(props: {
     const shown = mine || o.faceUp;
     const target = o.target !== undefined ? `on ${S.board[o.target]?.def.name ?? "spot " + (o.target + 1)}` : undefined;
     return (
-      <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"}
+      <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"} variant={mine ? "full" : "compact"}
         faceDown={mine && !o.faceUp} badge={o.faceUp ? target : undefined} onFocusCard={props.onFocusCard}
         playable={mine && playable.has(o.card.uid)} selected={sel?.uid === o.card.uid}
         onClick={mine && playable.has(o.card.uid) ? () => props.onCard!(o.card.uid) : undefined} />
@@ -101,7 +102,7 @@ export function Table(props: {
         </div>
       ) : null}
       <div className="view-bar">
-        <span className="phase-line">{phaseText(S)}{S.globalGeis.length ? ` · global: ${S.globalGeis.map((g) => g.def.name).join(", ")}` : ""}</span>
+        <span className="phase-line">{phaseText(S)}{S.globalGeis.length ? ` · on every hero: ${globalGeasa(S, me).map((g) => g.text).join(", ")}` : ""}</span>
         {focus !== null || duel ? (
           <button type="button" className="btn quiet small" aria-pressed={wide} onClick={() => setWide(!wide)}>
             {wide ? (duel ? "Back to the duel" : "Zoom in") : "Whole wheel"}
@@ -118,8 +119,7 @@ export function Table(props: {
           front={focus}
           center={(
             <>
-              <span className="phase">{phaseText(S)}</span>
-              {S.globalGeis.map((g) => <span key={g.uid} className="tag geis global" title={g.def.name}>⊘ {g.def.name}</span>)}
+              {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis global" title={g.text}>⊘ {g.text}</span>)}
             </>
           )} />
       )}
@@ -134,7 +134,7 @@ export function Table(props: {
       ) : null}
       <div className="zone mine" aria-label="Your omens and hand">
         {P.omens.length ? <><span className="zone-label">{props.names?.[0] ?? "You"}: omens</span><div className="omens">{omenRow(me)}</div></> : null}
-        {P.hand.length ? <span className="zone-label">Hand</span> : null}
+        {P.hand.length ? <span className="zone-label">Hand · {P.hand.length} <small className="hint">swipe a card down to read it in full</small></span> : null}
         <div className="hand">
           {P.hand.map((c) => (
             <CardFace key={c.uid} def={c.def} owner="mine" onFocusCard={props.onFocusCard}

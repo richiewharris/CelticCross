@@ -268,7 +268,7 @@ body.gm-roth .card.compact.t-support.x-Earth { background: linear-gradient(180de
 body.gm-roth .card.compact.t-support.x-Spirit { background: linear-gradient(180deg, #2a2236, #1c1820 70%); }
 body.gm-roth .card.compact.r-legendary { border-color: #e9c56a; border-top-color: var(--al); box-shadow: 0 0 .5em rgba(240, 190, 90, .4); }
 body.gm-roth .card.compact .c-head { display: flex; gap: .3em; align-items: flex-start; min-width: 0; }
-body.gm-roth .card.compact .c-name { font-weight: 600; font-size: .95em; overflow-wrap: break-word; hyphens: auto; min-width: 0;
+body.gm-roth .card.compact .c-name { font-weight: 600; font-size: .95em; overflow-wrap: normal; word-break: normal; hyphens: manual; text-wrap: balance; min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 body.gm-roth .card.compact .glyph { color: color-mix(in srgb, var(--al) 70%, #fff); margin-top: .1em; }
 body.gm-roth .card.compact .c-short { display: flex; flex-wrap: wrap; gap: .25em; font-size: .9em; }
@@ -293,6 +293,8 @@ body.gm-roth .zone-label { font-size: .78rem; color: var(--muted); }
 body.gm-roth .omens, body.gm-roth .hand { display: flex; flex-wrap: wrap; gap: 6px; }
 body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 11.2px; }
 body.gm-roth .zone.theirs .omens .card.full { font-size: 6.5px; }
+body.gm-roth .zone.theirs .omens .card.compact { width: 9.5rem; font-size: 12px; min-height: 0; }
+body.gm-roth .zone.theirs .omens .card.compact.t-unknown { width: 3.4rem; height: 4.6rem; }
 body.gm-roth .omens, body.gm-roth .hand { gap: 8px; }
 @media (max-width: 480px) { body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 11px; } }
 @media (max-width: 400px) { body.gm-roth .omens .card.full, body.gm-roth .hand .card.full { font-size: 10.6px; } }
@@ -677,3 +679,22 @@ body.gm-roth .choice-preview { font-size: .78rem; color: var(--bronze-hi); opaci
 body.gm-roth .log .log-sec { list-style: none; margin: 10px 0 2px -1.2em; font-family: var(--font-display); color: var(--bronze-hi); font-size: .95rem; }
 body.gm-roth .log .log-sec:first-child { margin-top: 0; }
 body.gm-roth .record { margin-top: 4px; }
+
+/* touch-sized choices */
+body.gm-roth .btn.choice { min-height: 44px; }
+
+/* ---- swipe down on a card to pull it into full view ---- */
+body.gm-roth .table .card.pullable, body.gm-roth .place-row .card.pullable, body.gm-roth .muster-draw .card.pullable { touch-action: pan-x; }
+body.gm-roth .zone.mine .hand { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+body.gm-roth .zone.mine .hand > .card { flex: 0 0 auto; scroll-snap-align: start; }
+body.gm-roth .zone-label .hint { color: var(--muted); font-size: .8em; margin-left: 6px; }
+@media (hover: hover) { body.gm-roth .zone-label .hint { display: none; } }
+body.gm-roth .cardsheet { position: fixed; inset: 0; z-index: 50; display: grid; place-items: end center; background: rgb(8 6 4 / .72); backdrop-filter: blur(2px); animation: sheet-in .18s ease-out; }
+body.gm-roth .cardsheet-body { width: min(560px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 12px; justify-items: center; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: #1c1612; box-shadow: 0 -10px 40px rgb(0 0 0 / .5); border: 1px solid var(--line); border-bottom: 0; }
+body.gm-roth .cardsheet-card .card.full { font-size: min(19px, 5.4vw); }
+body.gm-roth .cardsheet-text { width: 100%; display: grid; gap: 4px; }
+body.gm-roth .cardsheet-text p { margin: 0; }
+body.gm-roth .cardsheet .btn { min-height: 44px; min-width: 140px; }
+@media (min-width: 900px) { body.gm-roth .cardsheet { place-items: center; } body.gm-roth .cardsheet-body { border-radius: 18px; border-bottom: 1px solid var(--line); grid-template-columns: auto 1fr; align-items: start; justify-items: start; } body.gm-roth .cardsheet .btn { grid-column: 1 / -1; justify-self: end; } }
+@keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.gm-roth .cardsheet { animation: none; } }

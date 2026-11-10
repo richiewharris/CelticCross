@@ -1,4 +1,5 @@
 // Side panels: match setup, the card inspector, the move log, how to play, and the result dialog.
+import { useEffect, useRef } from "react";
 import { Dialog } from "../../../kit/Dialog";
 import { Segmented } from "../../../kit/Segmented";
 import { FACTIONS, type CardDef, type Faction } from "../engine/cards";
@@ -87,10 +88,13 @@ export function Inspector({ def }: { def: CardDef | null }) {
 }
 
 export function LogPanel({ log }: { log: string[] }) {
+  // follow the newest move
+  const ref = useRef<HTMLOListElement>(null);
+  useEffect(() => { const el = ref.current; if (el) el.scrollTop = el.scrollHeight; }, [log.length]);
   return (
     <div className="panel">
       <p className="label">Moves</p>
-      <ol className="log" aria-live="polite">
+      <ol className="log" aria-live="polite" ref={ref}>
         {log.slice(-60).map((l, i) => (l.startsWith("§ ") ? <li key={i} className="log-sec">{l.slice(2)}</li> : <li key={i}>{l}</li>))}
       </ol>
     </div>
