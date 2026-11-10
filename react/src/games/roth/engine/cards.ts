@@ -126,7 +126,7 @@ export interface SupportDef {
  */
 export interface Reuse { turns?: number; rest?: number; valour?: number; draw?: number }
 /** A support's reuse price: its own, or by kind and effect. Weapons need a turn between blows; Feats tire (a rest);
- * Allies must be sent for again (a card off the Reserve); Words cost breath (1 Valour). A Heal also needs a rest. */
+ * Allies must be sent for again (a card off the Reserve); Words cost breath (1 Valour). A Heal or Shield also needs a rest. */
 export function reuseOf(s: SupportDef): Reuse {
   if (s.reuse) return s.reuse;
   const r: Reuse = {};
@@ -134,7 +134,10 @@ export function reuseOf(s: SupportDef): Reuse {
   else if (s.kind === "Feat") r.rest = 1;
   else if (s.kind === "Ally") r.draw = 1;
   else if (s.kind === "Word") r.valour = 1;
-  if (s.effects.some((e) => e.type === "heal")) r.rest = Math.max(1, r.rest ?? 0);
+  // walls and mending don't come back without a breath: a Heal or a Shield also needs a rest
+  if (s.effects.some((e) => e.type === "heal" || e.type === "shield")) r.rest = Math.max(1, r.rest ?? 0);
+  // the dead feed on what they take, so a Spirit blow can't fall two turns running
+  if (s.element === "Spirit") r.turns = Math.max(1, r.turns ?? 0);
   return r;
 }
 /**
@@ -635,8 +638,8 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
   const all = [h.weakness, ...members.map((m) => m.weakness)];
   const weaknesses: Element[] = [h.weakness];
   for (const w of all) if (!weaknesses.includes(w) && all.filter((x) => x === w).length >= 2) weaknesses.push(w);
-  // a host of the dead is a ragged thing: one Valour less than its monsters together
-  const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0) - 1;
+  // a host of the dead is a ragged thing: one Valour less for each monster in it
+  const valour = members.reduce((a, m) => a + m.valour + h.valourEach - 1, 0);
   const init = h.init + members.reduce((a, m) => a + m.init, 0);
   const short = members.map((m) => m.name.replace(/^The /, ""));
   const names = short.length > 1 ? `${short.slice(0, -1).join(", ")} and ${short[short.length - 1]}` : short.join("");

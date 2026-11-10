@@ -1,6 +1,6 @@
 // Words for cards, choices and the move log, from one seat's point of view.
 import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
-import type { Decision, Option, Side, State } from "./engine/engine";
+import { fighter, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
 
 export const ALIGN: Record<string, string> = {
   Ulaid: "Ulaid", Connachta: "Connachta", Sidhe: "Aos Sídhe", Fomoire: "Fomóire", Merrow: "Merrow", Deorad: "Deorad", Sluagh: "Slúagh", Unaligned: "Unaligned", None: "",
@@ -100,7 +100,8 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
       const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
       const twin = o.act === "use" && d.options.some((x) => x.t === "duel" && x.act === "use" && x.spot !== o.spot && S.board[x.spot]?.def.name === S.board[o.spot]?.def.name);
-      const act = o.act === "rest" ? "rest" : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
+      const out = o.act === "use" && toDeath(S) && S.combat && S.board[o.spot]?.def.type === "support" && unwilling(fighter(S, S.combat, d.player).alignment, (S.board[o.spot]!.def as { alignment: string }).alignment);
+      const act = o.act === "rest" ? "rest" : out ? `cast out ${at(S, o.spot)} (unwilling) and draw in its place` : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
       const s = mode + act;
       return s[0].toUpperCase() + s.slice(1) + guest;
     }

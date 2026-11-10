@@ -1,8 +1,8 @@
 // Exact duel solver (minimax over the tiny duel trees) and combat evaluation used by the AIs.
 
-import { beats, isElement, unwillingPair, type HeroDef, type SupportDef } from "./cards";
+import { beats, isElement, reuseOf, unwillingPair, type CardDef, type FighterDef, type HeroDef, type SupportDef } from "./cards";
 import {
-  combatApply, combatDecision, combatResult, cloneCombat, kin, newCombat, toDeath,
+  activeOath, baseEffects, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -118,10 +118,8 @@ export function evalBoardCombat(S: State, me: Side): number {
   evalCache.set(key, v);
   return v;
 }
-function evalBoardCombatRaw(S0: State, me: Side): number {
-  // DECISION: a board headed for duels to the death is judged by how its two-turn duels would go: a quick, exact
-  // stand-in for the strength of each pairing (the long duels are random and far too deep to solve)
-  const S = toDeath(S0) ? { ...S0, rules: { ...S0.rules, duels: "ford" as const } } : S0;
+function evalBoardCombatRaw(S: State, me: Side): number {
+  if (toDeath(S)) return evalBoardDeath(S, me);
   const C = newCombat(S);
   stripGuests(C, null);
   const leaf = C.duel === 0 && C.stage !== "done" ? recPV(S, C, me, -Infinity, Infinity).leaf : C;
@@ -179,4 +177,99 @@ export function quickSupportValue(s: SupportDef, h: HeroDef, e: HeroDef | null):
   if (s.nextStrike) v += 0.8 * s.nextStrike;
   if (s.cathbad) v += 0.6;
   return v;
+}
+
+// ---------------------------------------------------------------- duels to the death: a race, estimated
+/**
+ * A board headed for duels to the death can't be solved: the duels are long and every draw is a chance. So each
+ * pairing is judged as a race. Each side's worth per turn is what its two supports give (each as often as its reuse
+ * price allows, with every bonus it would get on this board) and, in the turns left over, what a draw off the Reserve
+ * is worth on average; the side that needs fewer turns to fell the other is likely to win. Then the two duels (and a
+ * final one at one each) are combined into a chance of winning the match.
+ */
+export function evalBoardDeath(S: State, me: Side): number {
+  const C0 = newCombat(S);
+  stripGuests(C0, null);
+  const p: number[] = [];
+  for (const d of [0, 1]) {
+    let C = C0;
+    if (d === 1) { C = cloneCombat(C0); C.felled = [[false, false], [false, false], [false, false]]; startDuel(S, C, 1, null); stripGuests(C, null); }
+    p.push(duelChance(S, C, me));
+  }
+  const P = p[0] * p[1] + 0.5 * (p[0] * (1 - p[1]) + (1 - p[0]) * p[1]);
+  return 100 * (2 * P - 1);
+}
+/** The worth of support s to side a's fighter in combat C, as one action. */
+function supWorth(S: State, C: CombatState, a: Side, s0: SupportDef): number {
+  const h = fighter(S, C, a), e = fighter(S, C, 1 - a);
+  if (unwilling(h.alignment, s0.alignment)) return 0;
+  const s = effSupport(S, a, s0);
+  const effs = baseEffects(s, h, e, false);
+  let v = 0;
+  effs.forEach((x, i) => {
+    let n = x.n + (i === 0 ? primaryBonus(S, C, a, s, x.type === "strike") : 0);
+    if (x.type === "strike") {
+      n += (h.ab.strikeAll ?? 0) + (activeOath(S, C, a)?.boon.strike ?? 0);
+      for (const fx of heroFx(S, C, a)) n += fx.strikeMod ?? 0;
+      if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
+      v += Math.max(0, n) * (s.pierce || s.element === "Spirit" ? 1.1 : 1);
+    } else v += 0.8 * Math.max(0, n);
+  });
+  if (s.nextStrike) v += 0.8 * s.nextStrike;
+  if (s.drain) v += 0.5 * s.drain;
+  if (s.foeLoss) v += s.foeLoss;
+  if (s.selfLoss) v -= s.selfLoss;
+  if (forbidMask(S, C, a, s0)) v -= 2;
+  return v;
+}
+/** How often (per turn) and at what cost a support can be used over a long duel. */
+function reuseRate(s: SupportDef): { rate: number; cost: number } {
+  const r = reuseOf(s);
+  let rate = 1, cost = 0;
+  if (r.turns) rate = Math.min(rate, 1 / (r.turns + 1));
+  if (r.rest) rate = Math.min(rate, 1 / (r.rest + 1.5));
+  if (r.valour) cost += r.valour;
+  if (r.draw) cost += 0.3 * r.draw;
+  return { rate, cost };
+}
+const drawCache = new Map<string, number>();
+/** What a draw off side a's Reserve is worth, on average, to its fighter now. */
+function drawWorth(S: State, C: CombatState, a: Side): number {
+  const h = fighter(S, C, a) as HeroDef, e = fighter(S, C, 1 - a) as HeroDef;
+  const key = a + h.id + e.id + S.players[a].deckList.length + S.players[a].deckList[0]?.id;
+  const hit = drawCache.get(key);
+  if (hit !== undefined) return hit;
+  const list: CardDef[] = S.players[a].deckList;
+  let tot = 0;
+  for (const c of list) tot += c.type === "support" ? quickSupportValue(c, h, e) : c.type === "omen" || c.type === "geis" || c.type === "oath" ? 1.2 : 0.3;
+  const v = list.length ? tot / list.length : 1;
+  if (drawCache.size > 20000) drawCache.clear();
+  drawCache.set(key, v);
+  return v;
+}
+/** Side me's chance of winning the duel in C, as a race. */
+function duelChance(S: State, C: CombatState, me: Side): number {
+  const per = (a: Side) => {
+    const h: FighterDef = fighter(S, C, a);
+    const D = drawWorth(S, C, a);
+    const opts: { v: number; rate: number }[] = [];
+    for (const sp of [C.hs[a] + 1, C.hs[a] + 2]) {
+      const c = S.board[sp];
+      if (!c || c.def.type !== "support") continue;
+      const w = supWorth(S, C, a, c.def);
+      const r = reuseRate(c.def);
+      opts.push({ v: w - r.cost, rate: r.rate });
+    }
+    opts.sort((x, y) => y.v - x.v);
+    let left = 1, v = 0;
+    for (const o of opts) if (o.v > D) { const f = Math.min(left, o.rate); v += f * o.v; left -= f; }
+    v += left * D;
+    v += 0.4 * (h.ab.drain ?? 0) + 0.25 * (h.ab.restHeal ?? 0) + 0.25 * (h.ab.restShield ?? 0);
+    return Math.max(0.5, v);
+  };
+  const o = (1 - me) as Side;
+  const tough = (a: Side) => { const h = fighter(S, C, a); return Math.max(0.5, C.valour[a] + C.shield[a] + Math.min(3, h.ab.firstHitSoak ?? 0)); };
+  let tMe = tough(o) / per(me), tO = tough(me) / per(o);
+  if (C.first === me) tMe -= 0.5; else tO -= 0.5;
+  return 1 / (1 + Math.exp(-0.9 * (tO - tMe)));
 }

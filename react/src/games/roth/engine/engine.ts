@@ -1005,6 +1005,8 @@ export function heal(S: State, C: CombatState, p: Side, n: number) {
   }
 }
 
+/** Set while a placed support is being used again: a Spirit blow steals only the first time a card is used. */
+const REUSING = { on: false };
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
 function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
   return t === "strike" && s.element === "Water" && h.type === "hero" && h.alignment === "Merrow" && e.type === "hero" && !!e.host;
@@ -1067,7 +1069,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     C.struck[b] = true;
     // the Aos Sídhe are veiled: the first Strike against them each duel −1 (positions saved before this rule leave it out)
     const veil = S.rules.veiled && e.alignment === "Sidhe" ? 1 : 0;
-    n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - veil - sumFx(heroFx(S, C, b), (x) => x.firstHitSoak));
+    // in a duel to the death no ward softens the first blow by more than 2 (a cloak that makes it miss outright
+    // would be worth a whole hero in a long fight)
+    const ward = (e.ab.firstHitSoak ?? 0) + veil + sumFx(heroFx(S, C, b), (x) => x.firstHitSoak);
+    n = Math.max(0, n - (toDeath(S) ? Math.min(2, ward) : ward));
   }
   const soak = pierce ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
@@ -1199,7 +1204,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     }
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || (s.element === "Spirit" && e.alignment !== "Merrow"), (s.drain ?? 0) + (s.element === "Spirit" ? 1 : 0));
+    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || (s.element === "Spirit" && e.alignment !== "Merrow"), (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0));
     else if (eff.type === "heal") heal(S, C, a, n);
     else {
       const add = Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
@@ -1212,7 +1217,8 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   }
   if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
   if (s.nextStrike) C.nextStrike[a] += s.nextStrike;
-  if (s.foeNext) C.nextStrike[b] -= s.foeNext;
+  // dulling doesn't stack: the enemy's next Strike is never cut by more than one card's worth
+  if (s.foeNext) C.nextStrike[b] = Math.max(Math.min(C.nextStrike[b], -s.foeNext), C.nextStrike[b] - s.foeNext);
   if (s.foeLoss) C.valour[b] -= s.foeLoss;
   if (s.selfLoss) C.valour[a] -= s.selfLoss;
   if (s.cathbad) C.cathbad[a] = true;
@@ -1316,7 +1322,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       const m = host.host!.members.find((x) => x.id === o.id)!;
       const cur = adjOf(C, q);
       setAdj(C, q, cur.add.some((x) => x.id === m.id) ? { add: cur.add.filter((x) => x.id !== m.id), remove: cur.remove } : { add: cur.add, remove: [...cur.remove, m.id] });
-      const v = m.valour + host.host!.def.valourEach;
+      const v = m.valour + host.host!.def.valourEach - (toDeath(S) ? 1 : 0); // in a long duel, a ragged return
       C.valour[a] = Math.min(Math.max(C.cap[a], C.valour[a]), C.valour[a] + v);
       const sc = C.sacrificed.slice(); sc[a] = true; C.sacrificed = sc;
     } else {
@@ -1353,6 +1359,19 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       if (j >= 0) P.discard.push(P.hand.splice(j, 1)[0]);
     }
   }
+  if (o.act === "use" && toDeath(S) && unwilling(fighter(S, C, a).alignment, (S.board[o.spot]!.def as SupportDef).alignment)) {
+    // in a duel to the death an unwilling support is cast out: it goes back to its owner's discards, and the hero
+    // draws in its place (and must play or put aside what comes)
+    const c = S.board[o.spot]!;
+    S.board[o.spot] = null;
+    S.players[c.owner].discard.push(c);
+    if (o.spot % 3 !== 0 && quadOf(o.spot) !== quadOf(C.hs[a])) C.kingsDue[a] = true;
+    if (NARRATE.lines) say(`${c.def.name} will not serve ${fighter(S, C, a).name}: it is cast out.`);
+    const top = takeTop(S, a);
+    if (top) { C.drawn = top; C.drew = true; if (NARRATE.lines) say(`${fighter(S, C, a).name} draws ${top.def.name}.`); return; }
+    endTurn(S, C, stats);
+    return;
+  }
   if (o.act === "use") {
     const s = S.board[o.spot]!.def as SupportDef;
     const borrowed = quadOf(o.spot) !== quadOf(C.hs[a]);
@@ -1366,9 +1385,10 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         for (let k = 0; k < (r.draw ?? 0); k++) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
         if (NARRATE.lines && (r.valour || r.draw)) say(`Using ${s.name} again costs ${[r.valour ? `${r.valour} Valour` : "", r.draw ? `the top ${r.draw === 1 ? "card" : `${r.draw} cards`} of the Reserve` : ""].filter(Boolean).join(" and ")}.`);
       }
+      REUSING.on = C.uses[o.spot] > 0;
       C.uses[o.spot]++; C.lastUse[o.spot] = C.acts[a]; C.restsSince[o.spot] = 0;
     }
-    if (C.valour[a] > 0) useSupport(S, C, a, s, o.mode, o.as, stats);
+    try { if (C.valour[a] > 0) useSupport(S, C, a, s, o.mode, o.as, stats); } finally { REUSING.on = false; }
   } else {
     if (o.mode === "break") {
       const m = restForbidMask(S, C, a);

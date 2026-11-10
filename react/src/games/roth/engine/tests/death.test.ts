@@ -2,16 +2,16 @@
 // final duel between the survivors.
 import { describe, expect, it } from "vitest";
 import { DECKS, reuseOf, type SupportDef, ALL_DEFS } from "../cards";
-import { applyDecision, nextDecision, newMatch, playOut, type Option, type Policy, type State } from "../engine";
+import { applyDecision, nextDecision, newMatch, observe, type Option, type Policy, type State } from "../engine";
 import { NovicePolicy, CasualPolicy } from "../ai";
 import { Rng } from "../rng";
 import { act, card, combatState, rest, use } from "./helpers";
 
-// Fergus (P1, spot 1: Thunder feat, Spear of Cet) against Ferdiad (P2, spot 7: Fedelm's prophecy, Láeg)
+// Conall (P1, spot 1: Thunder feat, Sling of Emain) against the Dagda (P2, spot 7: Fedelm's prophecy, Láeg)
 const mk = () => {
   const S = combatState({
-    board: ["conall", "thunder", "cet_spear@0", "emer", "salmon", "salmon", "dagda", "fedelm@1", "laeg@1", "fergus", "salmon", "salmon"],
-    rules: { duels: "death", initTie: "p1" },
+    board: ["conall", "thunder", "sling", "emer", "salmon", "salmon", "dagda", "fedelm@1", "laeg@1", "fergus", "salmon", "salmon"],
+    rules: { duels: "death", initTie: "p1", valourBonus: 10 }, // sturdy heroes: these tests are about turns, not falls
   });
   S.players[0].reserve = ["salmon", "sling", "thunder"].map((id) => card(id, 0));
   S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
@@ -105,17 +105,22 @@ describe("to the death", () => {
     let finals = 0;
     for (let i = 0; i < 60; i++) {
       const S = newMatch([DECKS.ulster, DECKS.connacht], {}, 300 + i);
-      const r = playOut(S, [new CasualPolicy(), new NovicePolicy()] as [Policy, Policy], [new Rng(i), new Rng(i + 7)], true);
-      const C = S.combat!;
-      if (C.startV[2][0] || C.startV[2][1]) {
-        finals++;
-        // each survivor carries the Valour it ended its own duel with
-        for (const p of [0, 1]) {
-          const d = C.felled[0][p] ? 1 : 0;
-          expect(C.startV[2][p]).toBe(C.endValour[d][p]);
+      const pol = [new CasualPolicy(), new NovicePolicy()] as Policy[];
+      const rng = [new Rng(i), new Rng(i + 7)];
+      let seen = false;
+      for (;;) {
+        const d = nextDecision(S);
+        if (!d) break;
+        const C = S.combat;
+        if (C && C.duel === 2 && !seen) {
+          seen = true;
+          finals++;
+          // each survivor carries the Valour it ended its own duel with
+          for (const p of [0, 1]) expect(C.valour[p]).toBe(C.endValour[C.felled[0][p] ? 1 : 0][p]);
         }
+        applyDecision(S, d, d.options.length === 1 ? 0 : pol[d.player].choose(observe(S, d.player), d, rng[d.player]));
       }
-      expect(r.felled[0] + r.felled[1]).toBeGreaterThanOrEqual(1);
+      expect(S.result!.felled[0] + S.result!.felled[1]).toBeGreaterThanOrEqual(1);
     }
     expect(finals).toBeGreaterThan(2);
   });

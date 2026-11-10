@@ -53,7 +53,7 @@ describe("Slúagh hosts in combat", () => {
   };
   it("a host fights with its monsters' Valour added up, and only shared weaknesses", () => {
     const h = host("hunt", "dullahan", "puca", "marbh");
-    expect(h.valour).toBe((ALL_DEFS.dullahan as MonsterDef).valour + (ALL_DEFS.puca as MonsterDef).valour + (ALL_DEFS.marbh as MonsterDef).valour - 1); // less one: a ragged host
+    expect(h.valour).toBe((ALL_DEFS.dullahan as MonsterDef).valour + (ALL_DEFS.puca as MonsterDef).valour + (ALL_DEFS.marbh as MonsterDef).valour - 3); // a ragged host: one less a monster
     expect(h.weaknesses).toEqual(["Fire"]); // the Hunt's own; the Marbh shares it; Dullahan's Water and Púca's Earth stand alone
     expect(host("prey", "puca", "fear_dearg", "dullahan").weaknesses).toEqual(["Earth"]); // Earth thrice; Water once
     expect(host("taboo", "puca", "fear_dearg").weaknesses).toEqual(["Water", "Earth"]); // two Earth monsters share it

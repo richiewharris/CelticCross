@@ -220,7 +220,7 @@ function casualDeathTurn(V: State, d: Decision, me: Side): number {
       if (x.act === "rest") v = h.ab.restHeal || h.ab.restShield ? 0.5 : -1;
       else {
         const s = V.board[x.spot]!.def as SupportDef;
-        v = looks(s, h) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
+        v = unwillingPair(h.alignment, s.alignment) ? 2.3 : looks(s, h) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
       }
       if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 2;
     } else if (x.t === "duelCard") {
