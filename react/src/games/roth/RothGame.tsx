@@ -95,6 +95,12 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
     if (!d) return;
     // a target for the picked card?
     if (actNow && actNow.variants.some((v) => v.target === spot)) { setAct({ ...act, target: spot }); return; }
+    // the spot you face in the Playing turn: show what you can do to it
+    if (d.kind === "action" && d.spot === spot) {
+      const g = acts.some((a) => a.group === "Supplant") && S.board[spot]?.def.type === "support" ? "Supplant" : acts.some((a) => a.group === "Geis & oath") ? "Geis & oath" : null;
+      if (g) { setGroup(g); setAct({ ...NO_PICK, guest: act.guest }); }
+      return;
+    }
     const a = acts.find((x) => x.spot === spot && x.key.includes(":normal:")) ?? acts.find((x) => x.spot === spot);
     if (a) { setGroup(a.group); setAct({ key: a.key, target: null, guest: act.guest }); }
   };

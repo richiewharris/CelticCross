@@ -131,7 +131,8 @@ export function Table(props: {
             lastSpot={(() => { const e = props.last?.[props.last.length - 1]; return e && e.spot !== undefined ? { spot: e.spot, n: e.n } : undefined; })()} />
         </>
       ) : !wide && focus !== null ? (
-        <FordLane S={S} me={me} mine={ownerOfSpot(focus) === me ? quadOf(focus) : (quadOf(focus) + 2) % 4} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} />
+        <FordLane S={S} me={me} mine={ownerOfSpot(focus) === me ? quadOf(focus) : (quadOf(focus) + 2) % 4} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
+          ghost={d?.kind === "place" && d.player === me && sel?.uid !== undefined ? (() => { const c = P.hand.find((x) => x.uid === sel.uid); return c ? { spot: d.spot!, def: c.def } : null; })() : null} />
       ) : (
         <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
           focus={null}

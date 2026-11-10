@@ -849,3 +849,28 @@ body.gm-roth .view-bar { display: flex; align-items: center; gap: 6px; }
 body.gm-roth .card.compact .c-chip.again { gap: .25em; }
 body.gm-roth .card.compact .c-price { display: inline-flex; align-items: center; gap: .05em; }
 body.gm-roth .tag .ico, body.gm-roth .valour .ico { width: 1em; height: 1em; vertical-align: -0.12em; }
+
+/* ---- a quadrant as a half-overlapping stack ---- */
+body.gm-roth .lane-row { display: block; }
+body.gm-roth .qstack-wrap { display: grid; grid-template-columns: 28px minmax(0, 1fr) 28px; align-items: center; gap: 4px; }
+body.gm-roth .qstack { position: relative; container-type: inline-size; aspect-ratio: 1 / 0.86; touch-action: pan-y; }
+body.gm-roth .qslot { position: absolute; top: 4%; width: 50%; transition: transform .35s cubic-bezier(.3, .1, .2, 1), filter .25s; transform: translateY(0) scale(.97); filter: brightness(.72) saturate(.85); cursor: pointer; }
+body.gm-roth .qslot.front { transform: translateY(-3%) scale(1); filter: none; cursor: default; }
+body.gm-roth .qslot .lane-spot, body.gm-roth .qslot .lane-spot.hero { font-size: 3.3cqw; }
+body.gm-roth .qslot .lane-no { font-size: max(10px, 2.4cqw); }
+body.gm-roth .qslot:not(.front) .lane-tags { display: none; }
+body.gm-roth .qfold { animation: fold-over .38s cubic-bezier(.3, .1, .2, 1); transform-origin: left center; }
+body.gm-roth .qstack-arrow { width: 28px; height: 44px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--bronze-hi); font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0; }
+body.gm-roth .qstack-arrow:disabled { opacity: .3; cursor: default; }
+body.gm-roth .turn-in { animation: lane-turn .55s cubic-bezier(.3, .1, .2, 1); transform-origin: 50% 160%; }
+@keyframes fold-over { from { transform: perspective(700px) rotateY(-55deg) translateX(-18%); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes lane-turn { from { transform: rotate(-14deg) translateX(18%); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.gm-roth .qfold, body.gm-roth .turn-in { animation: none; } body.gm-roth .qslot { transition: none; } }
+@media (min-width: 900px) { body.gm-roth .lane { max-width: 620px; } }
+body.gm-roth .qslot .empty-spot { background: #17120e; }
+body.gm-roth .qslot.front .empty-spot { background: #1f1813; }
+@media (min-width: 900px) { body.gm-roth .lane { max-width: 540px; } }
+body.gm-roth .ghost { background: #17120e; filter: saturate(.85); outline: 2px dashed var(--bronze-hi); outline-offset: 3px; border-radius: .6em; animation: ghost-in .3s ease-out; }
+@keyframes ghost-in { from { opacity: 0; transform: translateY(-10%); } to { opacity: 1; transform: none; } }
+body.gm-roth .ghost > .card { opacity: .8; }
+@media (prefers-reduced-motion: reduce) { body.gm-roth .ghost { animation: none; } }
