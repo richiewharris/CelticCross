@@ -42,9 +42,9 @@ export const DECK_PUZZLES: ChoicePuzzle[] = [
   },
   {
     kind: "choice", id: "k-champions", set: "deck", level: "Advanced", title: "Why two champions?",
-    question: "Each starter deck carries two champions. After the Muster, how often does such a deck hold at least one of them in hand?",
+    question: "Each starter deck carries two champions. If you keep every card you draw in the Muster until your hand is full, how often do you hold at least one of them?",
     choices: ["About half the time", "Three times in five", "Six times in seven", "Nineteen times in twenty"], answer: [2],
-    explain: "Your hand is 12 of your 20 non-omen cards. With one champion you hold it 60% of the time; with two, 85%; with three, 95%. But every champion takes the place of a support or an oath you'd otherwise draft, so two is the sweet spot.",
+    explain: "Kept as they come, your hand is the first 12 of your 20 non-omen cards. With one champion you hold it 60% of the time; with two, 85%; with three, 95%. You can do better by choosing: keep a champion when it comes up, or set it aside to draw in a duel. But every champion takes the place of a support or an oath you'd otherwise draft, so two is the sweet spot.",
   },
 ];
 

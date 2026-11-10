@@ -90,8 +90,8 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       <section className="stage" aria-label="Roth Catha table">
         <div className="status" role="status" aria-live="polite">{status}</div>
         <Table S={S} me={m.me} d={d} sel={sel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
-          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} />
-        {m.myTurn && d ? <Choices S={S} d={d} filter={selFilter(sel)} onPick={pick} onClear={() => setSel(null)} /> : null}
+          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} />
+        {m.myTurn && d && d.kind !== "muster" ? <Choices S={S} d={d} filter={selFilter(sel)} onPick={pick} onClear={() => setSel(null)} /> : null}
         {m.over && !showResult ? <button type="button" className="btn" onClick={() => setShowResult(true)}>Show the result</button> : null}
       </section>
       <aside>

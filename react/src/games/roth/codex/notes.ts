@@ -225,7 +225,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "omen", title: "Omens", sample: "o_crow",
     what: "Fate. Omens wait face down until you turn them, then hold for the rest of the match.",
-    when: "**The Muster** puts four in your omen spots, face down. **Playing turn**: turn one face up (a targeted omen picks its hero as it turns).",
+    when: "**The Muster**: put up to four in your Omen spots, face down, as you draw them. **Playing turn**: turn one face up (a targeted omen picks its hero as it turns).",
     how: [
       "{global} **Over the whole field**: both sides feel it (the Truce, the crow, the Night of the Fomóire).",
       "{yours} **For your heroes**: wards that soften blows and reinforcements that add +1.",

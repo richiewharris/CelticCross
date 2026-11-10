@@ -187,6 +187,9 @@ export interface State {
 
 export type DuelMode = "normal" | "break" | "ignore";
 export type Option =
+  /** The Muster: the first of the four cards drawn goes to hand, to the Reserve, or (an omen) to an Omen spot,
+   *  in place of the omen `swap` when the spots are full. */
+  | { t: "muster"; uid: number; how: "keep" | "aside" | "omen"; swap?: number }
   | { t: "musterOmen"; uid: number }
   | { t: "musterReturn"; uid: number }
   | { t: "place"; uid: number; join?: number[] }
@@ -209,7 +212,7 @@ export type Option =
   | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element }
   /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
   | { t: "duelCard"; uid: number; target?: number };
-export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn";
+export type DecisionKind = "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
 // ---------------------------------------------------------------- helpers
@@ -451,6 +454,48 @@ function musterFetch(S: State, p: Side): number {
   return taken;
 }
 const hostDeck = (P: PlayerState) => P.deckList.some((d) => d.type === "host");
+/** What the Muster must leave in hand: 2 heroes (a host counts), 4 supports, and 4 monsters for a deck of hosts. */
+export function musterNeeds(P: PlayerState): { t: "hero" | "support" | "monster"; n: number; label: string }[] {
+  const out: { t: "hero" | "support" | "monster"; n: number; label: string }[] = [{ t: "hero", n: 2, label: hostDeck(P) ? "heroes or hosts" : "heroes" }, { t: "support", n: 4, label: "supports" }];
+  if (hostDeck(P)) out.push({ t: "monster", n: 4, label: "monsters" });
+  return out;
+}
+const musterIs = (c: Card, t: string) => c.def.type === t || (t === "hero" && c.def.type === "host");
+/** The choices for the first card of the four drawn. You may not set aside a card you would then be short of, nor keep
+ *  one that leaves too few places in hand for what you still need. */
+export function musterOptions(S: State, p: Side): Option[] {
+  const P = S.players[p], c = P.musterQ[0];
+  if (!c) return [];
+  if (c.def.type === "omen") {
+    const out: Option[] = [];
+    if (P.omens.length < S.rules.omenSpots) out.push({ t: "muster", uid: c.uid, how: "omen" });
+    else for (const o of P.omens) out.push({ t: "muster", uid: c.uid, how: "omen", swap: o.card.uid });
+    out.push({ t: "muster", uid: c.uid, how: "aside" });
+    return out;
+  }
+  const needs = musterNeeds(P);
+  const room = S.rules.handSize - P.hand.length;
+  const has = (t: string) => P.hand.filter((x) => musterIs(x, t)).length;
+  const supply = (t: string) => P.musterQ.slice(1).filter((x) => musterIs(x, t)).length + P.deck.filter((x) => musterIs(x, t)).length;
+  const shortAfterKeep = needs.reduce((a, q) => a + Math.max(0, q.n - has(q.t) - (musterIs(c, q.t) ? 1 : 0)), 0);
+  const canKeep = room > 0 && shortAfterKeep <= room - 1;
+  const canAside = needs.every((q) => has(q.t) + supply(q.t) >= q.n || !musterIs(c, q.t));
+  const out: Option[] = [];
+  if (canKeep) out.push({ t: "muster", uid: c.uid, how: "keep" });
+  if (canAside || !canKeep) out.push({ t: "muster", uid: c.uid, how: "aside" });
+  return out;
+}
+function applyMuster(S: State, p: Side, o: Extract<Option, { t: "muster" }>) {
+  const P = S.players[p];
+  const c = P.musterQ.shift()!;
+  if (o.how === "keep") P.hand.push(c);
+  else if (o.how === "aside") P.reserve.push(c);
+  else if (o.swap !== undefined) {
+    const i = P.omens.findIndex((x) => x.card.uid === o.swap);
+    P.reserve.push(P.omens[i].card);
+    P.omens[i] = { card: c, faceUp: false };
+  } else P.omens.push({ card: c, faceUp: false });
+}
 function musterReturnLegal(P: PlayerState, c: Card): boolean {
   const h = countType(P.hand, "hero") + countType(P.hand, "host") - (c.def.type === "hero" || c.def.type === "host" ? 1 : 0);
   const s = countType(P.hand, "support") - (c.def.type === "support" ? 1 : 0);
@@ -474,12 +519,11 @@ function musterStep(S: State): Decision | null {
         continue;
       }
       if (P.musterQ.length === 0) P.musterQ = P.deck.splice(0, 4);
-      const c = P.musterQ.shift()!;
-      if (c.def.type === "omen") {
-        if (P.omens.length < S.rules.omenSpots) P.omens.push({ card: c, faceUp: false });
-        else S.pendingOmen = c;
-      } else if (P.hand.length < S.rules.handSize) P.hand.push(c);
-      else P.reserve.push(c);
+      // each card of the four: keep it, set it aside for the Reserve, or put an omen in an Omen spot.
+      // A card with only one place to go goes there by itself.
+      const options = musterOptions(S, p);
+      if (options.length === 1) { applyMuster(S, p, options[0] as Extract<Option, { t: "muster" }>); continue; }
+      return { kind: "muster", player: p, options };
     } else {
       if (S.musterReturns > 0) {
         return { kind: "musterReturn", player: p, options: P.hand.filter((c) => musterReturnLegal(P, c)).map((c) => ({ t: "musterReturn" as const, uid: c.uid })) };
@@ -1501,6 +1545,10 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
   const P = S.players[p];
   const inHand = (uid: number) => P.hand.find((c) => c.uid === uid);
   switch (o.t) {
+    case "muster":
+      if (S.phase !== "muster" || S.musterP !== p || S.musterStage !== "draw" || S.pendingOmen) return "no Muster choice pending";
+      if (P.musterQ[0]?.uid !== o.uid) return "not the card drawn";
+      return musterOptions(S, p).some((x) => sameOption(x, o)) ? null : "the Muster would leave you short";
     case "musterOmen":
       if (S.phase !== "muster" || S.musterP !== p || !S.pendingOmen) return "no omen choice pending";
       if (o.uid !== S.pendingOmen.uid && !P.omens.some((s) => s.card.uid === o.uid)) return "not one of your omens";
@@ -1662,6 +1710,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
   const P = S.players[p];
   const st = S.stats;
   switch (o.t) {
+    case "muster": applyMuster(S, p, o); return;
     case "musterOmen": {
       const pend = S.pendingOmen!;
       S.pendingOmen = null;

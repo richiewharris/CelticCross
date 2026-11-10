@@ -56,6 +56,24 @@ function casualOmen(fx: OmenEffect): number {
 /** Casual's eye for a hero: big numbers. */
 const casualHero = (h: HeroDef) => h.valour + 0.5 * h.init + (h.rarity === "legendary" ? 2 : h.rarity === "rare" ? 1 : 0);
 
+/** The Muster as the computer plays it: keep what it can (as the old automatic Muster did), put omens in empty
+ *  spots, and when the spots are full keep the four best omens. */
+function musterPick(V: State, d: Decision, omenValue: (c: Card) => number): number {
+  const o = d.options as Extract<Option, { t: "muster" }>[];
+  const keep = o.findIndex((x) => x.how === "keep");
+  if (keep >= 0) return keep;
+  const spot = o.findIndex((x) => x.how === "omen" && x.swap === undefined);
+  if (spot >= 0) return spot;
+  const me = d.player;
+  let best = o.findIndex((x) => x.how === "aside"), worst = omenValue(V.players[me].musterQ[0]);
+  o.forEach((x, i) => {
+    if (x.swap === undefined) return;
+    const v = omenValue(ownOmen(V, me, x.swap)!);
+    if (v < worst) { worst = v; best = i; }
+  });
+  return Math.max(0, best);
+}
+
 // ---------------------------------------------------------------- Casual
 export class CasualPolicy implements Policy {
   name = "Casual";
@@ -63,6 +81,7 @@ export class CasualPolicy implements Policy {
     const me = d.player;
     const o = d.options;
     switch (d.kind) {
+      case "muster": return musterPick(V, d, (c) => (c.def.type === "omen" ? casualOmen(c.def.fx) : 0));
       case "musterOmen": {
         const rank = (uid: number) => {
           const c = ownOmen(V, me, uid) ?? (V.pendingOmen?.uid === uid ? V.pendingOmen : undefined);
@@ -336,6 +355,7 @@ export class SkilledPolicy implements Policy {
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
     switch (d.kind) {
+      case "muster": return musterPick(V, d, (c) => omenStatic(c.def, V, d.player));
       case "musterOmen": {
         const me = d.player;
         const vals = d.options.map((x) => {

@@ -60,6 +60,8 @@ const atSpot = (S: State, spot: number) => `${at(S, spot)} (spot ${spot + 1})`;
 /** A button label for one option of the pending decision, for the player who must choose. */
 export function optionLabel(S: State, d: Decision, o: Option): string {
   switch (o.t) {
+    case "muster": return o.how === "keep" ? `Keep ${cardName(S, o.uid)} in hand` : o.how === "aside" ? `Set ${cardName(S, o.uid)} aside for the Reserve`
+      : o.swap !== undefined ? `Put ${cardName(S, o.uid)} in place of ${cardName(S, o.swap)} (to the Reserve)` : `Put ${cardName(S, o.uid)} in an Omen spot`;
     case "musterOmen": return `Send ${cardName(S, o.uid)} to the Reserve`;
     case "musterReturn": return `Return ${cardName(S, o.uid)} to the Reserve`;
     case "place": return o.join ? `Place ${cardName(S, o.uid)} with ${o.join.length ? o.join.map((u) => cardName(S, u).replace(/^The /, "")).join(", ") : "no monsters"}` : `Place ${cardName(S, o.uid)}`;
@@ -114,6 +116,8 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
   const mine = d.player === me;
   const hidden = (n: string) => (mine ? n : "a card");
   switch (o.t) {
+    case "muster": return o.how === "keep" ? `${who} kept ${hidden(cardName(S, o.uid))}.` : o.how === "aside" ? `${who} set ${hidden(cardName(S, o.uid))} aside for the Reserve.`
+      : `${who} put ${hidden(cardName(S, o.uid))} in an Omen spot${o.swap !== undefined ? ` in place of ${hidden(cardName(S, o.swap))}` : ""}.`;
     case "musterOmen": return `${who} sent ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "place": return `${who} placed ${o.join ? optionLabel(S, d, o).replace(/^Place /, "") : cardName(S, o.uid)} at spot ${d.spot! + 1}.`;

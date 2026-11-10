@@ -4,6 +4,7 @@ import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
 import { DuelView } from "./DuelView";
+import { MusterView } from "./MusterView";
 import { Wheel, type Mark } from "./Wheel";
 
 /** The spot the zoomed wheel turns to the front: the one you're filling or facing. */
@@ -47,6 +48,8 @@ function phaseText(S: State): string {
 export function Table(props: {
   S: State; me: Side; d: Decision | null; sel: Sel; onCard?: (uid: number) => void; onSpot?: (spot: number) => void;
   onFocusCard?: (d: CardDef) => void; names?: [string, string];
+  /** Picks an option of the pending decision directly (the Muster's buttons). */
+  onPick?: (i: number) => void;
 }) {
   const { S, me, d, sel } = props;
   const [wide, setWide] = useState(false);
@@ -103,7 +106,9 @@ export function Table(props: {
           </button>
         ) : null}
       </div>
-      {duel && !wide ? (
+      {S.phase === "muster" ? (
+        <MusterView S={S} me={me} d={d} onPick={props.onPick} onFocusCard={props.onFocusCard} />
+      ) : duel && !wide ? (
         <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard} />
       ) : (
         <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
@@ -134,7 +139,7 @@ export function Table(props: {
           ))}
         </div>
       </div>
-      <details className="all-cards">
+      {S.phase === "muster" ? null : <details className="all-cards">
         <summary>Every card on the wheel</summary>
         {[0, 1, 2, 3].map((q) => (
           <div key={q} className="quad-row">
@@ -148,7 +153,7 @@ export function Table(props: {
             </div>
           </div>
         ))}
-      </details>
+      </details>}
     </div>
   );
 }

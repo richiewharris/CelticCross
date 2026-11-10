@@ -5,18 +5,19 @@ import {
   applyDecision, facedSpot, isHeroSpot, legalityError, newMatch, nextDecision, observe, playOut,
   type Decision, type Option, type Side, type State,
 } from "../engine";
-import { NovicePolicy } from "../ai";
+import { CasualPolicy, NovicePolicy } from "../ai";
 import { Rng } from "../rng";
 import { card } from "./helpers";
 
 const nov = new NovicePolicy();
-/** Drive the match with random choices until `stop` says so. */
+const cas = new CasualPolicy();
+/** Drive the match with random choices until `stop` says so (the Muster as the computer plays it: keep what it can). */
 function runUntil(S: State, stop: (S: State, d: Decision) => boolean, seed = 1): Decision | null {
   const rng = new Rng(seed);
   for (;;) {
     const d = nextDecision(S);
     if (!d || stop(S, d)) return d;
-    applyDecision(S, d, nov.choose(S, d, rng));
+    applyDecision(S, d, (d.kind === "muster" ? cas : nov).choose(S, d, rng));
   }
 }
 const replace = (ids: string[], from: string, to: string) => { const a = ids.slice(); a[a.indexOf(from)] = to; return a; };
@@ -69,37 +70,59 @@ describe("muster", () => {
     runUntil(S, (s) => s.phase !== "muster");
     expect(S.players.map((P) => P.omens.length)).toEqual([3, 3]);
   });
-  it("a fifth Omen asks which to keep", () => {
+  it("a fifth Omen: swap it for one in the Omen spots, or set it aside", () => {
     const deck = defsFromIds([...ULSTER_IDS.filter((x) => !x.startsWith("o_")), "o_boyhood", "o_lugh", "o_emain", "o_crow", "o_mist", "o_truce"]).slice(2);
     expect(deck.length).toBe(24);
     const S = newMatch([deck, CONNACHT], {}, 1);
     const omens = deck.filter((d) => d.type === "omen").map((def) => card(def.id, 0));
     const rest = S.players[0].deck.filter((c) => c.def.type !== "omen");
     S.players[0].deck = [...omens.slice(0, 4), omens[4], ...rest.slice(0, 3), omens[5], ...rest.slice(3)];
+    for (let i = 0; i < 4; i++) { const d = nextDecision(S)!; applyDecision(S, d, d.options.findIndex((o) => o.t === "muster" && o.how === "omen")); }
     const d = nextDecision(S)!;
-    expect(d.kind).toBe("musterOmen");
-    expect(d.options.length).toBe(5);
-    const keepOut = omens[0].uid;
-    applyDecision(S, d, d.options.findIndex((o) => (o as { uid: number }).uid === keepOut));
+    expect(d.kind).toBe("muster");
+    expect(d.options.map((o) => (o as { how: string }).how)).toEqual(["omen", "omen", "omen", "omen", "aside"]);
+    applyDecision(S, d, d.options.findIndex((o) => o.t === "muster" && o.swap === omens[0].uid));
     expect(S.players[0].omens.map((o) => o.card.def.id)).toEqual(["o_mist", "o_lugh", "o_emain", "o_crow"]);
     expect(S.players[0].reserve.map((c) => c.def.id)).toContain("o_boyhood");
   });
-  it("muster check fetches missing heroes and returns the same number (never a needed card)", () => {
+  it("each card of the four: keep or set aside; random choices still leave 2 heroes and 4 supports, and lose nothing", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const S = newMatch(seed % 2 ? [ULSTER, CONNACHT] : [DECKS.sluagh, DECKS.merrow], {}, seed);
+      const rng = new Rng(seed);
+      for (let d = nextDecision(S); d && S.phase === "muster"; d = nextDecision(S)) {
+        expect(d.kind).toBe("muster");
+        applyDecision(S, d, nov.choose(S, d, rng));
+      }
+      for (const P of S.players) {
+        expect(P.hand.length).toBeLessThanOrEqual(12);
+        expect(P.hand.filter((c) => c.def.type === "hero" || c.def.type === "host").length).toBeGreaterThanOrEqual(2);
+        expect(P.hand.filter((c) => c.def.type === "support").length).toBeGreaterThanOrEqual(4);
+        if (P.deckList.some((x) => x.type === "host")) expect(P.hand.filter((c) => c.def.type === "monster").length).toBeGreaterThanOrEqual(4);
+        expect(P.omens.length).toBeLessThanOrEqual(4);
+        expect(P.hand.length + P.reserve.length + P.omens.length).toBe(24);
+      }
+    }
+  });
+  it("you can't finish short: no setting aside a hero you'd need, no keeping a card that leaves no room for one", () => {
     const S = newMatch([ULSTER, CONNACHT], {}, 1);
     const P = S.players[0];
-    const nonHero = P.deck.filter((c) => c.def.type !== "hero");
+    const nonHero = P.deck.filter((c) => c.def.type !== "hero" && c.def.type !== "omen");
     const heroes = P.deck.filter((c) => c.def.type === "hero");
-    P.deck = [...nonHero, ...heroes]; // 20 non-heroes first: the hand fills with no hero
-    const d = runUntil(S, (_s, d) => d.kind === "musterReturn")!;
-    expect(P.hand.length).toBe(14);
+    const omens = P.deck.filter((c) => c.def.type === "omen");
+    P.deck = [heroes[0], heroes[1], heroes[2], ...nonHero, heroes[3], ...omens];
+    const pick = (h: string) => { const d = nextDecision(S)!; applyDecision(S, d, d.options.findIndex((o) => (o as { how: string }).how === h)); };
+    pick("aside"); pick("aside"); // two heroes set aside: the other two are both needed
+    const next = nextDecision(S)!;
+    expect(P.hand.map((c) => c.uid)).toEqual([heroes[2].uid]); // so the third was kept without asking
+    expect(next.options.map((o) => (o as { how: string }).how)).toEqual(["keep", "aside"]); // a support: free choice
+    // keep everything else: the hand fills, but the last place is held for the last hero
+    while (S.phase === "muster" && nextDecision(S)!.player === 0) {
+      const d = nextDecision(S)!;
+      const k = d.options.findIndex((o) => (o as { how: string }).how === "keep");
+      if (P.hand.length === 11 && P.musterQ[0].def.type !== "hero") expect(k).toBe(-1);
+      applyDecision(S, d, Math.max(0, k));
+    }
     expect(P.hand.filter((c) => c.def.type === "hero").length).toBe(2);
-    for (const o of d.options) expect(P.hand.find((c) => c.uid === (o as { uid: number }).uid)!.def.type).not.toBe("hero");
-    expect(legalityError(S, 0, { t: "musterReturn", uid: P.hand.find((c) => c.def.type === "hero")!.uid })).toMatch(/guarantee/);
-    applyDecision(S, d, 0);
-    const d2 = nextDecision(S)!;
-    expect(d2.kind).toBe("musterReturn");
-    applyDecision(S, d2, 0);
-    expect(P.hand.length).toBe(12);
   });
 });
 
@@ -178,7 +201,16 @@ describe("playing turn", () => {
     // find a deal where P1 holds a targeted geis at the first step
     const targeted = (S: State, o: Option) => o.t === "bind" && (S.players[0].hand.find((c) => c.uid === o.uid)?.def as { scope?: string }).scope === "targeted";
     let seed = 11;
-    while (!nextDecision(toPlay(seed))!.options.some((o) => targeted(toPlay(seed), o))) seed++;
+    // ...and can supplant at the second
+    const fits = (sd: number) => {
+      const T = toPlay(sd); const d0 = nextDecision(T)!;
+      const i = d0.options.findIndex((o) => targeted(T, o));
+      if (i < 0) return false;
+      applyDecision(T, d0, i);
+      const d1 = nextDecision(T)!; applyDecision(T, d1, d1.options.length - 1);
+      return nextDecision(T)!.options.some((o) => o.t === "supplant");
+    };
+    while (!fits(seed)) seed++;
     const S = toPlay(seed);
     let d = nextDecision(S)!; // P1 faces 7
     const b = d.options.findIndex((o) => targeted(S, o));

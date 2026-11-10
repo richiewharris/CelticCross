@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { ALL_DEFS, DECKS, DECK_IDS, deckErrors, defsFromIds, unwillingPair } from "../engine/cards";
 import { applyDecision, newMatch, nextDecision } from "../engine/engine";
-import { NovicePolicy } from "../engine/ai";
+import { CasualPolicy } from "../engine/ai";
 import { Rng } from "../engine/rng";
 import { DECK_PUZZLES, PUZZLES, SETS, type BoardPuzzle } from "./data";
 import { optionValues, unpackState } from "./position";
@@ -50,14 +50,14 @@ describe("deck-building puzzles", () => {
     const bad = P["k-unwilling"].choices.map((c) => { const d = ALL_DEFS[idOf(c)]; return d.type === "support" && unwillingPair("Fomoire", d.alignment); });
     expect(bad.map((v, i) => (v ? i : -1)).filter((i) => i >= 0)).toEqual(P["k-unwilling"].answer);
   });
-  it("champions: a two-champion deck holds one after the Muster about 85% of the time", () => {
-    const nov = new NovicePolicy();
+  it("champions: keeping every card, a two-champion deck holds one after the Muster about 85% of the time", () => {
+    const keepAll = new CasualPolicy();
     let have = 0;
     const N = 600;
     for (let s = 1; s <= N; s++) {
       const S = newMatch([DECKS.ulster, DECKS.connacht], {}, s, false);
       const rng = new Rng(s);
-      for (;;) { const d = nextDecision(S)!; if (S.phase !== "muster") break; applyDecision(S, d, nov.choose(S, d, rng)); }
+      for (;;) { const d = nextDecision(S)!; if (S.phase !== "muster") break; applyDecision(S, d, keepAll.choose(S, d, rng)); }
       if (S.players[0].hand.some((c) => c.def.type === "champion")) have++;
     }
     expect(have / N).toBeGreaterThan(0.8);

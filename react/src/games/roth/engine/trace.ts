@@ -9,7 +9,7 @@ import { Rng } from "./rng";
 
 function cardName(S: State, uid: number): string {
   for (const P of S.players) {
-    for (const z of [P.hand, P.reserve, P.discard, P.deck, P.lost]) for (const c of z) if (c.uid === uid) return c.def.name;
+    for (const z of [P.hand, P.reserve, P.discard, P.deck, P.lost, P.musterQ]) for (const c of z) if (c.uid === uid) return c.def.name;
     for (const o of P.omens) if (o.card.uid === uid) return o.card.def.name;
   }
   if (S.pendingOmen?.uid === uid) return S.pendingOmen.def.name;
@@ -21,6 +21,7 @@ function cardName(S: State, uid: number): string {
 export function describe(S: State, d: Decision, o: Option): string {
   const who = `P${d.player + 1}`;
   switch (o.t) {
+    case "muster": return `${who} muster: ${cardName(S, o.uid)} ${o.how === "keep" ? "to hand" : o.how === "aside" ? "to Reserve" : o.swap !== undefined ? `to an Omen spot for ${cardName(S, o.swap)}` : "to an Omen spot"}`;
     case "musterOmen": return `${who} muster: ${cardName(S, o.uid)} to Reserve`;
     case "musterReturn": return `${who} muster check: ${cardName(S, o.uid)} to Reserve`;
     case "place": return `${who} places ${cardName(S, o.uid)} at spot ${d.spot! + 1}`;

@@ -591,3 +591,24 @@ body.gm-roth .roth-nav .tabs:not(.sub) label { padding: 9px 18px; font-size: 1re
 body.gm-roth .roth-nav .tabs.sub { border-color: transparent; border-radius: 999px; gap: 4px; }
 body.gm-roth .roth-nav .tabs.sub label { border-radius: 999px; padding: 5px 12px; font-size: .85rem; border: 1px solid var(--line); }
 body.gm-roth .roth-nav .tabs.sub input:checked + label { background: transparent; color: var(--bronze-hi); border-color: var(--bronze); }
+
+/* ---- the Muster ---- */
+body.gm-roth .muster { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgb(255 255 255 / .02); }
+body.gm-roth .muster-meters { display: flex; flex-wrap: wrap; gap: 6px; }
+body.gm-roth .meter { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+body.gm-roth .meter b { color: var(--ink, #efe6d2); font-size: 1rem; }
+body.gm-roth .meter.met { border-color: #6f8f5a; color: #b9d3a5; }
+body.gm-roth .meter.short { border-color: var(--bronze); color: var(--bronze-hi); }
+body.gm-roth .meter.quiet { border-style: dashed; }
+body.gm-roth .muster-help, body.gm-roth .muster-wait { margin: 0; color: var(--muted); }
+body.gm-roth .muster-draw { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; font-size: 13px; }
+body.gm-roth .muster-card { position: relative; transition: opacity .15s, transform .15s; opacity: .7; }
+body.gm-roth .muster-card.now { opacity: 1; transform: translateY(-6px); }
+body.gm-roth .muster-now { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); background: var(--bronze); color: #1a140e; font-weight: 600; font-size: .75rem; padding: 2px 8px; border-radius: 999px; }
+body.gm-roth .muster-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+body.gm-roth .muster-actions .btn { min-height: 44px; }
+@media (max-width: 760px) {
+  /* a row to swipe through, the card being decided first */
+  body.gm-roth .muster-draw { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding: 8px 2px 14px; font-size: 11px; }
+  body.gm-roth .muster-card { flex: 0 0 auto; scroll-snap-align: start; }
+}

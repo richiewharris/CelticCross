@@ -5,6 +5,8 @@ import { useEffect, useMemo } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import { DECKS, type CardDef } from "../engine/cards";
 import { applyDecision, cloneState, newMatch, nextDecision, NARRATE, type Decision, type State } from "../engine/engine";
+import { CasualPolicy } from "../engine/ai";
+import { Rng } from "../engine/rng";
 import { Rich } from "../components/Card";
 import { Inspector } from "../components/Panels";
 import { Table } from "../components/Table";
@@ -14,9 +16,13 @@ import { CHAPTERS, COACH, ENDING } from "./notes";
 
 interface Step { line: string; mine: boolean; maths: string[]; others: string[]; S: State; next: Decision | null }
 
+
 /** Play the scripted match once, keeping a copy of the board after every move. */
 export function replayScript(): { start: State; first: Decision | null; steps: Step[]; end: State } {
   const S = newMatch([DECKS[script.you as "ulster"], DECKS[script.them as "connacht"]], {}, script.seed, false);
+  // the Muster: both sides keep what they draw, as the computer does (the moves below start at the drafting)
+  const keeper = new CasualPolicy(), rng = new Rng(1);
+  for (let d = nextDecision(S); d && S.phase === "muster"; d = nextDecision(S)) applyDecision(S, d, keeper.choose(S, d, rng));
   const first = nextDecision(S);
   const start = cloneState(S);
   const steps: Step[] = [];
@@ -72,7 +78,8 @@ export function Walkthrough({ focus, setFocus }: { focus: CardDef | null; setFoc
               <h2>A whole game, move by move</h2>
               <p>You are <b>Ulster</b> (the starter deck), playing first. Your rival is the <b>Connacht</b> starter. Both sides were played by the computer at Skilled, so this is a strong game to watch: press <b>Next</b> to step through it, and point at any card to read it.</p>
               <h3>The Muster</h3>
-              <p>Before anything is placed, each player draws to <b>12 cards</b> in hand (at least 2 heroes and 4 supports) and fills <b>four Omen spots</b> face down. The rest of the deck waits in the Reserve.</p>
+              <p>Before anything is placed, each player shuffles and draws <b>four cards at a time</b>. Each card is <b>kept</b> in hand (up to 12), <b>set aside</b> for the Reserve, or, for an omen, put face down in one of <b>four Omen spots</b>. You can't finish short: the Muster won't let you set aside a hero or support you'd need to reach <b>2 heroes and 4 supports</b>.</p>
+              <p>What you set aside isn't lost. In a duel to the death you can draw from the Reserve every turn, so a strong card set aside is one you may meet again at the ford. Here both sides kept what they drew.</p>
               <p className="note"><b>Your hand:</b> {P[0].hand.map((c) => c.def.name).join(", ")}. <b>Your omens:</b> {P[0].omens.map((o) => o.card.def.name).join(", ")}.</p>
               <p className="note"><b>Connacht's hand</b> (hidden in a real game): {P[1].hand.map((c) => c.def.name).join(", ")}. <b>Its omens:</b> {P[1].omens.map((o) => o.card.def.name).join(", ")}.</p>
             </>
