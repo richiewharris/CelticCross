@@ -48,6 +48,7 @@ export interface HeroAb {
   kingsDue?: boolean; // once per duel, may use an unused support from your other hero's quadrant
   shapeShift?: boolean; // once per match, at the start of a duel, change Focus to any element
   sparedDebility?: boolean;
+  reflect?: number; // when a Strike wounds it, the striker loses n Valour
 }
 
 export interface HeroDef {
@@ -66,6 +67,8 @@ export interface HeroDef {
   ab: HeroAb;
   /** A Slúagh host as fought: every weakness its monsters and host type bring (weakness is the first of them). */
   weaknesses?: Element[];
+  /** A Slúagh host as fought: elements its Spirit blows also count as (from its monsters). */
+  hybrids?: Element[];
   /** A Slúagh host as fought: the host card and the monsters joined to it. */
   host?: { def: HostDef; members: MonsterDef[] };
 }
@@ -126,6 +129,8 @@ export interface MonsterDef {
   /** added to the host's Initiative (may be negative) */
   init: number;
   weakness: Element;
+  /** Hybrid damage: the host's Spirit blows also count as this element (the opposite of its weakness). */
+  hybrid?: Element;
   ab: HeroAb;
   quality: string;
 }
@@ -526,18 +531,19 @@ export const OMENS: Record<string, OmenDef> = {
 const host = (id: string, name: string, rarity: Rarity, kind: HostDef["kind"], init: number, valourEach: number, weakness: Element, focus: Focus, tag: string, ab: HeroAb, quality: string): HostDef =>
   ({ type: "host", id, name, alignment: "Sluagh", rarity, kind, init, valourEach, weakness, focus, tag, ab, quality });
 export const HOSTS: Record<string, HostDef> = {
-  hunt: host("hunt", "The Hunt", R, "hunt", 2, 0, "Fire", "Spirit", "Night", { strikeAll: 1 }, "The host rides: Strikes +1. Torches drive it off: weak to Fire"),
-  prey: host("prey", "The Prey", C, "prey", 1, 1, "Earth", "Spirit", "Night", { firstHitSoak: 1 }, "The host flees and scatters: +1 Valour for each monster, and the first Strike against it each duel −1. Cold earth holds it: weak to Earth"),
-  taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { drain: 1, foeHealMalus: 1 }, "The host is a curse: when its Strike wounds, Heal 1, and the enemy's Heals −1. It cannot cross running water: weak to Water"),
+  hunt: host("hunt", "The Hunt", R, "hunt", 2, 0, "Fire", "Spirit", "Night", { firstStrike: 1 }, "The host rides: its first Strike each duel +1. Torches drive it off: weak to Fire"),
+  prey: host("prey", "The Prey", C, "prey", 1, 0, "Earth", "Spirit", "Night", { firstHitSoak: 1 }, "The host flees and scatters: the first Strike against it each duel −1. Cold earth holds it: weak to Earth"),
+  taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { drain: 1 }, "The host is a curse: when its Strike wounds, Heal 1. It cannot cross running water: weak to Water"),
 };
-const mon = (id: string, name: string, rarity: Rarity, valour: number, init: number, weakness: Element, ab: HeroAb, quality: string): MonsterDef =>
-  ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality });
+const mon = (id: string, name: string, rarity: Rarity, valour: number, init: number, weakness: Element, ab: HeroAb, quality: string, hybrid?: Element): MonsterDef =>
+  ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality, ...(hybrid ? { hybrid } : {}) });
 export const MONSTERS: Record<string, MonsterDef> = {
-  dullahan: mon("dullahan", "The Dullahan", L, 3, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1"),
+  // hybrid damage: the element opposite a monster's weakness (Fire against Water, Wind against Earth)
+  dullahan: mon("dullahan", "The Dullahan", L, 3, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1; the host's Spirit blows burn as Fire too", "Fire"),
   puca: mon("puca", "The Púca", R, 2, 2, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +2; its first Strike each duel +1"),
-  dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1"),
-  fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1 }, "The red man: Initiative +1; the enemy's Heals −1"),
-  bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 2, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1"),
+  dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1; the host's Spirit blows run as Water too", "Water"),
+  fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1, reflect: 1 }, "The red man: Initiative +1; the enemy's Heals −1. Uninvited guest: when a Strike wounds the host, the striker loses 1 Valour. The host's Spirit blows blow as Wind too", "Wind"),
+  bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 2, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1; the host's Spirit blows strike as Earth too", "Earth"),
   marbh: mon("marbh", "The restless dead", C, 3, -1, "Fire", {}, "Many and slow: Initiative −1"),
   each_uisce: mon("each_uisce", "The Each-uisce", R, 2, 1, "Earth", {}, "Water-horse: Initiative +1"),
   fear_gorta: mon("fear_gorta", "The Fear Gorta", C, 3, -1, "Wind", { foeHealMalus: 1 }, "The hungry man: Initiative −1; the enemy's Heals −1"),
@@ -592,7 +598,7 @@ for (const [id, p] of Object.entries(OMEN_PEOPLE)) OMENS[id].people = p;
 
 export const ALL_DEFS: Record<string, CardDef> = { ...HEROES, ...CHAMPIONS, ...SUPPORTS, ...GEASA, ...OATHS, ...OMENS, ...ATTENDANTS, ...HOSTS, ...MONSTERS };
 
-const HERO_AB_SUM: (keyof HeroAb)[] = ["strikeAll", "firstStrike", "vsBig", "kinBonus", "healBonus", "restHeal", "restShield", "shieldStart", "firstHitSoak", "drain", "foeHealMalus", "avenger"];
+const HERO_AB_SUM: (keyof HeroAb)[] = ["strikeAll", "firstStrike", "vsBig", "kinBonus", "healBonus", "restHeal", "restShield", "shieldStart", "firstHitSoak", "drain", "foeHealMalus", "avenger", "reflect"];
 /** The fighter a host makes with its monsters: their Valour, Initiative and qualities added up, every weakness kept. */
 export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
   const ab: HeroAb = {};
@@ -605,7 +611,8 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
   }
   const weaknesses: Element[] = [];
   for (const w of [h.weakness, ...members.map((m) => m.weakness)]) if (!weaknesses.includes(w)) weaknesses.push(w);
-  const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0);
+  // a host of the dead is a ragged thing: one Valour less than its monsters together
+  const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0) - 1;
   const init = h.init + members.reduce((a, m) => a + m.init, 0);
   const short = members.map((m) => m.name.replace(/^The /, ""));
   const names = short.length > 1 ? `${short.slice(0, -1).join(", ")} and ${short[short.length - 1]}` : short.join("");
@@ -613,6 +620,7 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
     type: "hero", id: `${h.id}:${members.map((m) => m.id).join("+")}`, name: members.length ? `${h.name}, ${names}` : h.name,
     alignment: "Sluagh", rarity: h.rarity, valour: Math.max(1, valour), init, focus: h.focus, weakness: weaknesses[0], weaknesses,
     quality: [h.quality, ...members.map((m) => `${m.name}: ${m.quality}`)].join(". "), tag: h.tag, ab, host: { def: h, members },
+    hybrids: [...new Set(members.flatMap((m) => (m.hybrid ? [m.hybrid] : [])))],
   };
 }
 
@@ -738,9 +746,9 @@ export function deckErrors(deck: CardDef[]): string[] {
   const hosts = count("host"), mons = count("monster");
   const h = count("hero") + hosts, s = count("support"), g = count("geis"), v = count("oath"), o = count("omen"), ch = count("champion"), at = count("attendant");
   if (count("unknown") > 0) errs.push("unknown card");
-  // a host with its monsters fights as a hero: a deck with hosts needs 3 hosts and heroes, and 4–9 monsters
+  // a host with its monsters fights as a hero: a deck with hosts needs 3 hosts and heroes, and 4–6 monsters (of the 9)
   if (hosts ? h < 3 || h > 6 : h < 4 || h > 6) errs.push(`heroes ${h} (${hosts ? 3 : 4}–6)`);
-  if (hosts && (mons < 4 || mons > 9)) errs.push(`monsters ${mons} (4–9)`);
+  if (hosts && (mons < 4 || mons > 6)) errs.push(`monsters ${mons} (4–6)`);
   if (!hosts && mons) errs.push(`monsters ${mons} without a host`);
   if (s < 8 || s > 12) errs.push(`supports ${s} (8–12)`);
   if (g < 2 || g > 6) errs.push(`geasa ${g} (2–6)`);

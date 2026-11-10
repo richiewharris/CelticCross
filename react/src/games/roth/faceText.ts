@@ -313,6 +313,7 @@ export function abLine(ab: HeroAb): string {
   if (ab.firstHitSoak) out.push(`The first Strike against it each duel **−${ab.firstHitSoak}**.`);
   if (ab.shieldStart) out.push(`Starts each duel with {shield} **Shield ${ab.shieldStart}**.`);
   if (ab.capTaken !== undefined) out.push(`No Strike against it above **${ab.capTaken}**.`);
+  if (ab.reflect) out.push(`**Uninvited guest**: when a Strike wounds it, the striker loses **${ab.reflect} Valour**.`);
   return out.join(" ");
 }
 const KP: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };
@@ -340,7 +341,7 @@ export function faceLines(d: CardDef): FaceLine[] {
     case "hero": case "champion":
       if (d.type === "hero" && d.host) {
         push("ability", d.host.def.name);
-        push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}`);
+        push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}${d.hybrids?.length ? ` Its {Spirit} Spirit blows also count as ${d.hybrids.map((h) => `{${h}} **${h}**`).join(" and ")}.` : ""}`);
         push("rule", "Once a duel, **sacrifice** a monster to win back its Valour; once a match, **summon** one from your other host.");
         break;
       }
@@ -354,7 +355,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       push("lore", f.lore); break;
     case "monster":
       push("ability", d.quality.split(":")[0]);
-      push("text", `${abLine(d.ab) || "No quality of its own."} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
+      push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: the host's {Spirit} Spirit blows also count as {${d.hybrid}} **${d.hybrid}**.` : ""} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
       push("lore", f.lore); break;
     case "support":
       push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); break;

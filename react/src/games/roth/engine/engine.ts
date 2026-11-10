@@ -5,7 +5,7 @@
 
 import {
   beats, composeHost, isElement, unwillingPair, ELEMENTS, UNKNOWN,
-  type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
+  type CardDef, type MonsterDef, type SupportElement, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { Rng } from "./rng";
 
@@ -810,6 +810,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.valour[b] -= dmg;
   const dr = (ab.drain ?? 0) + drain;
   if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
+  // the uninvited guest: wound it and pay for it
+  if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
 }
@@ -825,6 +827,11 @@ export function baseEffects(s: SupportDef, h: FighterDef, e: FighterDef, firstSu
   return effs;
 }
 /** +1 bonuses for the primary effect (step 4) and Reinforcement (step 5, the omen). */
+/** The elements a Strike counts as: the support's own, and for a Slúagh host's Spirit blow, its monsters' hybrids. */
+export function strikeElements(h: FighterDef, s: SupportDef): SupportElement[] {
+  if (!s.element) return [];
+  return s.element === "Spirit" && h.type === "hero" && h.hybrids?.length ? [s.element, ...h.hybrids] : [s.element];
+}
 export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, isStrike: boolean): number {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
@@ -834,9 +841,12 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   const f = focusOf(C, a, h);
   if (h.ab.focusAny || (f && (f === s.element || f === s.kind))) n += 1;
   if (isStrike && s.element) {
+    // a Slúagh host's Spirit blows also count as its monsters' hybrid elements (each bonus once)
+    const els = strikeElements(h, s);
     const ef = focusOf(C, b, e);
-    if (isElement(ef) && beats(s.element, ef)) n += 1;
-    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) n += 1;
+    if (isElement(ef) && s.element && beats(s.element, ef)) n += 1; // hybrids don't count for the wheel
+    const weak = effWeakness(S, b, e);
+    if (els.some((el) => isElement(el) && weak.includes(el))) n += 1;
   }
   for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
@@ -892,9 +902,9 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     const f0 = focusOf(C, a, h0);
     if (h0.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind))) F.focusHits[a]++;
     if (s.effects[0].type === "strike" && s.element) {
-      const ef = focusOf(C, b, e0);
-      if (isElement(ef) && beats(s.element, ef)) F.beatsHits[a]++;
-      if (isElement(s.element) && effWeakness(S, b, e0).includes(s.element)) F.weakHits[a]++;
+      const ef = focusOf(C, b, e0), els = strikeElements(h0, s), weak = effWeakness(S, b, e0);
+      if (isElement(ef) && els.some((el) => beats(el, ef))) F.beatsHits[a]++;
+      if (els.some((el) => isElement(el) && weak.includes(el))) F.weakHits[a]++;
     }
   }
   const h = fighter(S, C, a);
@@ -1270,8 +1280,14 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       const spot = draftSpot(S.step, p);
       let c = removeFrom(P.hand, o.uid);
       if (c.def.type === "host") {
-        // the host and its monsters become one fighter on the hero spot (it keeps the host card's uid)
+        // the host and its monsters become one fighter on the hero spot (it keeps the host card's uid);
+        // a host short of two monsters takes the rest from the Reserve
         const members = (o.join ?? []).map((u) => removeFrom(P.hand, u).def as MonsterDef);
+        while (members.length < 2) {
+          const i = P.reserve.findIndex((x) => x.def.type === "monster");
+          if (i < 0) break;
+          members.push(P.reserve.splice(i, 1)[0].def as MonsterDef);
+        }
         c = { uid: c.uid, def: composeHost(c.def, members), owner: c.owner };
       }
       S.board[spot] = c;

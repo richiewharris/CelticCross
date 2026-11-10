@@ -120,7 +120,7 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
     def: "hunt",
     parts: [
       ...COMMON_TOP,
-      { sel: ".cf-stats", at: [0.5, 0.2], title: "Initiative", text: "The host's own Initiative; each monster adds its own to it (and the Prey adds +1 Valour a monster)." },
+      { sel: ".cf-stats", at: [0.5, 0.2], title: "Initiative", text: "The host's own Initiative; each monster adds its own to it." },
       { sel: ".cf-pic", at: [0.6, 0.4], title: "Art", text: "The host's flock of the dead, over the grey field of Spirit." },
       { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "A host of the Slúagh, and which: the Hunt, the Prey or the Taboo." },
       { sel: ".cf-chips", at: [0.97, 0.5], title: "Focus and weakness", text: "Its Focus is Spirit. The weakness here is the host type's own; each monster adds its weakness too." },

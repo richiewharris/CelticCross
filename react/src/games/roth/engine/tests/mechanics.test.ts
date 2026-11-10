@@ -53,9 +53,11 @@ describe("Slúagh hosts in combat", () => {
   };
   it("a host fights with its monsters' Valour added up, and every weakness", () => {
     const h = host("hunt", "dullahan", "puca", "marbh");
-    expect(h.valour).toBe(ALL_DEFS.dullahan.type === "monster" ? (ALL_DEFS.dullahan as MonsterDef).valour + (ALL_DEFS.puca as MonsterDef).valour + (ALL_DEFS.marbh as MonsterDef).valour : 0);
+    expect(h.valour).toBe((ALL_DEFS.dullahan as MonsterDef).valour + (ALL_DEFS.puca as MonsterDef).valour + (ALL_DEFS.marbh as MonsterDef).valour - 1); // less one: a ragged host
     expect(new Set(h.weaknesses)).toEqual(new Set(["Fire", "Water", "Earth"]));
-    expect(h.ab.strikeAll).toBe(2); // the Hunt +1, the Dullahan +1
+    expect(h.ab.strikeAll).toBe(1); // the Dullahan
+    expect(h.ab.firstStrike).toBe(2); // the Hunt +1, the Púca +1
+    expect(h.hybrids).toEqual(["Fire"]); // the Dullahan's
   });
   it("sacrifice: the monster leaves with its weakness, and its Valour comes back (up to the cap)", async () => {
     const { newCombat } = await import("../engine");
