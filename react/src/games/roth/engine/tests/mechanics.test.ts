@@ -51,10 +51,12 @@ describe("Slúagh hosts in combat", () => {
     S.combat = null; S.phase = "combat";
     return S;
   };
-  it("a host fights with its monsters' Valour added up, and every weakness", () => {
+  it("a host fights with its monsters' Valour added up, and only shared weaknesses", () => {
     const h = host("hunt", "dullahan", "puca", "marbh");
     expect(h.valour).toBe((ALL_DEFS.dullahan as MonsterDef).valour + (ALL_DEFS.puca as MonsterDef).valour + (ALL_DEFS.marbh as MonsterDef).valour - 1); // less one: a ragged host
-    expect(new Set(h.weaknesses)).toEqual(new Set(["Fire", "Water", "Earth"]));
+    expect(h.weaknesses).toEqual(["Fire"]); // the Hunt's own; the Marbh shares it; Dullahan's Water and Púca's Earth stand alone
+    expect(host("prey", "puca", "fear_dearg", "dullahan").weaknesses).toEqual(["Earth"]); // Earth thrice; Water once
+    expect(host("taboo", "puca", "fear_dearg").weaknesses).toEqual(["Water", "Earth"]); // two Earth monsters share it
     expect(h.ab.strikeAll).toBe(1); // the Dullahan
     expect(h.ab.firstStrike).toBe(2); // the Hunt +1, the Púca +1
     expect(h.hybrids).toEqual(["Fire"]); // the Dullahan's
@@ -72,7 +74,7 @@ describe("Slúagh hosts in combat", () => {
     pick(S, (o) => o.t === "sacrifice" && o.id === "puca");
     const h = fighter(S, C, 1);
     expect(h.type === "hero" && h.host!.members.map((m) => m.id)).toEqual(["dullahan", "marbh"]);
-    expect(h.type === "hero" && h.weaknesses).not.toContain("Earth"); // the Púca's weakness left with it
+    expect(h.type === "hero" && h.weaknesses).toEqual(["Fire"]);
     expect(C.valour[1]).toBe(before + (ALL_DEFS.puca as MonsterDef).valour);
     expect(hostActs(S, C, 1).some((o) => o.t === "sacrifice")).toBe(false); // once a duel
   });

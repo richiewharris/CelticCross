@@ -350,12 +350,12 @@ export function faceLines(d: CardDef): FaceLine[] {
       break;
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
-      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**.`);
+      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. Running water: a Merrow's Shield holds against its Spirit.`);
       push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
       push("lore", f.lore); break;
     case "monster":
       push("ability", d.quality.split(":")[0]);
-      push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: each of the host's {Spirit} Spirit blows may land as {${d.hybrid}} **${d.hybrid}** instead (element bonuses count; Shield soaks it; nothing stolen).` : ""} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
+      push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: each of the host's {Spirit} Spirit blows may land as {${d.hybrid}} **${d.hybrid}** instead (element bonuses count; Shield soaks it; nothing stolen).` : ""} Weak to {${d.weakness}} **${d.weakness}**, but the host takes it on only if the host or another monster shares it.`);
       push("lore", f.lore); break;
     case "support":
       push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); break;

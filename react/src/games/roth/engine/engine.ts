@@ -593,7 +593,10 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     let v = h[p].valour + R.valourBonus + (oath?.boon.valour ?? 0);
     for (const e of fx) if (e.startValour && e.startValour.duel === d) v += e.startValour.n;
     C.cap[p] = v + R.capOver;
-    let init = h[p].init + (oath?.boon.init ?? 0) + sumFx(fx, (e) => e.initMod);
+    // the dead do not sleep: nothing lowers a Slúagh host's Initiative below its own
+    const sleepless = h[p].type === "hero" && !!h[p].host;
+    const initFx = sumFx(fx, (e) => (sleepless ? Math.max(0, e.initMod ?? 0) : e.initMod ?? 0));
+    let init = h[p].init + (oath?.boon.init ?? 0) + initFx;
     const g = S.quadGeis[quadOf(C.hs[p])];
     const binding = [...(g && g.def.type === "geis" ? [g.def] : []), ...S.globalGeis.flatMap((x) => (x.def.type === "geis" ? [x.def] : []))];
     if (!ignoresGeis(S, p)) for (const gd of binding) {
@@ -601,7 +604,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
       if (gd.bigLoss && h[p].valour >= 5) { v -= gd.bigLoss; if (stats) stats.fx.startLoss[p] += gd.bigLoss; }
       if (gd.initLoss) { init -= gd.initLoss; if (stats) stats.fx.initLoss[p] += gd.initLoss; }
     }
-    if (stats) stats.fx.initLoss[p] -= sumFx(fx, (e) => e.initMod) ;
+    if (stats) stats.fx.initLoss[p] -= initFx;
     if (stats) stats.fx.duels[p]++;
     C.valour[p] = v;
     C.init[p] = init;
@@ -778,6 +781,11 @@ export function heal(S: State, C: CombatState, p: Side, n: number) {
   C.valour[p] = Math.min(Math.max(C.cap[p], C.valour[p]), C.valour[p] + n);
 }
 
+/** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
+function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
+  return t === "strike" && s.element === "Water" && h.type === "hero" && h.alignment === "Merrow" && e.type === "hero" && !!e.host;
+}
+
 export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0) {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
@@ -920,9 +928,10 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   if (s.stealShield) { const t = Math.min(s.stealShield, C.shield[b]); C.shield[b] -= t; C.shield[a] += t; }
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
-    // Spirit (anam): ignores Shield and steals 1 when it wounds
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || s.element === "Spirit", (s.drain ?? 0) + (s.element === "Spirit" ? 1 : 0));
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
+    // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
+    // Merrow's Shield holds against it
+    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || (s.element === "Spirit" && e.alignment !== "Merrow"), (s.drain ?? 0) + (s.element === "Spirit" ? 1 : 0));
     else if (eff.type === "heal") heal(S, C, a, n);
     else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
   }

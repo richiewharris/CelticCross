@@ -533,7 +533,7 @@ export const OMENS: Record<string, OmenDef> = {
 const host = (id: string, name: string, rarity: Rarity, kind: HostDef["kind"], init: number, valourEach: number, weakness: Element, focus: Focus, tag: string, ab: HeroAb, quality: string): HostDef =>
   ({ type: "host", id, name, alignment: "Sluagh", rarity, kind, init, valourEach, weakness, focus, tag, ab, quality });
 export const HOSTS: Record<string, HostDef> = {
-  hunt: host("hunt", "The Hunt", R, "hunt", 2, 0, "Fire", "Spirit", "Night", { firstStrike: 1 }, "The host rides: its first Strike each duel +1. Torches drive it off: weak to Fire"),
+  hunt: host("hunt", "The Hunt", R, "hunt", 0, 0, "Fire", "Spirit", "Night", { firstStrike: 1 }, "The host rides: its first Strike each duel +1. Torches drive it off: weak to Fire"),
   prey: host("prey", "The Prey", C, "prey", 1, 0, "Earth", "Spirit", "Night", { firstHitSoak: 1 }, "The host flees and scatters: the first Strike against it each duel −1. Cold earth holds it: weak to Earth"),
   taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { drain: 1 }, "The host is a curse: when its Strike wounds, Heal 1. It cannot cross running water: weak to Water"),
 };
@@ -542,7 +542,7 @@ const mon = (id: string, name: string, rarity: Rarity, valour: number, init: num
 export const MONSTERS: Record<string, MonsterDef> = {
   // hybrid damage: the element opposite a monster's weakness (Fire against Water, Wind against Earth)
   dullahan: mon("dullahan", "The Dullahan", L, 3, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1; the host's Spirit blows burn as Fire too", "Fire"),
-  puca: mon("puca", "The Púca", R, 2, 2, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +2; its first Strike each duel +1"),
+  puca: mon("puca", "The Púca", R, 2, 1, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +1; its first Strike each duel +1"),
   dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1; the host's Spirit blows run as Water too", "Water"),
   fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1, reflect: 1 }, "The red man: Initiative +1; the enemy's Heals −1. Uninvited guest: when a Strike wounds the host, the striker loses 1 Valour. The host's Spirit blows blow as Wind too", "Wind"),
   bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 2, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1; the host's Spirit blows strike as Earth too", "Earth"),
@@ -611,8 +611,10 @@ export function composeHost(h: HostDef, members: MonsterDef[]): HeroDef {
     }
     if (src.capTaken !== undefined) ab.capTaken = Math.min(ab.capTaken ?? 99, src.capTaken);
   }
-  const weaknesses: Element[] = [];
-  for (const w of [h.weakness, ...members.map((m) => m.weakness)]) if (!weaknesses.includes(w)) weaknesses.push(w);
+  // the host's own weakness always holds; a monster's only when the host or another monster shares it
+  const all = [h.weakness, ...members.map((m) => m.weakness)];
+  const weaknesses: Element[] = [h.weakness];
+  for (const w of all) if (!weaknesses.includes(w) && all.filter((x) => x === w).length >= 2) weaknesses.push(w);
   // a host of the dead is a ragged thing: one Valour less than its monsters together
   const valour = members.reduce((a, m) => a + m.valour + h.valourEach, 0) - 1;
   const init = h.init + members.reduce((a, m) => a + m.init, 0);

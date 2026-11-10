@@ -178,6 +178,16 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     Prey no longer gains Valour per monster; the Taboo no longer spoils Heals. Slúagh starter ~52% against the
     field; the Fomóire still beat it (~80%) and it beats Ulster (~73%).
 
+66. Hybrid damage is a choice per blow: as Spirit (pierce, steal 1) or as one hybrid element (wheel and weakness
+    bonuses, Shield soaks it, nothing stolen). Never both.
+67. A host is weak to its own element, plus a monster weakness only when the host or another monster shares it.
+    (Every weakness added up made a host weak to nearly anything; vs the Fomóire it was 73% of their Strikes.)
+68. The Fomóire matchup turned out to hinge less on weakness than on Druid's sleep (−3 Initiative on the host,
+    ~14 pts) and the Blood-oath (~14 pts). Hosts are sleepless: omens can't lower their Initiative (geasa can).
+69. Running water: a Merrow's Shield holds against Spirit, and Merrow Water Strikes against a host are +1.
+    The Hunt's Initiative 2 → 0 and the Púca's +2 → +1 to take the Slúagh off first strike against Ulster and Merrow.
+    Matrix (Skilled, n=200): Ulster 48.7, Connacht 48.9, Aos Sídhe 52.8, Fomóire 51.4, Merrow 50.4, Slúagh 47.8.
+
 ## Puzzles
 
 Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where
