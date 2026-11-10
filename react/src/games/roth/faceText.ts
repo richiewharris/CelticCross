@@ -174,6 +174,9 @@ export const FACE: Record<string, Face> = {
   black_mass: { lore: "Everything it touches withers." },
   famine: { lore: "The famine wind blows the crops black." },
 
+  glamour: { lore: "A glamour of the Sídhe: what you see is not what is there." },
+  fairy_music: { lore: "Men who hear the music of the mounds dance till they drop." },
+  aengus_kiss: { lore: "Aengus's kisses became birds that sang love into every heart." },
   // attendants
   a_apprentice: { lore: "He works the bellows, and the blade comes out burning." },
   a_fordkeeper: { lore: "She tempers every edge in the river." },
@@ -275,6 +278,12 @@ const BREAK = "To break it, pay **2 Valour**.";
 
 /** An ability for a support with no hand-written words, from its data. */
 function autoSupport(d: SupportDef): Face {
+  if (d.stealShield || (d.pierce && d.foeNext)) {
+    const bits = ["Goes through Shield."];
+    if (d.stealShield) bits.push(`Take up to **${d.stealShield}** of the enemy's {shield} Shield for your own.`);
+    if (d.foeNext) bits.push(`The enemy's next Strike **−${d.foeNext}**.`);
+    return { ability: "Charm", text: bits.join(" ") };
+  }
   if (d.forHero) { const h = HEROES[d.forHero.id]; const n = h ? h.name.replace(/,.*$/, "") : d.forHero.id; return { ability: `${n}'s own`, text: `**Strike ${d.forHero.n}** when ${n} uses it.` }; }
   if (d.invoke) return { ability: `Invoke ${d.invoke}`, text: invoke(d.invoke) };
   if (d.nextStrike) return { ability: "Follow-through", text: NEXT };
@@ -332,13 +341,16 @@ export function faceLines(d: CardDef): FaceLine[] {
       if (d.type === "hero" && d.host) {
         push("ability", d.host.def.name);
         push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}`);
+        push("rule", "Once a duel, **sacrifice** a monster to win back its Valour; once a match, **summon** one from your other host.");
         break;
       }
-      push("ability", f.ability); push("text", f.text ?? d.quality); break;
+      push("ability", f.ability); push("text", f.text ?? d.quality);
+      if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**.");
+      break;
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
       push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**.`);
-      push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one.");
+      push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
       push("lore", f.lore); break;
     case "monster":
       push("ability", d.quality.split(":")[0]);

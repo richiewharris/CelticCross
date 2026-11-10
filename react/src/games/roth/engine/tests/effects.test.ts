@@ -10,7 +10,7 @@ const D2E: [string, string, string] = ["conall", "salmon", "salmon"];
 const B = (h1: string, s2: string, s3: string, h7: string, s8: string, s9: string, d2 = D2, d2e = D2E) => [h1, s2, s3, ...d2, h7, s8, s9, ...d2e];
 // These effect tests were written with Initiative ties to the second player; they pin that rule so the
 // arithmetic below stays readable. The tie rule itself is tested under "duel order".
-const mk = (board: (string | null)[], extra: Omit<Spec, "board"> = {}) => combatState({ board, ...extra, rules: { initTie: "p2", ...(extra.rules ?? {}) } });
+const mk = (board: (string | null)[], extra: Omit<Spec, "board"> = {}) => combatState({ board, ...extra, rules: { initTie: "p2", veiled: false, ...(extra.rules ?? {}) } });
 const modes = (S: ReturnType<typeof combatState>, at: number) =>
   options(S).filter((o) => o.t === "duel" && o.guest < 0 && o.act === "use" && o.spot === at - 1).map((o) => (o as { mode: string }).mode);
 

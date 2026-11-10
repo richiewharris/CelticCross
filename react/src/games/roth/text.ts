@@ -1,5 +1,5 @@
 // Words for cards, choices and the move log, from one seat's point of view.
-import type { CardDef, Faction, FighterDef } from "./engine/cards";
+import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
 import type { Decision, Option, Side, State } from "./engine/engine";
 
 export const ALIGN: Record<string, string> = {
@@ -75,6 +75,8 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     case "hold": return "Hold";
     case "focus": return o.el ? `Shape-shift: Focus ${o.el}` : "Keep her Focus";
     case "champion": return `Call ${cardName(S, o.uid)} to stand in`;
+    case "sacrifice": return `Sacrifice ${ALL_DEFS[o.id]?.name ?? o.id} (the host takes back its Valour)`;
+    case "summon": return `Summon ${ALL_DEFS[o.id]?.name ?? o.id} from your other host`;
     case "duel": {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
       const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
@@ -104,6 +106,8 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "hold": return `${who} held at spot ${d.spot! + 1}.`;
     case "focus": return o.el ? `${who} shape-shifted: Focus ${o.el}.` : `${who} kept the Morrígan's Focus.`;
     case "champion": return `${who} called ${cardName(S, o.uid)} to stand in.`;
+    case "sacrifice": return `${who} sacrificed ${ALL_DEFS[o.id]?.name ?? o.id} from the host.`;
+    case "summon": return `${who} summoned ${ALL_DEFS[o.id]?.name ?? o.id} from the other host.`;
     case "duel": return `${who}: ${optionLabel(S, d, o)}.`;
   }
 }

@@ -109,6 +109,8 @@ export interface SupportDef {
   foeNext?: number;
   /** The enemy fighter loses n Valour (no Shield stops it). */
   foeLoss?: number;
+  /** Charm: takes up to n of the enemy fighter's Shield for your own, before the blow lands. */
+  stealShield?: number;
 }
 /**
  * The Slúagh, the host of the unquiet dead, fight as hosts. A host card goes on a hero spot with 2–3 monsters joined
@@ -405,6 +407,10 @@ export const SUPPORTS: Record<string, SupportDef> = {
   morrigan_word: sup("morrigan_word", "The Morrígan's prophecy", "Wind", "Word", "Sidhe", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
   bodb: sup("bodb", "Bodb Derg's war-band", "Wind", "Ally", "Sidhe", C, [S(2)], "Strike 2"),
   sword_light: sup("sword_light", "Claíomh Solais, the sword of light", "Wind", "Weapon", "Sidhe", R, [S(3)], "Strike 3"),
+  // Charm: a light blow that goes through Shield, takes the enemy's Shield for your own, and dulls its next Strike
+  glamour: sup("glamour", "Glamour", "Wind", "Word", "Sidhe", C, [S(1)], "Charm: Strike 1, ignores Shield; take 1 of the enemy's Shield", { pierce: true, stealShield: 1 }),
+  fairy_music: sup("fairy_music", "The music of the mounds", "Wind", "Ally", "Sidhe", R, [S(1)], "Charm: Strike 1, ignores Shield; take 1 of the enemy's Shield; the enemy's next Strike −1", { pierce: true, stealShield: 1, foeNext: 1 }),
+  aengus_kiss: sup("aengus_kiss", "Aengus's kisses", "Fire", "Word", "Sidhe", R, [S(1)], "Charm: Strike 1, ignores Shield; the enemy's next Strike −2", { pierce: true, foeNext: 2 }),
   mound_song: sup("mound_song", "Song of the mounds", "Wind", "Word", "Sidhe", C, [S(1)], "Strike 1; Invoke Sea", { invoke: "Sea" }),
   // Fomóire
   unlidded: sup("unlidded", "The Evil Eye unlidded", "Fire", "Feat", "Fomoire", L, [S(3)], "Strike 3; ignores Shield", { pierce: true }),
@@ -527,15 +533,15 @@ export const HOSTS: Record<string, HostDef> = {
 const mon = (id: string, name: string, rarity: Rarity, valour: number, init: number, weakness: Element, ab: HeroAb, quality: string): MonsterDef =>
   ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality });
 export const MONSTERS: Record<string, MonsterDef> = {
-  dullahan: mon("dullahan", "The Dullahan", L, 4, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1"),
-  puca: mon("puca", "The Púca", R, 3, 2, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +2; its first Strike each duel +1"),
-  dearg_due: mon("dearg_due", "The Dearg-due", R, 3, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1"),
-  fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 3, 1, "Earth", { foeHealMalus: 1 }, "The red man: Initiative +1; the enemy's Heals −1"),
-  bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 3, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1"),
-  marbh: mon("marbh", "The restless dead", C, 4, -1, "Fire", {}, "Many and slow: Initiative −1"),
-  each_uisce: mon("each_uisce", "The Each-uisce", R, 3, 1, "Earth", {}, "Water-horse: Initiative +1"),
-  fear_gorta: mon("fear_gorta", "The Fear Gorta", C, 4, -1, "Wind", { foeHealMalus: 1 }, "The hungry man: Initiative −1; the enemy's Heals −1"),
-  bananach: mon("bananach", "The Bánánach", C, 2, 1, "Water", { firstStrike: 1 }, "Shrieker of the air: Initiative +1; its first Strike each duel +1"),
+  dullahan: mon("dullahan", "The Dullahan", L, 3, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1"),
+  puca: mon("puca", "The Púca", R, 2, 2, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +2; its first Strike each duel +1"),
+  dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1"),
+  fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1 }, "The red man: Initiative +1; the enemy's Heals −1"),
+  bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 2, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1"),
+  marbh: mon("marbh", "The restless dead", C, 3, -1, "Fire", {}, "Many and slow: Initiative −1"),
+  each_uisce: mon("each_uisce", "The Each-uisce", R, 2, 1, "Earth", {}, "Water-horse: Initiative +1"),
+  fear_gorta: mon("fear_gorta", "The Fear Gorta", C, 3, -1, "Wind", { foeHealMalus: 1 }, "The hungry man: Initiative −1; the enemy's Heals −1"),
+  bananach: mon("bananach", "The Bánánach", C, 1, 1, "Water", { firstStrike: 1 }, "Shrieker of the air: Initiative +1; its first Strike each duel +1"),
 };
 
 // ---------------------------------------------------------------- attendants
@@ -641,7 +647,7 @@ export const DECK_IDS: Record<Faction, string[]> = {
   connacht: [
     "medb", "ferdiad", "fergus", "ailill",
     "loch", "nadcrantail",
-    "cet_spear", "cet_spear", "host", "horn_shield", "medb_chariot", "fedelm", "finnbennach", "caladbolg", "barach",
+    "cet_spear", "cet_spear", "host", "fraech", "medb_chariot", "fedelm", "finnbennach", "caladbolg", "barach",
     "g_hound", "g_hosting", "g_slow",
     "v_shieldwall", "v_stone",
     "o_herolight", "o_truce", "o_cruachan", "o_rath",
@@ -649,7 +655,7 @@ export const DECK_IDS: Record<Faction, string[]> = {
   sidhe: [
     "lugh", "dagda", "morrigan", "brigid",
     "nuada", "ogma",
-    "spear_assal", "fragarach", "tathlum", "goibniu", "raven", "raven", "dian_cecht", "uaithne", "fe_fiada",
+    "spear_assal", "fragarach", "tathlum", "goibniu", "raven", "glamour", "dian_cecht", "uaithne", "fe_fiada",
     "g_hosting", "g_door", "g_giant",
     "v_druid", "v_champion",
     "o_lugh", "o_sleep", "o_mist", "o_keen",

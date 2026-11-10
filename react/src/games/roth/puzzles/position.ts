@@ -3,7 +3,7 @@
 // turn and both duels are then played perfectly by both sides (no guests or champions).
 import { ALL_DEFS, UNKNOWN, type CardDef } from "../engine/cards";
 import {
-  applyDecision, cloneCombat, cloneState, combatApply, combatDecision, newCombat, nextDecision,
+  applyDecision, cloneCombat, cloneState, combatApply, combatDecision, newCombat, nextDecision, upgradeState,
   type CombatState, type Decision, type Side, type State,
 } from "../engine/engine";
 import { finalUtil, stripGuests } from "../engine/solver";
@@ -23,8 +23,7 @@ export function unpackState(json: string): State {
     if (k === "deckList" && Array.isArray(v)) return (v as string[]).map(defOf);
     return v;
   }) as State;
-  if (!S.attendants) S.attendants = []; // positions saved before attendants existed
-  return S;
+  return upgradeState(S); // positions saved before attendants and host actions existed
 }
 
 /** Full minimax over both duels (alpha-beta), from `me`'s side. Guests and champions are left out. */

@@ -150,6 +150,22 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
     scores about 50% against the five other starters at Skilled; the tuned Slúagh deck about 53% against the
     tuned field. The Aos Sídhe beat them (about 65–70%) and the Fomóire lose to them.
 
+## Charm, the veil, and the hosts' sacrifice and summon
+
+58. Charm (Aos Sídhe supports: Glamour, the music of the mounds, Aengus's kisses): Strike 1 that ignores Shield;
+    before it lands it takes up to n of the enemy fighter's Shield for your own (stealShield), and some dull the
+    enemy's next Strike. The Aos Sídhe starter swaps one Raven's war-cry for Glamour.
+59. Veiled (rule `veiled`, on): the first Strike against an Aos Sídhe fighter each duel −1, and its own first Strike
+    each duel −1. Tried one-way it pushed the Aos Sídhe to 68–70% against the field. Positions saved before the
+    rule leave it out.
+60. Slúagh hosts in combat, each as the fighter's action (the turn passes): sacrifice a monster (once a duel; the
+    host must keep one): the host Heals that monster's Valour, up to its cap, and loses its weakness and quality;
+    summon a monster from the other host (once a match; that host must keep one and not have been felled): the
+    fighting host gains its Valour (and cap), weakness and quality, and the other host fights without it.
+    Monster Valour went back to the first numbers once these came in.
+61. Connacht's starter swaps Ferdiad's horn-shield for Fráech's spear. Six starters at Skilled: 45–56% against
+    the field.
+
 ## Puzzles
 
 Board puzzles (drafting, Playing turn, combat) come from Skilled self-play: `puzzlegen.ts` keeps positions where

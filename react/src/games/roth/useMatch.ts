@@ -8,7 +8,7 @@ import { computerDeck } from "./engine/computerDecks";
 import { Rng } from "./engine/rng";
 import { loadSavedDecks, resolveDeck } from "./decks";
 import { FACTION_TITLE } from "./text";
-import { applyDecision, cloneState, newMatch, nextDecision, type Decision, type Side, type State } from "./engine/engine";
+import { applyDecision, cloneState, newMatch, nextDecision, upgradeState, type Decision, type Side, type State } from "./engine/engine";
 import { cancelComputer, computerChoice } from "./aiClient";
 import { logLine } from "./text";
 
@@ -21,7 +21,7 @@ interface Saved { v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: 
 
 /** Run automatic steps; return the state and the decision now pending (null when the match is over). */
 function settle(S: State): { S: State; d: Decision | null } {
-  const T = cloneState(S);
+  const T = cloneState(upgradeState(S));
   const d = nextDecision(T);
   return { S: T, d };
 }

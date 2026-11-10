@@ -13,6 +13,8 @@ export type Side = 0 | 1;
 
 export interface Rules {
   /** Lever: added to every hero's starting Valour. */
+  /** The Aos Sídhe are veiled: the first Strike against each of their fighters each duel −1. */
+  veiled?: boolean;
   valourBonus: number;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). */
   capOver: number;
@@ -35,7 +37,7 @@ export interface Rules {
   reverseFirst: "p2" | "p1";
 }
 export const DEFAULT_RULES: Rules = {
-  valourBonus: 0, capOver: 2, geisBreakCost: 2, oathBreakCost: 2, invokeLoss: 2, omenSpots: 4, handSize: 12,
+  veiled: true, valourBonus: 0, capOver: 2, geisBreakCost: 2, oathBreakCost: 2, invokeLoss: 2, omenSpots: 4, handSize: 12,
   keepOmensUntilCombat: false, blindHeroes: false, initTie: "p1", champions: true, tiebreak: "reverse", reverseFirst: "p2",
 };
 
@@ -81,7 +83,14 @@ export interface CombatState {
   hit: boolean[]; // side p has already made a Strike this duel
   champ: (Card | null)[]; // the champion standing in for side p's hero this duel (copy-on-write)
   champs: Card[][]; // champions side p still holds (copy-on-write)
+  /** Slúagh hosts changed in combat, per quadrant: monsters sacrificed or lent away, monsters summoned in (copy-on-write). */
+  hostAdj: (HostAdj | null)[];
+  /** A host has sacrificed a monster this duel, per side. */
+  sacrificed: boolean[];
+  /** A host has summoned a monster from its other host this match, per side. */
+  summoned: boolean[];
 }
+export interface HostAdj { add: MonsterDef[]; remove: string[] }
 export const CROW_BIT = 1 << 4;
 export const OATH_BIT = 1 << 5; // shifted by the quadrant: OATH_BIT << q
 /** Global geis i broken by the hero of quadrant q. */
@@ -162,6 +171,8 @@ export type Option =
   | { t: "lateDone" }
   | { t: "focus"; el: Element | null }
   | { t: "champion"; uid: number }
+  | { t: "sacrifice"; id: string }
+  | { t: "summon"; id: string }
   | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode };
 export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
@@ -231,7 +242,23 @@ export const ignoresGeis = (S: State, p: Side) => fxOf(S, p).some((e) => e.ignor
 /** The fighter of side a in the current duel: its champion if one stands in, else its hero. */
 export function fighter(S: State, C: CombatState, a: number): FighterDef {
   const c = C.champ[a];
-  return c && c.def.type === "champion" ? c.def : heroAt(S, C.hs[a]);
+  return c && c.def.type === "champion" ? c.def : hostAt(S, C, C.hs[a]);
+}
+const adjCache = new Map<string, HeroDef>();
+/** The hero at a hero spot, with any Slúagh host changes made in this combat. */
+export function hostAt(S: State, C: CombatState, spot: number): HeroDef {
+  const base = heroAt(S, spot);
+  const adj = C.hostAdj?.[quadOf(spot)];
+  if (!adj || !base.host) return base;
+  const key = base.id + "|" + adj.remove.join(",") + "|" + adj.add.map((m) => m.id).join(",");
+  let h = adjCache.get(key);
+  if (!h) {
+    const members = [...base.host.members.filter((m) => !adj.remove.includes(m.id)), ...adj.add];
+    h = composeHost(base.host.def, members);
+    if (adjCache.size > 5000) adjCache.clear();
+    adjCache.set(key, h);
+  }
+  return h;
 }
 /** The unbroken oath sworn on side a's current hero, if any. */
 export function activeOath(S: State, C: CombatState, a: Side): OathDef | null {
@@ -287,7 +314,7 @@ export function cloneCombat(C: CombatState): CombatState {
     // copy-on-write fields: never mutated in place (replaced on change)
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
-    champ: C.champ, champs: C.champs,
+    champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
   };
 }
 function clonePlayer(P: PlayerState): PlayerState {
@@ -295,6 +322,16 @@ function clonePlayer(P: PlayerState): PlayerState {
     deckList: P.deckList, deck: P.deck.slice(), hand: P.hand.slice(), reserve: P.reserve.slice(),
     omens: P.omens.map((o) => ({ card: o.card, faceUp: o.faceUp, target: o.target })), discard: P.discard.slice(), lost: P.lost.slice(), musterQ: P.musterQ.slice(),
   };
+}
+/** Fills in fields added since a state was saved (puzzle positions, a match saved in the browser). */
+export function upgradeState(S: State): State {
+  if (!S.attendants) S.attendants = [];
+  if (S.combat) {
+    S.combat.hostAdj ??= [null, null, null, null];
+    S.combat.sacrificed ??= [false, false];
+    S.combat.summoned ??= [false, false];
+  }
+  return S;
 }
 export function cloneState(S: State): State {
   return {
@@ -527,6 +564,7 @@ export function newCombat(S: State): CombatState {
     guestUsed: [false, false], guests, focus: [null, null], focusTodo: [],
     felled: [[false, false], [false, false]], endValour: [[0, 0], [0, 0]], startV: [[0, 0], [0, 0]],
     cap: [0, 0], init: [0, 0], hit: [false, false], champ: [null, null], champs,
+    hostAdj: [null, null, null, null], sacrificed: [false, false], summoned: [false, false],
   };
   startDuel(S, C, 0, S.stats);
   return C;
@@ -543,6 +581,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   C.turn = 0; C.supportsUsed = 0;
   C.nextStrike = [0, 0]; C.cathbad = [false, false]; C.kingsDue = [false, false];
   C.struck = [false, false]; C.hit = [false, false]; C.guestUsed = [false, false]; C.focus = [null, null]; C.champ = [null, null];
+  C.sacrificed = [false, false];
   const todo: Side[] = [];
   const R = S.rules;
   const h = [fighter(S, C, 0), fighter(S, C, 1)];
@@ -660,6 +699,34 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
   }
   return acts;
 }
+/** The other hero spot of side a's (the host that is not fighting now), if it is a host that can still lend a monster. */
+function otherHostSpot(S: State, C: CombatState, a: Side): number | null {
+  const os = heroSpotsOf(a).find((x) => x !== C.hs[a])!;
+  const c = S.board[os];
+  if (!c || c.def.type !== "hero" || !c.def.host) return null;
+  const od = C.duel === 0 ? 1 : 0;
+  if (od < C.duel && C.felled[od][a]) return null; // a felled host has nothing left to give
+  return os;
+}
+/** A Slúagh host's own actions: sacrifice one of its monsters (once a duel), or summon one from its other host (once a match). */
+export function hostActs(S: State, C: CombatState, a: Side): Option[] {
+  if (C.champ[a]) return [];
+  const h = fighter(S, C, a);
+  if (h.type !== "hero" || !h.host) return [];
+  const out: Option[] = [];
+  if (!C.sacrificed[a] && h.host.members.length >= 2) for (const m of h.host.members) out.push({ t: "sacrifice", id: m.id });
+  if (!C.summoned[a]) {
+    const os = otherHostSpot(S, C, a);
+    if (os !== null) {
+      const other = hostAt(S, C, os);
+      if (other.host && other.host.members.length >= 2) for (const m of other.host.members) out.push({ t: "summon", id: m.id });
+    }
+  }
+  return out;
+}
+const adjOf = (C: CombatState, q: number): HostAdj => C.hostAdj[q] ?? { add: [], remove: [] };
+function setAdj(C: CombatState, q: number, v: HostAdj) { const x = C.hostAdj.slice(); x[q] = v; C.hostAdj = x; }
+
 export function eligibleGuests(S: State, C: CombatState, a: Side): Card[] {
   if (C.guestUsed[a] || crowActive(S, C)) return [];
   const h = fighter(S, C, a);
@@ -685,6 +752,7 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
     const seenC = new Set<string>();
     for (const c of C.champs[a]) if (c.def.type === "champion" && !seenC.has(c.def.id)) { seenC.add(c.def.id); options.push({ t: "champion", uid: c.uid }); }
   }
+  options.push(...hostActs(S, C, a));
   const seen = new Set<string>();
   for (const g of eligibleGuests(S, C, a)) {
     if (seen.has(g.def.id)) continue;
@@ -713,6 +781,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (ab.rally && C.valour[a] <= ab.rally.at) n += ab.rally.n;
   if (ab.avenger && C.duel === 1 && C.felled[0][a]) n += ab.avenger;
   if (ab.firstStrike && !C.hit[a]) n += ab.firstStrike;
+  // ...and the veil cuts both ways: their own first Strike each duel −1
+  if (S.rules.veiled && h.alignment === "Sidhe" && !C.hit[a]) n -= 1;
   if (ab.vsBig && e.valour >= 5) n += ab.vsBig;
   if (ab.vsTag && e.tag === ab.vsTag.tag) n += ab.vsTag.n;
   n += activeOath(S, C, a)?.boon.strike ?? 0;
@@ -730,7 +800,9 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const n0 = n;
   if (!C.struck[b]) {
     C.struck[b] = true;
-    n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - sumFx(heroFx(S, C, b), (x) => x.firstHitSoak));
+    // the Aos Sídhe are veiled: the first Strike against them each duel −1 (positions saved before this rule leave it out)
+    const veil = S.rules.veiled && e.alignment === "Sidhe" ? 1 : 0;
+    n = Math.max(0, n - (e.ab.firstHitSoak ?? 0) - veil - sumFx(heroFx(S, C, b), (x) => x.firstHitSoak));
   }
   const soak = pierce ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
@@ -828,6 +900,8 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   const effs = baseEffects(s, h, e, firstSupport);
+  // Charm: take the enemy's Shield for your own before the blow lands
+  if (s.stealShield) { const t = Math.min(s.stealShield, C.shield[b]); C.shield[b] -= t; C.shield[a] += t; }
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
     const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) : 0);
@@ -875,6 +949,37 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     C.nextStrike[a] = 0; C.struck[a] = false; C.hit[a] = false;
     const f = C.focus.slice(); f[a] = null; C.focus = f;
     if (stats) { stats.champions++; stats.championsBySide[a]++; }
+    C.turn++;
+    if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
+    return;
+  }
+  if (o.t === "sacrifice" || o.t === "summon") {
+    const a = actorOf(C);
+    const q = quadOf(C.hs[a]);
+    const host = fighter(S, C, a) as HeroDef;
+    if (o.t === "sacrifice") {
+      // the monster is given up: its Valour comes back to the host, and its weakness and quality leave with it
+      const m = host.host!.members.find((x) => x.id === o.id)!;
+      const cur = adjOf(C, q);
+      setAdj(C, q, cur.add.some((x) => x.id === m.id) ? { add: cur.add.filter((x) => x.id !== m.id), remove: cur.remove } : { add: cur.add, remove: [...cur.remove, m.id] });
+      const v = m.valour + host.host!.def.valourEach;
+      C.valour[a] = Math.min(Math.max(C.cap[a], C.valour[a]), C.valour[a] + v);
+      const sc = C.sacrificed.slice(); sc[a] = true; C.sacrificed = sc;
+    } else {
+      // a monster comes over from the other host: its Valour, weakness and quality join this one
+      const os = otherHostSpot(S, C, a)!;
+      const oq = quadOf(os);
+      const other = hostAt(S, C, os);
+      const m = other.host!.members.find((x) => x.id === o.id)!;
+      const ocur = adjOf(C, oq);
+      setAdj(C, oq, ocur.add.some((x) => x.id === m.id) ? { add: ocur.add.filter((x) => x.id !== m.id), remove: ocur.remove } : { add: ocur.add, remove: [...ocur.remove, m.id] });
+      const cur = adjOf(C, q);
+      setAdj(C, q, { add: [...cur.add, m], remove: cur.remove });
+      const v = m.valour + host.host!.def.valourEach;
+      C.valour[a] += v; C.cap[a] += v;
+      const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
+      const sm = C.summoned.slice(); sm[a] = true; C.summoned = sm;
+    }
     C.turn++;
     if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
     return;
@@ -1081,6 +1186,11 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (o.el !== null && !isElement(o.el)) return "focus must be an element";
       return null;
     }
+    case "sacrifice": case "summon": {
+      const C = S.combat;
+      if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
+      return hostActs(S, C, p).some((x) => x.t === o.t && x.id === o.id) ? null : "that host cannot do that now";
+    }
     case "champion": {
       const C = S.combat;
       if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
@@ -1228,6 +1338,8 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "focus":
     case "duel":
     case "champion":
+    case "sacrifice":
+    case "summon":
       combatApply(S, S.combat!, o, st);
       return;
   }

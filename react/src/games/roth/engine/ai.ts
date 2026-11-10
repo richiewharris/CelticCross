@@ -155,6 +155,9 @@ export class CasualPolicy implements Policy {
       case "duel": {
         const C = V.combat!;
         const h = fighter(V, C, me);
+        // a host nearly beaten gives up a monster to win back its Valour
+        const sac = o.findIndex((x) => x.t === "sacrifice");
+        if (sac >= 0 && C.valour[me] <= 2) return sac;
         // call a champion when the hero is nearly beaten
         const ch = o.findIndex((x) => x.t === "champion");
         if (ch >= 0 && C.valour[me] <= 2) return ch;

@@ -21,6 +21,8 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
       "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too.",
       "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
+      "In a duel a host may **sacrifice** one of its monsters (once a duel): the monster's Valour comes back to the host, and its weakness and quality leave with it.",
+      "Once a match a host may **summon** a monster from your other host: its Valour, weakness and quality join the one fighting now, and the other host fights without it.",
     ],
     watch: [
       "Big hosts carry many weaknesses: an enemy who brings the right element hits them for **+1** again and again.",
@@ -87,6 +89,8 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Tuatha Dé Danann of the mounds",
     motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
     plan: [
+      "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
+      "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
       "Lugh has the **highest Initiative** in the game (6), and every support counts as his Focus: everything he uses gets **+1**.",
       "The Dagda is the tank: **Valour 6**, Initiative 1, and resting **heals him 2**. Dian Cécht's well and the druid's oath keep him topped up.",
       "The Morrígan hits hard: **Valour 4** and **Strikes +1**, and once per match she may change her Focus to any element at the start of her duel.",

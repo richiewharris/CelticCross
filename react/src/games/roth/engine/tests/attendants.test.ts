@@ -67,7 +67,7 @@ describe("attendants", () => {
   it("is called in the Playing turn, and is legal only from hand", () => {
     const deck = DECKS.sidhe.slice();
     deck[deck.findIndex((d) => d.id === "o_keen")] = ATTENDANTS.a_scribe; // swap an omen for an attendant... keep 24
-    deck[deck.findIndex((d) => d.id === "fe_fiada")] = ALL_DEFS.o_keen;
+    deck[deck.findIndex((d) => d.id === "dian_cecht")] = ALL_DEFS.o_keen;
     expect(deckErrors(deck)).toEqual([]);
     const S = newMatch([deck, DECKS.ulster], {}, 3);
     const r = new Rng(9);

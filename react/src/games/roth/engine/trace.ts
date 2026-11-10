@@ -31,6 +31,8 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "hold": return `${who} holds (facing ${d.spot! + 1})`;
     case "swear": return `${who} swears ${cardName(S, o.uid)} on ${S.board[o.spot]?.def.name ?? "?"} (spot ${o.spot + 1})`;
     case "attend": return `${who} calls attendant ${cardName(S, o.uid)}`;
+    case "sacrifice": return `${who}'s host sacrifices ${o.id}`;
+    case "summon": return `${who}'s host summons ${o.id} from the other host`;
     case "late": return `${who} turns omen ${cardName(S, o.uid)} before combat`;
     case "lateDone": return `${who} done turning omens`;
     case "focus": return `${who}'s shape-shift: Focus -> ${o.el ?? "unchanged"}`;
