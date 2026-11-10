@@ -23,7 +23,8 @@ export interface Spec {
 
 /** A match jumped straight to combat with the given board. */
 export function combatState(spec: Spec): State {
-  const S = newMatch([ULSTER, CONNACHT], spec.rules ?? {}, 1);
+  // combat tests are written for the two-turn Ford unless they ask for duels to the death
+  const S = newMatch([ULSTER, CONNACHT], { duels: "ford", ...spec.rules }, 1);
   for (const P of S.players) { P.deck = []; P.hand = []; P.reserve = []; P.omens = []; }
   S.board = spec.board.map((x, i) => {
     if (!x) return null;

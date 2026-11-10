@@ -77,6 +77,25 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     case "champion": return `Call ${cardName(S, o.uid)} to stand in`;
     case "sacrifice": return `Sacrifice ${ALL_DEFS[o.id]?.name ?? o.id} (the host takes back its Valour)`;
     case "summon": return `Summon ${ALL_DEFS[o.id]?.name ?? o.id} from your other host`;
+    case "draw": return "Draw from your Reserve";
+    case "drawn": {
+      const c = S.combat?.drawn?.def;
+      const n = c?.name ?? "it";
+      if (o.how === "discard") return `Put ${n} aside and do something else`;
+      if (o.how === "keep") return `Keep ${n} in your hand${c?.type === "hero" ? " (a guest)" : ""}`;
+      const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
+      const t = o.target !== undefined ? ` on ${at(S, o.target)}` : "";
+      const verb = c?.type === "champion" ? "call" : c?.type === "monster" ? "join" : c?.type === "geis" ? "lay" : c?.type === "oath" ? "swear" : c?.type === "omen" ? "turn" : "play";
+      const x = (mode + `${verb} ${n}${o.as ? ` as ${o.as}` : ""}${t}`);
+      return x[0].toUpperCase() + x.slice(1);
+    }
+    case "duelCard": {
+      const n = cardName(S, o.uid);
+      const om = S.players[d.player].omens.some((x) => x.card.uid === o.uid);
+      const g = S.players[d.player].hand.find((c) => c.uid === o.uid)?.def;
+      const verb = om ? "Turn" : g?.type === "geis" ? "Lay" : g?.type === "oath" ? "Swear" : "Call";
+      return `${verb} ${n}${o.target !== undefined ? ` on ${at(S, o.target)}` : ""}`;
+    }
     case "duel": {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
       const mode = o.mode === "break" ? "Break the geis or oath and " : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
@@ -109,6 +128,13 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "sacrifice": return `${who} sacrificed ${ALL_DEFS[o.id]?.name ?? o.id} from the host.`;
     case "summon": return `${who} summoned ${ALL_DEFS[o.id]?.name ?? o.id} from the other host.`;
     case "duel": return `${who}: ${optionLabel(S, d, o)}.`;
+    case "draw": return `${who} drew from the Reserve.`;
+    case "drawn": {
+      const n = S.combat?.drawn?.def.name ?? "a card";
+      if (o.how === "discard") return `${who} put ${mine || S.combat?.drawn?.def.type !== "support" ? n : n} aside.`;
+      return `${who}: ${optionLabel(S, d, o)}.`;
+    }
+    case "duelCard": return `${who}: ${optionLabel(S, d, o)}.`;
   }
 }
 

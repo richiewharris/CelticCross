@@ -16,7 +16,7 @@ interface Step { line: string; mine: boolean; maths: string[]; others: string[];
 
 /** Play the scripted match once, keeping a copy of the board after every move. */
 export function replayScript(): { start: State; first: Decision | null; steps: Step[]; end: State } {
-  const S = newMatch([DECKS[script.you as "ulster"], DECKS[script.them as "connacht"]], {}, script.seed, false);
+  const S = newMatch([DECKS[script.you as "ulster"], DECKS[script.them as "connacht"]], { duels: "ford" }, script.seed, false);
   const first = nextDecision(S);
   const start = cloneState(S);
   const steps: Step[] = [];

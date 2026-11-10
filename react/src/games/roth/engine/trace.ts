@@ -36,6 +36,9 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "late": return `${who} turns omen ${cardName(S, o.uid)} before combat`;
     case "lateDone": return `${who} done turning omens`;
     case "focus": return `${who}'s shape-shift: Focus -> ${o.el ?? "unchanged"}`;
+    case "draw": return `${who} draws from the Reserve`;
+    case "drawn": return `${who} ${o.how === "discard" ? "puts aside" : o.how === "keep" ? "keeps" : "plays"} ${S.combat?.drawn?.def.name ?? "?"}${o.mode === "break" ? " (breaks a geis/oath)" : ""}${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
+    case "duelCard": return `${who} plays ${cardName(S, o.uid)} mid-duel${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
     case "duel": {
       const C = S.combat!;
       const h = heroAt(S, C.hs[d.player]);

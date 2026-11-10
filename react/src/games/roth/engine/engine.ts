@@ -4,10 +4,10 @@
 // Spots are 0-based here: index i = spot i+1. Heroes at 0,3,6,9. P1 owns 0–5, P2 owns 6–11.
 
 import {
-  beats, composeHost, isElement, unwillingPair, ELEMENTS, UNKNOWN,
+  beats, composeHost, isElement, reuseOf, unwillingPair, ELEMENTS, UNKNOWN,
   type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
-import { Rng } from "./rng";
+import { hashSeed, Rng } from "./rng";
 
 export type Side = 0 | 1;
 
@@ -35,11 +35,22 @@ export interface Rules {
   tiebreak: "reverse" | "none";
   /** Who acts first at each step of the backwards round. */
   reverseFirst: "p2" | "p1";
+  /**
+   * "death": duels run until a hero falls; each turn a hero may draw from its Reserve, and placed supports can be used
+   * again at a price; at one hero felled each, the survivors fight a final duel. "ford" (the first rules, and every
+   * saved position without this field): two turns each, every support once.
+   */
+  duels?: "death" | "ford";
+  /** In duels to the death: after this many turns a duel stops with both standing. */
+  maxTurns?: number;
 }
 export const DEFAULT_RULES: Rules = {
   veiled: true, valourBonus: 0, capOver: 2, geisBreakCost: 2, oathBreakCost: 2, invokeLoss: 2, omenSpots: 4, handSize: 12,
   keepOmensUntilCombat: false, blindHeroes: false, initTie: "p1", champions: true, tiebreak: "reverse", reverseFirst: "p2",
+  duels: "death", maxTurns: 60,
 };
+/** Duels to the death (the current rules) rather than the two-turn Ford. */
+export const toDeath = (S: State) => S.rules.duels === "death";
 
 export interface Card { uid: number; def: CardDef; owner: Side }
 export interface OmenSlot { card: Card; faceUp: boolean; target?: number }
@@ -89,6 +100,21 @@ export interface CombatState {
   sacrificed: boolean[];
   /** A host has summoned a monster from its other host this match, per side. */
   summoned: boolean[];
+  // ---- duels to the death
+  /** Per board spot: times its support has been used this match. */
+  uses: number[];
+  /** Per board spot: the user's action count when it was last used. */
+  lastUse: number[];
+  /** Per board spot: rests its side has taken since it was last used. */
+  restsSince: number[];
+  /** Actions each side has taken this match. */
+  acts: number[];
+  /** The card the side to act has just drawn and not yet played or put aside. */
+  drawn: Card | null;
+  /** The side to act has already drawn this turn (and put the card aside). */
+  drew: boolean;
+  /** Per duel and side: the champion standing in when the duel ended (it fights on in a final duel). */
+  endChamp: (Card | null)[][];
 }
 export interface HostAdj { add: MonsterDef[]; remove: string[] }
 export const CROW_BIT = 1 << 4;
@@ -154,6 +180,9 @@ export interface State {
   /** In the backwards tie-break round. */
   reversed: boolean;
   nextUid: number;
+  /** Seed for shuffling the Reserves in duels to the death, and how many shuffles so far. */
+  shuffleSeed?: number;
+  shuffles?: number;
 }
 
 export type DuelMode = "normal" | "break" | "ignore";
@@ -173,8 +202,14 @@ export type Option =
   | { t: "champion"; uid: number }
   | { t: "sacrifice"; id: string }
   | { t: "summon"; id: string }
-  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element };
-export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel";
+  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element }
+  /** Duels to the death: draw the top card of your Reserve. */
+  | { t: "draw" }
+  /** ...then play it (keep it, for a hero or champion: into your hand) or put it aside on the discard. */
+  | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element }
+  /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
+  | { t: "duelCard"; uid: number; target?: number };
+export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
 // ---------------------------------------------------------------- helpers
@@ -321,7 +356,7 @@ export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = 
     rules: R, players, board: Array(12).fill(null), quadGeis: [null, null, null, null], quadOath: [null, null, null, null], globalGeis: [], attendants: [],
     phase: "muster", musterP: 0, musterStage: "draw", musterReturns: 0, pendingOmen: null,
     reversed: false, step: 1, sub: 0, hiddenSpots: [], tieCoin: [rng.int(2) as Side, rng.int(2) as Side],
-    combat: null, result: null, stats: trackStats ? emptyStats() : null, nextUid: uid,
+    combat: null, result: null, stats: trackStats ? emptyStats() : null, nextUid: uid, shuffleSeed: rng.int(0x7fffffff), shuffles: 0,
   };
 }
 
@@ -335,6 +370,8 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    endChamp: C.endChamp,
   };
 }
 function clonePlayer(P: PlayerState): PlayerState {
@@ -350,6 +387,14 @@ export function upgradeState(S: State): State {
     S.combat.hostAdj ??= [null, null, null, null];
     S.combat.sacrificed ??= [false, false];
     S.combat.summoned ??= [false, false];
+    S.combat.uses ??= Array(12).fill(0);
+    S.combat.lastUse ??= Array(12).fill(-99);
+    S.combat.restsSince ??= Array(12).fill(0);
+    S.combat.acts ??= [0, 0];
+    S.combat.drawn ??= null;
+    S.combat.drew ??= false;
+    S.combat.endChamp ??= [[null, null], [null, null], [null, null]];
+    if (S.combat.felled.length < 3) { S.combat.felled = [...S.combat.felled, [false, false]]; S.combat.endValour = [...S.combat.endValour, [0, 0]]; S.combat.startV = [...S.combat.startV, [0, 0]]; }
   }
   return S;
 }
@@ -367,6 +412,8 @@ export function observe(S: State, p: Side): State {
   const o = (1 - p) as Side;
   const unk = (c: Card): Card => ({ uid: c.uid, def: UNKNOWN, owner: c.owner });
   const O = V.players[o];
+  // nobody knows the order of their own Reserve: show it sorted
+  if (toDeath(S)) V.players[p].reserve = V.players[p].reserve.slice().sort((x, y) => (x.def.id < y.def.id ? -1 : x.def.id > y.def.id ? 1 : x.uid - y.uid));
   O.deck = O.deck.map(unk);
   O.hand = O.hand.map(unk);
   O.reserve = O.reserve.map(unk);
@@ -519,6 +566,7 @@ function playDecision(S: State): Decision {
   return { kind: "action", player: p, options, spot };
 }
 function loseFaceDown(S: State) {
+  if (toDeath(S)) return; // in duels to the death, omens still face down can be turned in the duels
   for (const P of S.players) {
     P.lost.push(...P.omens.filter((o) => !o.faceUp).map((o) => o.card));
     P.omens = P.omens.filter((o) => o.faceUp);
@@ -582,14 +630,23 @@ export function newCombat(S: State): CombatState {
     duel: 0, stage: "turns", hs: [0, 6], valour: [0, 0], shield: [0, 0], first: 1, turn: 0, used: 0, broken: 0,
     nextStrike: [0, 0], cathbad: [false, false], kingsDue: [false, false], supportsUsed: 0, struck: [false, false],
     guestUsed: [false, false], guests, focus: [null, null], focusTodo: [],
-    felled: [[false, false], [false, false]], endValour: [[0, 0], [0, 0]], startV: [[0, 0], [0, 0]],
+    felled: [[false, false], [false, false], [false, false]], endValour: [[0, 0], [0, 0], [0, 0]], startV: [[0, 0], [0, 0], [0, 0]],
     cap: [0, 0], init: [0, 0], hit: [false, false], champ: [null, null], champs,
     hostAdj: [null, null, null, null], sacrificed: [false, false], summoned: [false, false],
+    uses: Array(12).fill(0), lastUse: Array(12).fill(-99), restsSince: Array(12).fill(0), acts: [0, 0], drawn: null, drew: false,
+    endChamp: [[null, null], [null, null], [null, null]],
   };
   startDuel(S, C, 0, S.stats);
   return C;
 }
+/** Shuffle side p's Reserve (in duels to the death; seeded, so a match replays the same). */
+export function shuffleReserve(S: State, p: Side) {
+  const r = new Rng(hashSeed(S.shuffleSeed ?? 1, S.shuffles ?? 0, p));
+  S.shuffles = (S.shuffles ?? 0) + 1;
+  r.shuffle(S.players[p].reserve);
+}
 function startCombat(S: State) {
+  if (toDeath(S)) for (const p of [0, 1] as Side[]) shuffleReserve(S, p);
   S.phase = "combat";
   S.combat = newCombat(S);
 }
@@ -602,6 +659,20 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   C.nextStrike = [0, 0]; C.cathbad = [false, false]; C.kingsDue = [false, false];
   C.struck = [false, false]; C.hit = [false, false]; C.guestUsed = [false, false]; C.focus = [null, null]; C.champ = [null, null];
   C.sacrificed = [false, false];
+  C.drawn = null; C.drew = false;
+  // the final duel: each side's survivor, with the Valour it ended its duel with (a champion who won fights on)
+  const carry: number[] = [0, 0];
+  if (d === 2) {
+    const hs: number[] = [0, 0], ch: (Card | null)[] = [null, null];
+    for (const p of [0, 1] as Side[]) {
+      const dd = C.felled[0][p] ? 1 : 0;
+      hs[p] = dd === 0 ? (p === 0 ? 0 : 6) : (p === 0 ? 3 : 9);
+      carry[p] = C.endValour[dd][p];
+      ch[p] = C.endChamp[dd][p];
+    }
+    C.hs = [hs[0], hs[1]];
+    C.champ = ch;
+  }
   const todo: Side[] = [];
   const R = S.rules;
   const h = [fighter(S, C, 0), fighter(S, C, 1)];
@@ -626,6 +697,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     }
     if (stats) stats.fx.initLoss[p] -= initFx;
     if (stats) stats.fx.duels[p]++;
+    if (d === 2) { v = carry[p]; C.cap[p] = Math.max(C.cap[p], v); }
     C.valour[p] = v;
     C.init[p] = init;
     sv[d][p] = Math.max(0, v);
@@ -643,7 +715,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   else if (i1 > i0) C.first = 1;
   else {
     if (stats) stats.initTies++;
-    C.first = R.initTie === "p2" ? 1 : R.initTie === "p1" ? 0 : S.tieCoin[d];
+    C.first = R.initTie === "p2" ? 1 : R.initTie === "p1" ? 0 : S.tieCoin[d % 2];
   }
   if (stats && C.first === 1) stats.p2First++;
   if (stats) stats.fx.first[C.first]++;
@@ -692,12 +764,36 @@ const bitCount = (m: number) => { let n = 0; while (m) { n += m & 1; m >>>= 1; }
 export function usableSpots(S: State, C: CombatState, a: Side): { spot: number; borrowed: boolean }[] {
   const hs = C.hs[a];
   const out: { spot: number; borrowed: boolean }[] = [];
-  for (const s of [hs + 1, hs + 2]) if (S.board[s] && S.board[s]!.def.type === "support" && !(C.used & (1 << s))) out.push({ spot: s, borrowed: false });
+  const ok = (s: number) => !!S.board[s] && S.board[s]!.def.type === "support" && (toDeath(S) ? supportReady(S, C, a, s) : !(C.used & (1 << s)));
+  for (const s of [hs + 1, hs + 2]) if (ok(s)) out.push({ spot: s, borrowed: false });
   if (fighter(S, C, a).ab.kingsDue && !C.kingsDue[a]) {
     const other = heroSpotsOf(a).find((x) => x !== hs)!;
-    for (const s of [other + 1, other + 2]) if (S.board[s] && S.board[s]!.def.type === "support" && !(C.used & (1 << s))) out.push({ spot: s, borrowed: true });
+    for (const s of [other + 1, other + 2]) if (ok(s)) out.push({ spot: s, borrowed: true });
   }
   return out;
+}
+/** Cards side p could still draw (its Reserve, and the discards that would be shuffled back). */
+export const drawable = (S: State, p: Side) => S.players[p].reserve.length + S.players[p].discard.length;
+/** Duels to the death: may side a use the support at spot s now? The first use is free; again, at its price. */
+export function supportReady(S: State, C: CombatState, a: Side, s: number): boolean {
+  if (!C.uses[s]) return true;
+  const r = reuseOf(S.board[s]!.def as SupportDef);
+  if (r.turns && C.acts[a] - C.lastUse[s] <= r.turns) return false;
+  if (r.rest && C.restsSince[s] < r.rest) return false;
+  if (r.valour && C.valour[a] <= r.valour) return false;
+  if (r.draw && drawable(S, a) < r.draw) return false;
+  return true;
+}
+/** Take the top card of side p's Reserve, shuffling the discards back in when it is empty. */
+export function takeTop(S: State, p: Side): Card | null {
+  const P = S.players[p];
+  if (!P.reserve.length) {
+    if (!P.discard.length) return null;
+    P.reserve = P.discard;
+    P.discard = [];
+    shuffleReserve(S, p);
+  }
+  return P.reserve.shift()!;
 }
 
 export function duelActs(S: State, C: CombatState, a: Side): Option[] {
@@ -765,6 +861,98 @@ export function eligibleGuests(S: State, C: CombatState, a: Side): Card[] {
 /** The first player may call a champion in either duel, the second player only in the second; one per duel. */
 export const canCallChampion = (C: CombatState, a: Side, on = true) => on && !C.champ[a] && (a === 0 || C.duel === 1) && C.champs[a].length > 0;
 
+/** What can be done with a card just drawn: play it (or keep a hero or champion in hand), or put it aside. */
+export function drawnOptions(S: State, C: CombatState, a: Side, c: Card): Option[] {
+  const out: Option[] = [];
+  const d = c.def;
+  const h = fighter(S, C, a);
+  if (d.type === "support") {
+    if (unwilling(h.alignment, d.alignment)) out.push({ t: "drawn", how: "play", mode: "normal" });
+    else {
+      const ways: (Element | undefined)[] = [undefined];
+      if (h.type === "hero" && h.hybrids?.length && effSupport(S, a, d).element === "Spirit") ways.push(...h.hybrids);
+      for (const as of ways) {
+        const m = forbidMask(S, C, a, d, as);
+        const x = as ? { as } : {};
+        if (!m) out.push({ t: "drawn", how: "play", mode: "normal", ...x });
+        else {
+          out.push({ t: "drawn", how: "play", mode: "break", ...x });
+          if (C.cathbad[a] && bitCount(m) === 1) out.push({ t: "drawn", how: "play", mode: "ignore", ...x });
+        }
+      }
+    }
+  } else if (d.type === "hero") out.push({ t: "drawn", how: "keep" });
+  else if (d.type === "champion") {
+    if (canCallChampion(C, a, S.rules.champions)) out.push({ t: "drawn", how: "play" });
+    out.push({ t: "drawn", how: "keep" });
+  } else if (d.type === "monster") {
+    if (!C.champ[a] && h.type === "hero" && h.host) out.push({ t: "drawn", how: "play" });
+  } else if (d.type === "omen" || d.type === "geis" || d.type === "oath" || d.type === "attendant") {
+    for (const target of cardTargets(S, C, a, d)) out.push(target === undefined ? { t: "drawn", how: "play" } : { t: "drawn", how: "play", target });
+  }
+  out.push({ t: "drawn", how: "discard" });
+  return out;
+}
+/** Where an omen, geis, oath or attendant can go in the middle of a duel ([undefined] = it needs no target; [] = nowhere). */
+function cardTargets(S: State, C: CombatState, a: Side, d: CardDef): (number | undefined)[] {
+  const b = (1 - a) as Side;
+  if (d.type === "omen") return d.scope === "targeted" ? [C.hs[a], C.hs[b]] : [undefined];
+  if (d.type === "geis") return d.scope === "global" ? (S.globalGeis.length < MAX_GLOBAL_GEASA ? [undefined] : []) : S.quadGeis[quadOf(C.hs[b])] ? [] : [undefined];
+  if (d.type === "oath") return C.champ[a] || S.quadOath[quadOf(C.hs[a])] ? [] : [undefined];
+  if (d.type === "attendant") return [undefined];
+  return [];
+}
+/** Duels to the death: a face-down omen to turn, or a geis, oath or attendant from hand. */
+function handCardOptions(S: State, C: CombatState, a: Side): Option[] {
+  const out: Option[] = [];
+  const P = S.players[a];
+  const seen = new Set<string>();
+  for (const o of P.omens) if (!o.faceUp && !seen.has(o.card.def.id)) {
+    seen.add(o.card.def.id);
+    for (const target of cardTargets(S, C, a, o.card.def)) out.push(target === undefined ? { t: "duelCard", uid: o.card.uid } : { t: "duelCard", uid: o.card.uid, target });
+  }
+  for (const c of P.hand) {
+    if ((c.def.type !== "geis" && c.def.type !== "oath" && c.def.type !== "attendant") || seen.has(c.def.id)) continue;
+    seen.add(c.def.id);
+    for (const target of cardTargets(S, C, a, c.def)) out.push(target === undefined ? { t: "duelCard", uid: c.uid } : { t: "duelCard", uid: c.uid, target });
+  }
+  return out;
+}
+/** An omen, geis, oath or attendant comes into play in the middle of a duel. */
+function playCardMidDuel(S: State, C: CombatState, a: Side, c: Card, target: number | undefined, stats: MatchStats | null) {
+  const b = (1 - a) as Side;
+  const d = c.def;
+  const P = S.players[a];
+  if (d.type === "omen") {
+    const slot = P.omens.find((o) => o.card.uid === c.uid);
+    if (slot) { slot.faceUp = true; if (target !== undefined) slot.target = target; }
+    else P.omens.push({ card: c, faceUp: true, target });
+    if (stats) stats.omensTurned.push({ side: a, id: d.id });
+    // what an omen does at the start of a duel, it does now
+    const to: Side[] = d.scope === "yours" ? [a] : d.scope === "targeted" ? [target === C.hs[a] ? a : b] : [a, b];
+    for (const p of to) if (d.fx.shieldStart) C.shield[p] += d.fx.shieldStart;
+    if (NARRATE.lines) say(`${d.name} is turned${target !== undefined ? ` on ${fighter(S, C, target === C.hs[a] ? a : b).name}` : ""}.`);
+  } else if (d.type === "geis") {
+    if (d.scope === "global") S.globalGeis.push(c); else S.quadGeis[quadOf(C.hs[b])] = c;
+    if (stats) stats.bound.push({ side: a, id: d.id });
+    const e = fighter(S, C, b);
+    if (!ignoresGeis(S, b) && !C.champ[b]) {
+      if (d.invoke && d.invoke === e.tag) C.valour[b] -= S.rules.invokeLoss;
+      if (d.bigLoss && e.valour >= 5) C.valour[b] -= d.bigLoss;
+    }
+    if (NARRATE.lines) say(`${d.name} is laid${d.scope === "global" ? " on everyone" : ` on ${e.name}`}.`);
+  } else if (d.type === "oath") {
+    S.quadOath[quadOf(C.hs[a])] = c;
+    if (stats) stats.sworn.push({ side: a, id: d.id, hero: fighter(S, C, a).id });
+    if (d.boon.valour) { C.valour[a] += d.boon.valour; C.cap[a] += d.boon.valour; }
+    if (d.boon.shield) C.shield[a] += d.boon.shield;
+    if (NARRATE.lines) say(`${fighter(S, C, a).name} swears ${d.name}.`);
+  } else if (d.type === "attendant") {
+    S.attendants = [...(S.attendants ?? []), c];
+    if (NARRATE.lines) say(`${d.name} is called.`);
+  }
+}
+
 export function combatDecision(S: State, C: CombatState): Decision | null {
   if (C.stage === "done") return null;
   if (C.stage === "focus") {
@@ -775,8 +963,13 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
     return { kind: "focus", player: p, options: opts };
   }
   const a = actorOf(C);
+  if (C.drawn) return { kind: "drawn", player: a, options: drawnOptions(S, C, a, C.drawn) };
   const acts = duelActs(S, C, a);
   const options = acts.slice();
+  if (toDeath(S)) {
+    if (!C.drew && drawable(S, a) > 0) options.push({ t: "draw" });
+    options.push(...handCardOptions(S, C, a));
+  }
   if (canCallChampion(C, a, S.rules.champions)) {
     const seenC = new Set<string>();
     for (const c of C.champs[a]) if (c.def.type === "champion" && !seenC.has(c.def.id)) { seenC.add(c.def.id); options.push({ t: "champion", uid: c.uid }); }
@@ -1039,6 +1232,60 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     const cs = C.champs.slice();
     cs[a] = C.champs[a].filter((x) => x.uid !== o.uid);
     C.champs = cs;
+    callChampion(S, C, a, card, stats);
+    endTurn(S, C, stats);
+    return;
+  }
+  if (o.t === "draw") {
+    const a = actorOf(C);
+    C.drawn = takeTop(S, a);
+    if (NARRATE.lines && C.drawn) say(`${fighter(S, C, a).name} draws ${C.drawn.def.name}.`);
+    return;
+  }
+  if (o.t === "drawn") {
+    const a = actorOf(C);
+    const c = C.drawn!;
+    C.drawn = null;
+    const P = S.players[a];
+    if (o.how === "discard") { P.discard.push(c); C.drew = true; return; }
+    if (o.how === "keep") {
+      P.hand.push(c);
+      if (c.def.type === "hero") { const g = C.guests.slice(); g[a] = [...g[a], c]; C.guests = g; }
+      if (c.def.type === "champion") { const g = C.champs.slice(); g[a] = [...g[a], c]; C.champs = g; }
+      C.drew = true;
+      return;
+    }
+    const d = c.def;
+    if (d.type === "support") {
+      useSupport(S, C, a, d, o.mode ?? "normal", o.as, stats);
+      P.discard.push(c);
+    } else if (d.type === "champion") callChampion(S, C, a, c, stats);
+    else if (d.type === "monster") {
+      // a monster off the Reserve joins the host now fighting: its Valour, weakness and quality come with it
+      const q = quadOf(C.hs[a]);
+      const host = fighter(S, C, a) as HeroDef;
+      const cur = adjOf(C, q);
+      setAdj(C, q, { add: [...cur.add, d], remove: cur.remove });
+      const v = d.valour + host.host!.def.valourEach;
+      C.valour[a] += v; C.cap[a] += v;
+      const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
+    } else playCardMidDuel(S, C, a, c, o.target, stats);
+    endTurn(S, C, stats);
+    return;
+  }
+  if (o.t === "duelCard") {
+    const a = actorOf(C);
+    const P = S.players[a];
+    const slot = P.omens.find((x) => x.card.uid === o.uid);
+    const c = slot ? slot.card : removeFrom(P.hand, o.uid);
+    playCardMidDuel(S, C, a, c, o.target, stats);
+    endTurn(S, C, stats);
+    return;
+  }
+  return combatApplyRest(S, C, o, stats);
+}
+function callChampion(S: State, C: CombatState, a: Side, card: Card, stats: MatchStats | null) {
+  {
     const ch = C.champ.slice();
     ch[a] = card;
     C.champ = ch;
@@ -1056,10 +1303,10 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     C.nextStrike[a] = 0; C.struck[a] = false; C.hit[a] = false;
     const f = C.focus.slice(); f[a] = null; C.focus = f;
     if (stats) { stats.champions++; stats.championsBySide[a]++; }
-    C.turn++;
-    if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
-    return;
+    if (NARRATE.lines) say(`${def.name} stands in.`);
   }
+}
+function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats | null) {
   if (o.t === "sacrifice" || o.t === "summon") {
     const a = actorOf(C);
     const q = quadOf(C.hs[a]);
@@ -1087,8 +1334,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
       const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
       const sm = C.summoned.slice(); sm[a] = true; C.summoned = sm;
     }
-    C.turn++;
-    if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
+    endTurn(S, C, stats);
     return;
   }
   if (o.t !== "duel") throw new Error("bad combat option");
@@ -1109,29 +1355,20 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
   }
   if (o.act === "use") {
     const s = S.board[o.spot]!.def as SupportDef;
-    const h = fighter(S, C, a);
     const borrowed = quadOf(o.spot) !== quadOf(C.hs[a]);
     C.used |= 1 << o.spot;
     if (borrowed) C.kingsDue[a] = true;
-    const first = C.supportsUsed === 0;
-    C.supportsUsed++;
-    const unw = unwilling(h.alignment, s.alignment);
-    const rec = stats ? { side: a, id: s.id, unwilling: unw, effect: false } : null;
-    if (stats) stats.used.push(rec!);
-    if (unw) { if (stats) stats.unwilling++; }
-    else {
-      if (o.mode === "break") {
-        const m = forbidMask(S, C, a, s, o.as);
-        C.broken |= m;
-        C.valour[a] -= breakCost(S, m);
-        if (stats) stats.fx.broke[a] += breakCost(S, m);
-        if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
-      } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
-      if (C.valour[a] > 0) {
-        resolveSupport(S, C, a, s, first, stats, o.as);
-        if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === fighter(S, C, 1 - a).tag);
+    if (toDeath(S)) {
+      // a support used again pays its price
+      if (C.uses[o.spot]) {
+        const r = reuseOf(s);
+        if (r.valour) C.valour[a] -= r.valour;
+        for (let k = 0; k < (r.draw ?? 0); k++) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
+        if (NARRATE.lines && (r.valour || r.draw)) say(`Using ${s.name} again costs ${[r.valour ? `${r.valour} Valour` : "", r.draw ? `the top ${r.draw === 1 ? "card" : `${r.draw} cards`} of the Reserve` : ""].filter(Boolean).join(" and ")}.`);
       }
+      C.uses[o.spot]++; C.lastUse[o.spot] = C.acts[a]; C.restsSince[o.spot] = 0;
     }
+    if (C.valour[a] > 0) useSupport(S, C, a, s, o.mode, o.as, stats);
   } else {
     if (o.mode === "break") {
       const m = restForbidMask(S, C, a);
@@ -1143,9 +1380,39 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     const ab = fighter(S, C, a).ab;
     if (C.valour[a] > 0 && ab.restHeal && !crowActive(S, C)) heal(S, C, a, ab.restHeal);
     if (C.valour[a] > 0 && ab.restShield) C.shield[a] += ab.restShield;
+    if (toDeath(S)) for (const hs of heroSpotsOf(a)) for (const sp of [hs + 1, hs + 2]) C.restsSince[sp]++;
   }
+  endTurn(S, C, stats);
+}
+/** Side a's fighter uses support s (placed, or just drawn): break a geis or oath first if it must, then resolve it. */
+function useSupport(S: State, C: CombatState, a: Side, s: SupportDef, mode: DuelMode, as: Element | undefined, stats: MatchStats | null) {
+  const h = fighter(S, C, a);
+  const first = C.supportsUsed === 0;
+  C.supportsUsed++;
+  const unw = unwilling(h.alignment, s.alignment);
+  const rec = stats ? { side: a, id: s.id, unwilling: unw, effect: false } : null;
+  if (stats) stats.used.push(rec!);
+  if (unw) { if (stats) stats.unwilling++; if (NARRATE.lines) say(`${s.name} will not serve ${h.name}: it does nothing.`); return; }
+  if (mode === "break") {
+    const m = forbidMask(S, C, a, s, as);
+    C.broken |= m;
+    C.valour[a] -= breakCost(S, m);
+    if (NARRATE.lines) say(`${h.name} breaks a geis or oath first: −${breakCost(S, m)} Valour.`);
+    if (stats) stats.fx.broke[a] += breakCost(S, m);
+    if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
+  } else if (mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
+  if (C.valour[a] > 0) {
+    resolveSupport(S, C, a, s, first, stats, as);
+    if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === fighter(S, C, 1 - a).tag);
+  }
+}
+/** A turn is over: count it, and end the duel if a hero has fallen (or the duel has run its length). */
+function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
+  const a = actorOf(C);
+  if (toDeath(S)) { C.acts[a]++; C.drew = false; }
   C.turn++;
-  if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= 4) endDuel(S, C, stats);
+  const lim = toDeath(S) ? S.rules.maxTurns ?? 60 : 4;
+  if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= lim) endDuel(S, C, stats);
 }
 
 function endDuel(S: State, C: CombatState, stats: MatchStats | null) {
@@ -1154,15 +1421,17 @@ function endDuel(S: State, C: CombatState, stats: MatchStats | null) {
   f[d] = [C.valour[0] <= 0, C.valour[1] <= 0];
   e[d] = [Math.max(0, C.valour[0]), Math.max(0, C.valour[1])];
   C.felled = f; C.endValour = e;
+  const ec = C.endChamp.slice(); ec[d] = [C.champ[0], C.champ[1]]; C.endChamp = ec;
   if (stats) stats.exchanges.push(C.turn);
   if (d === 0) startDuel(S, C, 1, stats);
+  else if (d === 1 && toDeath(S) && f[0][0] !== f[1][0] && f[0][1] !== f[1][1] && (f[0][0] || f[1][0]) && (f[0][1] || f[1][1])) startDuel(S, C, 2, stats);
   else C.stage = "done";
 }
 
 export function combatResult(C: CombatState): Result {
   const felled: [number, number] = [0, 0];
   const valour: [number, number] = [0, 0]; // wounds dealt by p
-  for (const d of [0, 1]) for (const p of [0, 1]) {
+  for (let d = 0; d < C.felled.length; d++) for (const p of [0, 1]) {
     if (C.felled[d][p]) felled[p]++;
     valour[1 - p] += Math.max(0, C.startV[d][p] - C.endValour[d][p]);
   }
@@ -1186,7 +1455,7 @@ export function nextDecision(S: State): Decision | null {
         const d = combatDecision(S, S.combat!);
         if (d) return d;
         const r = combatResult(S.combat!);
-        if (!S.reversed && S.rules.tiebreak === "reverse" && (r.decidedBy === "firstDuel" || r.decidedBy === "draw")) {
+        if (!S.reversed && !toDeath(S) && S.rules.tiebreak === "reverse" && (r.decidedBy === "firstDuel" || r.decidedBy === "draw")) {
           startTiebreak(S);
           break;
         }
@@ -1308,9 +1577,21 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (p === 1 && C.duel === 0) return "the second player may call a champion only in the second duel";
       return null;
     }
+    case "draw": case "drawn": case "duelCard": {
+      const C = S.combat;
+      if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
+      if (!toDeath(S)) return "only in duels to the death";
+      const d = combatDecision(S, C);
+      return d && d.options.some((x) => sameOption(x, o)) ? null : "not possible now";
+    }
     case "duel": {
       const C = S.combat;
       if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
+      if (C.drawn) return "deal with the drawn card first";
+      if (toDeath(S)) {
+        const d = combatDecision(S, C);
+        return d && d.options.some((x) => sameOption(x, o)) ? null : "not possible now";
+      }
       const h = fighter(S, C, p);
       if (o.guest >= 0) {
         const g = C.guests[p].find((c) => c.uid === o.guest);
@@ -1454,6 +1735,9 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "champion":
     case "sacrifice":
     case "summon":
+    case "draw":
+    case "drawn":
+    case "duelCard":
       combatApply(S, S.combat!, o, st);
       return;
   }

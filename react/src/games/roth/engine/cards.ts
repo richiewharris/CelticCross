@@ -116,6 +116,26 @@ export interface SupportDef {
   spiritAs?: boolean;
   /** Charm: takes up to n of the enemy fighter's Shield for your own, before the blow lands. */
   stealShield?: number;
+  /** What it takes to use a placed support again in a long duel (the first use is free). Unset: reuseOf's default. */
+  reuse?: Reuse;
+}
+/**
+ * The price of using a placed support again, in duels to the death. turns: that many of your other actions must come
+ * between two uses; rest: rest that many times to reset it; valour: pay that much; draw: discard that many cards off
+ * the top of your Reserve, unseen.
+ */
+export interface Reuse { turns?: number; rest?: number; valour?: number; draw?: number }
+/** A support's reuse price: its own, or by kind and effect. Weapons need a turn between blows; Feats tire (a rest);
+ * Allies must be sent for again (a card off the Reserve); Words cost breath (1 Valour). A Heal also needs a rest. */
+export function reuseOf(s: SupportDef): Reuse {
+  if (s.reuse) return s.reuse;
+  const r: Reuse = {};
+  if (s.kind === "Weapon") r.turns = 1;
+  else if (s.kind === "Feat") r.rest = 1;
+  else if (s.kind === "Ally") r.draw = 1;
+  else if (s.kind === "Word") r.valour = 1;
+  if (s.effects.some((e) => e.type === "heal")) r.rest = Math.max(1, r.rest ?? 0);
+  return r;
 }
 /**
  * The Slúagh, the host of the unquiet dead, fight as hosts. A host card goes on a hero spot with 2–3 monsters joined

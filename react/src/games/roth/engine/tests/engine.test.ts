@@ -198,7 +198,7 @@ describe("playing turn", () => {
     expect(S.players[1].discard).toContain(theirs);
   });
   it("Turn an Omen flips it face up; omens still face down after step 6 are lost", () => {
-    const S = toPlay(12);
+    const S = toPlay(12, { duels: "ford" });
     const d = nextDecision(S)!;
     const o = d.options.findIndex((x) => x.t === "omen");
     applyDecision(S, d, o);
@@ -211,7 +211,7 @@ describe("playing turn", () => {
     expect(S.players[1].omens.length).toBe(0);
   });
   it("keep-omens lever: unturned omens may be turned before combat", () => {
-    const S = toPlay(12, { keepOmensUntilCombat: true });
+    const S = toPlay(12, { keepOmensUntilCombat: true, duels: "ford" });
     while (S.phase === "play") { const e = nextDecision(S)!; applyDecision(S, e, e.options.length - 1); }
     const d = nextDecision(S)!;
     expect(d.kind).toBe("late");

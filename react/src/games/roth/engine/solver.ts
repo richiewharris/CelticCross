@@ -2,7 +2,7 @@
 
 import { beats, isElement, unwillingPair, type HeroDef, type SupportDef } from "./cards";
 import {
-  combatApply, combatDecision, combatResult, cloneCombat, kin, newCombat,
+  combatApply, combatDecision, combatResult, cloneCombat, kin, newCombat, toDeath,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -118,7 +118,10 @@ export function evalBoardCombat(S: State, me: Side): number {
   evalCache.set(key, v);
   return v;
 }
-function evalBoardCombatRaw(S: State, me: Side): number {
+function evalBoardCombatRaw(S0: State, me: Side): number {
+  // DECISION: a board headed for duels to the death is judged by how its two-turn duels would go: a quick, exact
+  // stand-in for the strength of each pairing (the long duels are random and far too deep to solve)
+  const S = toDeath(S0) ? { ...S0, rules: { ...S0.rules, duels: "ford" as const } } : S0;
   const C = newCombat(S);
   stripGuests(C, null);
   const leaf = C.duel === 0 && C.stage !== "done" ? recPV(S, C, me, -Infinity, Infinity).leaf : C;

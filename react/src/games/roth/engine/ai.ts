@@ -1,9 +1,9 @@
 // AI players: Novice (random), Casual (rules of thumb), Skilled (static eval + exact duels),
 // Expert (Skilled + determinized Monte Carlo lookahead in drafting and the playing turn).
 
-import { composeHost, unwillingPair, type MonsterDef, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
+import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
 import {
-  applyDecision, cloneCombat, cloneState, debilitated, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
+  applyDecision, cloneCombat, cloneState, debilitated, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
 import { Rng } from "./rng";
@@ -152,9 +152,30 @@ export class CasualPolicy implements Policy {
         return 0;
       case "focus":
         return 0;
+      case "drawn": {
+        const C = V.combat!;
+        const c = C.drawn!.def;
+        const h = fighter(V, C, me);
+        const keep = o.findIndex((x) => x.t === "drawn" && x.how === "keep");
+        if (keep >= 0) return keep;
+        const disc = o.findIndex((x) => x.t === "drawn" && x.how === "discard");
+        let best = disc, bv = 1.5;
+        o.forEach((x, i) => {
+          if (x.t !== "drawn" || x.how !== "play") return;
+          let v = c.type === "support" ? looks(c, h) : c.type === "omen" ? casualOmen(c.fx) / 2.5 : 2;
+          if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 2;
+          if (x.target !== undefined && c.type === "omen") {
+            const good = (c.fx.strikeMod ?? 0) > 0 || !!c.fx.shieldStart || !!c.fx.firstHitSoak || (c.fx.initMod ?? 0) > 0;
+            if (good !== (x.target === C.hs[me])) v -= 5;
+          }
+          if (v > bv) { bv = v; best = i; }
+        });
+        return best;
+      }
       case "duel": {
         const C = V.combat!;
         const h = fighter(V, C, me);
+        if (toDeath(V)) return casualDeathTurn(V, d, me);
         // a host nearly beaten gives up a monster to win back its Valour
         const sac = o.findIndex((x) => x.t === "sacrifice");
         if (sac >= 0 && C.valour[me] <= 2) return sac;
@@ -180,6 +201,46 @@ export class CasualPolicy implements Policy {
       }
     }
   }
+}
+
+/** Casual in a duel to the death: the biggest-looking support that is ready, else a draw; heal-rests when hurt. */
+function casualDeathTurn(V: State, d: Decision, me: Side): number {
+  const C = V.combat!;
+  const h = fighter(V, C, me);
+  const o = d.options;
+  const sac = o.findIndex((x) => x.t === "sacrifice");
+  if (sac >= 0 && C.valour[me] <= 2) return sac;
+  const ch = o.findIndex((x) => x.t === "champion");
+  if (ch >= 0 && C.valour[me] <= 2) return ch;
+  let best = 0, bv = -Infinity;
+  o.forEach((x, i) => {
+    let v = -Infinity;
+    if (x.t === "draw") v = 2.2;
+    else if (x.t === "duel" && x.guest < 0) {
+      if (x.act === "rest") v = h.ab.restHeal || h.ab.restShield ? 0.5 : -1;
+      else {
+        const s = V.board[x.spot]!.def as SupportDef;
+        v = looks(s, h) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
+      }
+      if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 2;
+    } else if (x.t === "duelCard") {
+      const c = V.players[me].omens.find((s) => s.card.uid === x.uid)?.card.def ?? V.players[me].hand.find((s) => s.uid === x.uid)?.def;
+      v = c?.type === "omen" ? casualOmen(c.fx) / 3 : 1;
+      if (c?.type === "omen" && x.target !== undefined) {
+        const good = (c.fx.strikeMod ?? 0) > 0 || !!c.fx.shieldStart || !!c.fx.firstHitSoak || (c.fx.initMod ?? 0) > 0;
+        if (good !== (x.target === C.hs[me])) v -= 5;
+      }
+    }
+    if (v > bv) { bv = v; best = i; }
+  });
+  if (C.valour[me] < C.cap[me]) {
+    const b = o[best];
+    if (b.t === "duel") {
+      const g = o.findIndex((x) => x.t === "duel" && x.guest >= 0 && x.act === b.act && x.spot === b.spot && x.mode === b.mode);
+      if (g >= 0) return g;
+    }
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------- Skilled
@@ -295,8 +356,10 @@ export class SkilledPolicy implements Policy {
       case "action":
       case "late":
         return argmax(this.scoreOptions(V, d));
+      case "drawn":
       case "focus":
       case "duel": {
+        if (toDeath(V)) return deathChoice(V, d, rng);
         const C2 = cloneCombat(V.combat!);
         stripGuests(C2, d.player);
         return solveChoice(V, C2, d.player, !this.fast).best;
@@ -346,6 +409,11 @@ export class SkilledPolicy implements Policy {
       return v;
     });
   }
+}
+
+/** Placeholder until the long-duel search lands: Casual's eye. */
+function deathChoice(V: State, d: Decision, rng: Rng): number {
+  return new CasualPolicy().choose(V, d, rng);
 }
 
 // ---------------------------------------------------------------- Expert
