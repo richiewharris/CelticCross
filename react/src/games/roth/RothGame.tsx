@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import { Segmented } from "../../kit/Segmented";
 import { useStoredState } from "../../kit/useStoredState";
 import type { CardDef } from "./engine/cards";
-import { Choices } from "./components/Choices";
+import { ActionPanel, NO_PICK, buildActs, type Pick } from "./components/ActionPanel";
 import { PlaceView } from "./components/PlaceView";
 import { CardFocusProvider } from "./components/CardFocus";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
-import { optionAt, selFilter, Table, type Sel } from "./components/Table";
+import { Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
 import { CardsGuide, DecksGuide } from "./codex/Codex";
 import { DeckBuilder } from "./DeckBuilder";
@@ -57,7 +57,9 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [join, setJoin] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const [showResult, setShowResult] = useState(true);
-  useEffect(() => { setSel(null); setJoin(null); }, [m.d]);
+  const [act, setAct] = useState<Pick>(NO_PICK);
+  const [group, setGroup] = useState<string | null>(null);
+  useEffect(() => { setSel(null); setJoin(null); setAct((a) => ({ ...NO_PICK, guest: a.guest })); }, [m.d]);
   useEffect(() => { if (m.over) setShowResult(true); }, [m.over]);
 
   if (!m.S) {
@@ -72,23 +74,24 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
     );
   }
   const S = m.S, d = m.d;
-  const pick = (i: number) => { setSel(null); m.play(i); };
+  const pick = (i: number) => { setSel(null); setAct((a) => ({ ...NO_PICK, guest: a.guest })); m.play(i); };
+  const acts = d && d.kind !== "muster" && d.kind !== "place" ? buildActs(S, d) : [];
+  const actNow = acts.find((a) => a.key === act.key) ?? null;
+  // tapping the table only picks: the panel's button (or a second tap) commits
   const onCard = (uid: number) => {
     if (!d) return;
     if (d.kind === "place") { setSel(sel?.uid === uid ? null : { uid }); setJoin(null); return; } // pick it in the row, then confirm
-    const opts = d.options.map((o, i) => ({ o, i })).filter(({ o }) => "uid" in o && (o as { uid: number }).uid === uid);
-    if (opts.length === 1) pick(opts[0].i);
-    else if (opts.length > 1) setSel({ uid });
+    const a = acts.find((x) => x.uid === uid);
+    if (a) { setGroup(a.group); setAct({ key: a.key, target: new Set(a.variants.map((v) => v.target)).size === 1 ? a.variants[0].target ?? null : null, guest: act.guest }); }
   };
   const onSpot = (spot: number) => {
     if (!d) return;
-    const j = optionAt(d, sel, spot);
-    if (j >= 0) { pick(j); return; }
-    const opts = d.options.map((o, i) => ({ o, i })).filter(({ o }) => o.t === "duel" && o.act === "use" && o.spot === spot);
-    const plain = opts.filter(({ o }) => o.t === "duel" && o.guest < 0);
-    if (opts.length === 1 || (plain.length === 1 && opts.length === plain.length)) pick(opts[0].i);
-    else if (opts.length) setSel({ spot });
+    // a target for the picked card?
+    if (actNow && actNow.variants.some((v) => v.target === spot)) { setAct({ ...act, target: spot }); return; }
+    const a = acts.find((x) => x.spot === spot && x.key.includes(":normal:")) ?? acts.find((x) => x.spot === spot);
+    if (a) { setGroup(a.group); setAct({ key: a.key, target: null, guest: act.guest }); }
   };
+  const tableSel: Sel = d && d.kind === "place" ? sel : actNow ? (actNow.uid !== undefined ? { uid: actNow.uid } : actNow.spot !== undefined ? { spot: actNow.spot } : null) : null;
   const status = m.over ? "The match is over." : m.myTurn ? "Your move." : m.thinking ? "The computer is thinking…" : "…";
   return (
     <div className="game">
@@ -105,13 +108,13 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
             ) : <button type="button" className="btn small" onClick={() => setEnding(true)}>End match</button>}
           </div>
         </div>
-        <Table S={S} me={m.me} d={d} sel={sel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
+        <Table S={S} me={m.me} d={d} sel={tableSel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
             <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
               onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
           ) : null} />
-        {m.myTurn && d && d.kind !== "muster" && d.kind !== "place" ? <Choices S={S} d={d} filter={selFilter(sel)} onPick={pick} onClear={() => setSel(null)} /> : null}
+        {m.myTurn && d && d.kind !== "muster" && d.kind !== "place" ? <ActionPanel S={S} d={d} pick={act} group={group} onPick={setAct} onGroup={setGroup} onCommit={pick} /> : null}
         {m.over && !showResult ? <button type="button" className="btn" onClick={() => setShowResult(true)}>Show the result</button> : null}
       </section>
       <aside>

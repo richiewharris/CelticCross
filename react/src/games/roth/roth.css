@@ -698,3 +698,22 @@ body.gm-roth .cardsheet .btn { min-height: 44px; min-width: 140px; }
 @media (min-width: 900px) { body.gm-roth .cardsheet { place-items: center; } body.gm-roth .cardsheet-body { border-radius: 18px; border-bottom: 1px solid var(--line); grid-template-columns: auto 1fr; align-items: start; justify-items: start; } body.gm-roth .cardsheet .btn { grid-column: 1 / -1; justify-self: end; } }
 @keyframes sheet-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { body.gm-roth .cardsheet { animation: none; } }
+
+/* ---- the action panel: grouped, pick then commit ---- */
+body.gm-roth .actions { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #1b1511; }
+body.gm-roth .actions .prompt { margin: 0; font-weight: 600; }
+body.gm-roth .act-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+body.gm-roth .act-tab { flex: none; padding: 8px 12px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; }
+body.gm-roth .act-tab .count { opacity: .7; font-size: .8em; }
+body.gm-roth .act-tab.cur { border-color: var(--bronze); color: #1a140e; background: var(--bronze); font-weight: 600; }
+body.gm-roth .act-rows { display: grid; gap: 6px; }
+body.gm-roth .act-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 48px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: #241c16; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+body.gm-roth .act-row:hover { border-color: color-mix(in srgb, var(--bronze) 60%, var(--line)); }
+body.gm-roth .act-row.on { border-color: var(--bronze-hi); box-shadow: 0 0 0 2px var(--bronze-hi) inset; background: #2c2219; }
+body.gm-roth .act-row:focus-visible, body.gm-roth .act-tab:focus-visible { outline: 3px solid var(--bronze-hi); outline-offset: 2px; }
+body.gm-roth .act-targets, body.gm-roth .act-guest { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+body.gm-roth .act-targets .btn, body.gm-roth .act-guest .btn { min-height: 40px; }
+body.gm-roth .act-commit { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+body.gm-roth .act-commit .btn { min-height: 46px; }
+body.gm-roth .act-go { flex: 1 1 220px; }
+body.gm-roth .act-go:disabled { opacity: .55; cursor: default; }
