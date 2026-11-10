@@ -1,5 +1,5 @@
 // The whole table from one seat: the enemy's hand and omens, the wheel, your omens and your hand.
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
@@ -50,6 +50,8 @@ export function Table(props: {
   onFocusCard?: (d: CardDef) => void; names?: [string, string];
   /** Picks an option of the pending decision directly (the Muster's buttons). */
   onPick?: (i: number) => void;
+  /** Shown right under the wheel (the drafting slider). */
+  afterWheel?: ReactNode;
 }) {
   const { S, me, d, sel } = props;
   const [wide, setWide] = useState(false);
@@ -113,6 +115,7 @@ export function Table(props: {
       ) : (
         <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
           focus={wide || focus === null ? null : Math.floor(focus / 3) * 3 + 1 /* the middle of the quadrant: hero and both supports */}
+          front={focus}
           center={(
             <>
               <span className="phase">{phaseText(S)}</span>
@@ -120,6 +123,7 @@ export function Table(props: {
             </>
           )} />
       )}
+      {props.afterWheel}
       {S.attendants?.length ? (
         <div className="zone attendants" aria-label="Attendants in play">
           <span className="zone-label">Attendants in play</span>

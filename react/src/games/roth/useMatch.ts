@@ -70,7 +70,7 @@ export function useMatch() {
     const seed = (saved.seed + saved.log.length * 7919) % 2147483647;
     const t0 = performance.now();
     void computerChoice(saved.S, d, saved.setup.level, seed).then((i) => {
-      const wait = Math.max(0, 450 - (performance.now() - t0));
+      const wait = Math.max(0, (d.kind === "muster" ? 60 : 450) - (performance.now() - t0)); // the computer's Muster goes quickly
       setTimeout(() => { if (ticket === busy.current) play(i); }, wait);
     });
   }, [saved, d, play]);

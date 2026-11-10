@@ -4,6 +4,7 @@ import { Segmented } from "../../kit/Segmented";
 import { useStoredState } from "../../kit/useStoredState";
 import type { CardDef } from "./engine/cards";
 import { Choices } from "./components/Choices";
+import { PlaceView } from "./components/PlaceView";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
 import { optionAt, selFilter, Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
@@ -52,8 +53,9 @@ export function RothGame() {
 function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardDef) => void }) {
   const m = useMatch();
   const [sel, setSel] = useState<Sel>(null);
+  const [join, setJoin] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(true);
-  useEffect(() => { setSel(null); }, [m.d]);
+  useEffect(() => { setSel(null); setJoin(null); }, [m.d]);
   useEffect(() => { if (m.over) setShowResult(true); }, [m.over]);
 
   if (!m.S) {
@@ -71,6 +73,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const pick = (i: number) => { setSel(null); m.play(i); };
   const onCard = (uid: number) => {
     if (!d) return;
+    if (d.kind === "place") { setSel(sel?.uid === uid ? null : { uid }); setJoin(null); return; } // pick it in the row, then confirm
     const opts = d.options.map((o, i) => ({ o, i })).filter(({ o }) => "uid" in o && (o as { uid: number }).uid === uid);
     if (opts.length === 1) pick(opts[0].i);
     else if (opts.length > 1) setSel({ uid });
@@ -90,8 +93,12 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       <section className="stage" aria-label="Roth Catha table">
         <div className="status" role="status" aria-live="polite">{status}</div>
         <Table S={S} me={m.me} d={d} sel={sel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
-          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} />
-        {m.myTurn && d && d.kind !== "muster" ? <Choices S={S} d={d} filter={selFilter(sel)} onPick={pick} onClear={() => setSel(null)} /> : null}
+          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined}
+          afterWheel={m.myTurn && d && d.kind === "place" ? (
+            <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
+              onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
+          ) : null} />
+        {m.myTurn && d && d.kind !== "muster" && d.kind !== "place" ? <Choices S={S} d={d} filter={selFilter(sel)} onPick={pick} onClear={() => setSel(null)} /> : null}
         {m.over && !showResult ? <button type="button" className="btn" onClick={() => setShowResult(true)}>Show the result</button> : null}
       </section>
       <aside>

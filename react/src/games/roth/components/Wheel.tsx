@@ -30,6 +30,8 @@ const angleOf = (spot: number, turn: number) => 15 + 30 * spot + turn;
 export function Wheel(props: {
   S: State; me: Side; marks?: Map<number, Mark>; onSpot?: (spot: number) => void;
   onFocusCard?: (d: CardDef) => void; center?: ReactNode; label?: string; focus?: number | null;
+  /** Whole-wheel view: the spot to turn to the bottom centre (where you are). */
+  front?: number | null;
 }) {
   const { S, me, marks } = props;
   const turn = me === 0 ? 0 : 180;
@@ -37,8 +39,9 @@ export function Wheel(props: {
   // turn the wheel so the focus spot sits at the bottom (90°), the short way round from where it was
   const last = useRef(0);
   let rot = 0;
-  if (zoom) {
-    rot = 90 - angleOf(props.focus!, turn);
+  const toFront = zoom ? props.focus! : props.front ?? null;
+  if (toFront !== null) {
+    rot = 90 - angleOf(toFront, turn);
     while (rot - last.current > 180) rot -= 360;
     while (rot - last.current < -180) rot += 360;
   }
