@@ -198,7 +198,7 @@ describe("giant-kin: the Fomóire", () => {
     S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
     return S;
   };
-  it("take half the wounds of a blow that is not of their weakness (rounded down)", () => {
+  it("take half the wounds of a blow that is not of their weakness (rounded up)", () => {
     const S = duel();
     const v = S.combat!.valour[1];
     use(S, 2); // the warp-spasm: Fire, at least 4, held to 4 by Indech, then halved

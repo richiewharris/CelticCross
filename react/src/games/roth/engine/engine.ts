@@ -1134,7 +1134,7 @@ export const REST_SHIELD = 1;
 export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 ? 1 : 0);
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
-export const HALF = { up: false };
+export const HALF = { up: true }; // giant-kin halves round up (rounding down tested too strong)
 /** Set while a placed support is being used again: a Spirit blow steals only the first time a card is used. */
 const REUSING = { on: false };
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
@@ -1217,7 +1217,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
   let dmg = n - soak;
-  // giant-kin: half the wounds (rounded HALF_ROUND) unless the blow is of a weakness
+  // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
   const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); dmg = h2; }
   C.valour[b] -= dmg;
