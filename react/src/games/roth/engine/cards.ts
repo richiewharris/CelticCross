@@ -112,6 +112,8 @@ export interface SupportDef {
   foeNext?: number;
   /** The enemy fighter loses n Valour (no Shield stops it). */
   foeLoss?: number;
+  /** Set only on a Spirit support a Slúagh host chose to strike with as one of its hybrid elements. */
+  spiritAs?: boolean;
   /** Charm: takes up to n of the enemy fighter's Shield for your own, before the blow lands. */
   stealShield?: number;
 }

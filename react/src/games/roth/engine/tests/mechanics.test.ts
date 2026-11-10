@@ -1,7 +1,7 @@
 // Charm, the veiled Aos Sídhe, and the Slúagh hosts' sacrifice and summon.
 import { describe, expect, it } from "vitest";
 import { ALL_DEFS, composeHost, type HostDef, type MonsterDef } from "../cards";
-import { applyDecision, fighter, hostActs, nextDecision, type Side, type State } from "../engine";
+import { applyDecision, asHybrid, fighter, hostActs, nextDecision, type Side, type State } from "../engine";
 import { card, combatState } from "./helpers";
 
 const host = (h: string, ...ms: string[]) => composeHost(ALL_DEFS[h] as HostDef, ms.map((m) => ALL_DEFS[m] as MonsterDef));
@@ -95,5 +95,16 @@ describe("Slúagh hosts in combat", () => {
     const other = hostAt(S, C, 9);
     expect(other.host!.members.map((m) => m.id)).toEqual(["bean_nighe"]);
     void card;
+  });
+});
+
+describe("hybrid damage is a choice, not both", () => {
+  it("a Spirit blow lands as Spirit (pierce, steal) or as the hybrid element (no pierce, no steal)", () => {
+    const s = ALL_DEFS.cold_touch as Extract<(typeof ALL_DEFS)[string], { type: "support" }>;
+    expect(asHybrid(s)).toBe(s);
+    const f = asHybrid(s, "Fire");
+    expect(f.element).toBe("Fire");
+    expect(f.spiritAs).toBe(true);
+    expect(s.element).toBe("Spirit"); // the card itself is untouched
   });
 });

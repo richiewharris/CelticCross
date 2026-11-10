@@ -170,7 +170,7 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
 
 62. Hybrid monsters carry the element opposite their weakness (Fire against Water, Wind against Earth): the
     Dullahan Fire, the Fear Dearg Wind, the Bean Nighe Earth, the Dearg-due Water. A host's Spirit blows also count
-    as its monsters' hybrids for the enemy's weaknesses (not for the element wheel), once a Strike.
+    as its monsters' hybrids. (Revised: see 66.)
 63. The Fear Dearg's uninvited guest: when a Strike wounds his host, the striker loses 1 Valour.
 64. A host placed with fewer than two monsters in hand takes the rest from the Reserve. A deck holds 4–6 monsters.
 65. Each of these added about 5–7 points to the Slúagh (together ~20). To pay for them: a host has one Valour

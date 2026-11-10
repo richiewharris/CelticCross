@@ -341,7 +341,7 @@ export function faceLines(d: CardDef): FaceLine[] {
     case "hero": case "champion":
       if (d.type === "hero" && d.host) {
         push("ability", d.host.def.name);
-        push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}${d.hybrids?.length ? ` Its {Spirit} Spirit blows also count as ${d.hybrids.map((h) => `{${h}} **${h}**`).join(" and ")}.` : ""}`);
+        push("text", `${d.host.members.length ? d.host.members.map((m) => m.name.replace(/^The /, "")).join(", ") : "No monsters"}. ${abLine(d.ab)}${d.hybrids?.length ? ` Each {Spirit} Spirit blow may land as Spirit or as ${d.hybrids.map((h) => `{${h}} **${h}**`).join(" or ")}.` : ""}`);
         push("rule", "Once a duel, **sacrifice** a monster to win back its Valour; once a match, **summon** one from your other host.");
         break;
       }
@@ -355,7 +355,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       push("lore", f.lore); break;
     case "monster":
       push("ability", d.quality.split(":")[0]);
-      push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: the host's {Spirit} Spirit blows also count as {${d.hybrid}} **${d.hybrid}**.` : ""} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
+      push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: each of the host's {Spirit} Spirit blows may land as {${d.hybrid}} **${d.hybrid}** instead (element bonuses count; Shield soaks it; nothing stolen).` : ""} Brings its weakness to the host: {${d.weakness}} **${d.weakness}**.`);
       push("lore", f.lore); break;
     case "support":
       push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); break;

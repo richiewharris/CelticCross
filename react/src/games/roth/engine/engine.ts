@@ -5,7 +5,7 @@
 
 import {
   beats, composeHost, isElement, unwillingPair, ELEMENTS, UNKNOWN,
-  type CardDef, type MonsterDef, type SupportElement, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
+  type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { Rng } from "./rng";
 
@@ -173,7 +173,7 @@ export type Option =
   | { t: "champion"; uid: number }
   | { t: "sacrifice"; id: string }
   | { t: "summon"; id: string }
-  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode };
+  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element };
 export type DecisionKind = "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
@@ -632,9 +632,9 @@ export const actorOf = (C: CombatState): Side => (C.turn % 2 === 0 ? C.first : (
 export const focusOf = (C: CombatState, p: Side, h: FighterDef): Focus | null => C.focus[p] ?? h.focus;
 
 /** Geasa forbidding support s for side a's hero: bit set of geasa (quadrant bit, CROW_BIT). */
-export function forbidMask(S: State, C: CombatState, a: Side, s0: SupportDef): number {
+export function forbidMask(S: State, C: CombatState, a: Side, s0: SupportDef, as?: Element): number {
   if (C.champ[a]) return 0; // a champion is bound by no geis or oath
-  const s = effSupport(S, a, s0);
+  const s = asHybrid(effSupport(S, a, s0), as);
   let m = 0;
   const q = quadOf(C.hs[a]);
   const g = S.quadGeis[q];
@@ -683,11 +683,17 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
   for (const { spot } of usableSpots(S, C, a)) {
     const s = S.board[spot]!.def as SupportDef;
     if (unwilling(h.alignment, s.alignment)) { acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "normal" }); continue; }
-    const m = forbidMask(S, C, a, s);
-    if (!m) acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "normal" });
-    else {
-      acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "break" });
-      if (C.cathbad[a] && bitCount(m) === 1) acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "ignore" });
+    // a host with hybrid monsters may strike with a Spirit support as Spirit, or as any of its hybrids
+    const ways: (Element | undefined)[] = [undefined];
+    if (h.type === "hero" && h.hybrids?.length && effSupport(S, a, s).element === "Spirit") ways.push(...h.hybrids);
+    for (const as of ways) {
+      const m = forbidMask(S, C, a, s, as);
+      const x = as ? { as } : {};
+      if (!m) acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "normal", ...x });
+      else {
+        acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "break", ...x });
+        if (C.cathbad[a] && bitCount(m) === 1) acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "ignore", ...x });
+      }
     }
   }
   const rm = restForbidMask(S, C, a);
@@ -827,11 +833,6 @@ export function baseEffects(s: SupportDef, h: FighterDef, e: FighterDef, firstSu
   return effs;
 }
 /** +1 bonuses for the primary effect (step 4) and Reinforcement (step 5, the omen). */
-/** The elements a Strike counts as: the support's own, and for a Slúagh host's Spirit blow, its monsters' hybrids. */
-export function strikeElements(h: FighterDef, s: SupportDef): SupportElement[] {
-  if (!s.element) return [];
-  return s.element === "Spirit" && h.type === "hero" && h.hybrids?.length ? [s.element, ...h.hybrids] : [s.element];
-}
 export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, isStrike: boolean): number {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
@@ -839,14 +840,11 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   let n = 0;
   if (kin(s.alignment, h.alignment)) n += h.ab.kinBonus ?? 1;
   const f = focusOf(C, a, h);
-  if (h.ab.focusAny || (f && (f === s.element || f === s.kind))) n += 1;
+  if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) n += 1;
   if (isStrike && s.element) {
-    // a Slúagh host's Spirit blows also count as its monsters' hybrid elements (each bonus once)
-    const els = strikeElements(h, s);
     const ef = focusOf(C, b, e);
-    if (isElement(ef) && s.element && beats(s.element, ef)) n += 1; // hybrids don't count for the wheel
-    const weak = effWeakness(S, b, e);
-    if (els.some((el) => isElement(el) && weak.includes(el))) n += 1;
+    if (isElement(ef) && beats(s.element, ef)) n += 1;
+    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) n += 1;
   }
   for (const fx of heroFx(S, C, a)) {
     if (fx.element && s.element === fx.element.el) n += fx.element.n;
@@ -893,18 +891,26 @@ export function effWeakness(S: State, p: Side, f: FighterDef): Element[] {
   return w;
 }
 
-function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, firstSupport: boolean, stats: MatchStats | null) {
-  const s = effSupport(S, a, s0);
+/**
+ * A Slúagh host with hybrid monsters chooses how each Spirit blow lands: as Spirit (through Shield, stealing 1) or as
+ * one of its hybrid elements (the element wheel and weaknesses count, Shield soaks it, nothing is stolen). Either
+ * way it is still the host's own blow, so its Spirit Focus counts.
+ */
+export function asHybrid(s: SupportDef, as?: Element): SupportDef {
+  return as && s.element === "Spirit" ? { ...s, element: as, spiritAs: true } : s;
+}
+function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, firstSupport: boolean, stats: MatchStats | null, as?: Element) {
+  const s = asHybrid(effSupport(S, a, s0), as);
   const b = (1 - a) as Side;
   if (stats) {
     const h0 = fighter(S, C, a), e0 = fighter(S, C, b), F = stats.fx;
     if (kin(s.alignment, h0.alignment)) F.kinHits[a]++;
     const f0 = focusOf(C, a, h0);
-    if (h0.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind))) F.focusHits[a]++;
+    if (h0.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind || (s.spiritAs && f0 === "Spirit")))) F.focusHits[a]++;
     if (s.effects[0].type === "strike" && s.element) {
-      const ef = focusOf(C, b, e0), els = strikeElements(h0, s), weak = effWeakness(S, b, e0);
-      if (isElement(ef) && els.some((el) => beats(el, ef))) F.beatsHits[a]++;
-      if (els.some((el) => isElement(el) && weak.includes(el))) F.weakHits[a]++;
+      const ef = focusOf(C, b, e0);
+      if (isElement(ef) && beats(s.element, ef)) F.beatsHits[a]++;
+      if (isElement(s.element) && effWeakness(S, b, e0).includes(s.element)) F.weakHits[a]++;
     }
   }
   const h = fighter(S, C, a);
@@ -1024,14 +1030,14 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     if (unw) { if (stats) stats.unwilling++; }
     else {
       if (o.mode === "break") {
-        const m = forbidMask(S, C, a, s);
+        const m = forbidMask(S, C, a, s, o.as);
         C.broken |= m;
         C.valour[a] -= breakCost(S, m);
         if (stats) stats.fx.broke[a] += breakCost(S, m);
         if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
       } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
       if (C.valour[a] > 0) {
-        resolveSupport(S, C, a, s, first, stats);
+        resolveSupport(S, C, a, s, first, stats, o.as);
         if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === fighter(S, C, 1 - a).tag);
       }
     }
@@ -1234,7 +1240,8 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
           if (quadOf(o.spot) !== quadOf(other)) return "not your other hero's quadrant";
         }
         const s = c.def;
-        const forb = unwilling(h.alignment, s.alignment) ? 0 : forbidMask(S, C, p, s);
+        if (o.as && !(h.type === "hero" && h.hybrids?.includes(o.as) && effSupport(S, p, s).element === "Spirit")) return "this blow cannot land as that element";
+        const forb = unwilling(h.alignment, s.alignment) ? 0 : forbidMask(S, C, p, s, o.as);
         if (o.mode === "normal" && forb) return "forbidden by a geis";
         if (o.mode === "break" && !forb) return "nothing to break";
         if (o.mode === "ignore" && (!forb || !C.cathbad[p] || bitCount(forb) !== 1)) return "cannot ignore";
