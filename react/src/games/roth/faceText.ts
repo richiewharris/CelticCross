@@ -1,7 +1,7 @@
 // Display-only words for the card faces: a short ability name, plain reminder text and, for cards with room,
 // a line of lore. Nothing here changes a rule; each entry restates what engine/cards.ts and engine/engine.ts do.
 // Markup: **word** is a keyword (bold), {name} is an inline icon from Icons.tsx.
-import { HEROES, type AttendantDef, type HeroAb, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
+import { HEROES, reuseOf, type Reuse, type AttendantDef, type HeroAb, type CardDef, type Effect, type GeisDef, type SupportDef } from "./engine/cards";
 
 export interface Face {
   /** The ability's name, set as a small heading above the text. */
@@ -330,7 +330,16 @@ export function attendantLine(d: AttendantDef): string {
 }
 
 /** The lines a card face shows, in order. `kind` sets how each is drawn. */
-export type FaceLine = { kind: "effect" | "ability" | "text" | "lore" | "rule" | "break"; text: string };
+export type FaceLine = { kind: "effect" | "ability" | "text" | "lore" | "rule" | "break" | "reuse"; text: string };
+/** The price of using a placed support again in a long duel, in words. */
+export function reuseLine(r: Reuse): string {
+  const bits: string[] = [];
+  if (r.turns) bits.push(r.turns === 1 ? "not two turns running" : `${r.turns} other actions between`);
+  if (r.rest) bits.push(r.rest === 1 ? "after a rest" : `after ${r.rest} rests`);
+  if (r.valour) bits.push(`pay **${r.valour} Valour**`);
+  if (r.draw) bits.push(`discard **${r.draw === 1 ? "the top card" : `${r.draw} cards`}** of your Reserve`);
+  return bits.length ? `Again: ${bits.join("; ")}.` : "Again: any time.";
+}
 export function faceLines(d: CardDef): FaceLine[] {
   const hand = FACE[d.id] ?? {};
   const auto = d.type === "support" ? autoSupport(d) : d.type === "geis" ? autoGeis(d) : {};
@@ -358,7 +367,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: each of the host's {Spirit} Spirit blows may land as {${d.hybrid}} **${d.hybrid}** instead (element bonuses count; Shield soaks it; nothing stolen).` : ""} Weak to {${d.weakness}} **${d.weakness}**, but the host takes it on only if the host or another monster shares it.`);
       push("lore", f.lore); break;
     case "support":
-      push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); break;
+      push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); push("reuse", reuseLine(reuseOf(d))); break;
     case "geis":
       push("rule", forbidLine(d.forbids, d.scope === "global")); push("ability", f.ability); push("text", f.text); push("lore", f.lore); push("break", BREAK); break;
     case "oath":

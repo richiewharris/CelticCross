@@ -244,7 +244,7 @@ body.gm-roth .card.full[data-fit="4"] .cf-text { font-size: .7em; line-height: 1
 @container (max-width: 112px) {
   body.gm-roth .cf-type span { display: none; }
   body.gm-roth .cf-type { align-self: flex-start; }
-  body.gm-roth .cf-text .ln-text, body.gm-roth .cf-text .ln-lore, body.gm-roth .cf-text .ln-break { display: none; }
+  body.gm-roth .cf-text .ln-text, body.gm-roth .cf-text .ln-lore, body.gm-roth .cf-text .ln-break, body.gm-roth .cf-text .ln-reuse { display: none; }
   body.gm-roth .cf-text .ln-ability { margin-bottom: 0; }
 }
 
@@ -579,3 +579,8 @@ body.gm-roth .walk-coach { border-radius: 10px; padding: 10px 12px; border: 1px 
 body.gm-roth .walk-coach::before { content: "Why: "; font-weight: 600; color: var(--good); }
 body.gm-roth .walk-others summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
 body.gm-roth .walk-others ul { margin: 6px 0 0; padding-left: 1.2em; color: var(--muted); font-size: .9rem; }
+body.gm-roth .ln-reuse { margin-top: auto; font-size: .85em; color: #5b4a2c; border-top: 1px dotted #b9a57d; padding-top: 2px; }
+body.gm-roth .ln-reuse b { color: #5b4a2c; }
+body.gm-roth .duel-pile { font-size: .8rem; color: var(--muted); }
+body.gm-roth .duel-drawn { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+body.gm-roth .duel-drawn .zone-label { flex-basis: 100%; }

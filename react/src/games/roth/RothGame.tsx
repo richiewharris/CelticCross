@@ -22,7 +22,7 @@ export function RothGame() {
     <div className="wrap">
       <header>
         <h1>Roth Catha</h1>
-        <p className="lede">The wheel of battle. Draft heroes and their supports onto a round board, bind your rival's heroes with geasa, swear oaths, turn omens, then fight two duels at the ford. Five decks from the Ulster Cycle and beyond.</p>
+        <p className="lede">The wheel of battle. Draft heroes and their supports onto a round board, bind your rival's heroes with geasa, swear oaths, turn omens, then fight to the death at the ford. Six decks from the Ulster Cycle and beyond.</p>
         <p className="private-note">Private preview: only you can see this page.</p>
       </header>
       <Segmented label="Mode" value={tab} onChange={setTab} className="tabs"

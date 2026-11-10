@@ -327,7 +327,7 @@ function Blow() {
   return (
     <section id="cx-blow" className="cx-section">
       <h2>Reading a blow</h2>
-      <p>At the ford each fighter takes two turns, alternating, starting with the higher Initiative. On a turn: use a support from your quadrant, rest, or call a champion. A support's number is worked out like this:</p>
+      <p>At the ford the fighters take turns, starting with the higher Initiative, until one falls. On a turn: draw the top card of your Reserve and play it (or put it aside and do something else), use a support from your quadrant (again, at its price), turn an omen, lay a geis, swear an oath, call a champion, or rest. A support's number is worked out like this:</p>
       <ol className="cx-steps">{steps.map((s) => <li key={s.title}><span className="cx-step-n">{s.n}</span><span><b>{s.title}.</b> {s.text}</span></li>)}</ol>
       <div className="cx-panel cx-example">
         <h3>Example: Cú Chulainn uses Thunder feat against Lugh</h3>

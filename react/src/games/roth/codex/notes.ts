@@ -172,7 +172,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
 export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen" | "attendant" | "host"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
   {
     type: "hero", title: "Heroes", sample: "cu",
-    what: "The fighters. Each quadrant of the wheel is one hero and the two supports behind it, and the heroes fight the two duels at the ford.",
+    what: "The fighters. Each quadrant of the wheel is one hero and the two supports behind it, and the heroes fight their duels at the ford to the death.",
     when: "**Drafting turn**, on a hero spot (1, 4, 7 or 10). Spots 1 and 7 meet in the first duel, 4 and 10 in the second.",
     how: [
       "{valour} **Valour** is life: at 0 the hero falls. {init} **Initiative** decides who strikes first (a tie goes to the first player).",
@@ -184,7 +184,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "champion", title: "Champions", sample: "fiacha",
     what: "Stand-ins kept in your hand. A champion takes your hero's place at the ford with its own Valour.",
-    when: "**At the ford**, as your action for the turn. The first player may call one in either duel, the second player only in the second; one per duel.",
+    when: "**At the ford**, as your action for the turn (or straight off the Reserve when you draw one). The first player may call one in any duel, the second player from the second duel on; one per duel.",
     how: [
       "The champion fights with its own {valour} Valour and quality. Wounds already dealt still count, and if the champion falls, your hero has fallen.",
       "It keeps the benefit of your omens but is **not bound** by your hero's geasa or oath (and gets no oath boon).",
@@ -193,11 +193,12 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   },
   {
     type: "support", title: "Supports", sample: "gae_bolga",
-    what: "Weapons, feats, allies and words: what a hero does with its turn.",
-    when: "**Drafting turn**, two behind each hero. **Playing turn**: supplant an enemy support with one of yours. **At the ford**, each turn your fighter uses one unused support from its quadrant, or rests.",
+    what: "Weapons, feats, allies and words: the two placed behind a hero are its own, ready at the ford; the rest of your deck waits in the Reserve.",
+    when: "**Drafting turn**, two behind each hero. **Playing turn**: supplant an enemy support with one of yours. **At the ford**: use a placed support (the first time free, then at its price), or play one you draw off the Reserve (used once, then discarded).",
     how: [
       "{strike} **Strike** wounds the enemy; {shield} **Shield** soaks it first unless the card ignores Shield. {heal} **Heal** restores Valour, up to 2 above the duel's start. {shield} **Shield** absorbs wounds until used up.",
       "The printed number grows with **kinship**, **Focus**, the **element** matchup and the enemy's **weakness** (see “Reading a blow”).",
+      "**Using it again**: each card shows its price. A Weapon can't strike two turns running; a Feat needs a rest first; an Ally costs the top card of your Reserve; a Word costs **1 Valour**; anything that Heals also needs a rest.",
       "**Unwilling** (Ulaid with Connachta, Sídhe with Fomóire): the support does nothing at all. So when you supplant, an Unwilling card is the cleanest denial.",
     ],
   },

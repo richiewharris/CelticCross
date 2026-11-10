@@ -859,7 +859,7 @@ export function eligibleGuests(S: State, C: CombatState, a: Side): Card[] {
 }
 
 /** The first player may call a champion in either duel, the second player only in the second; one per duel. */
-export const canCallChampion = (C: CombatState, a: Side, on = true) => on && !C.champ[a] && (a === 0 || C.duel === 1) && C.champs[a].length > 0;
+export const canCallChampion = (C: CombatState, a: Side, on = true) => on && !C.champ[a] && (a === 0 || C.duel >= 1) && C.champs[a].length > 0;
 
 /** What can be done with a card just drawn: play it (or keep a hero or champion in hand), or put it aside. */
 export function drawnOptions(S: State, C: CombatState, a: Side, c: Card): Option[] {

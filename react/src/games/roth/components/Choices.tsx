@@ -1,5 +1,5 @@
 // The pending decision as a prompt and a list of buttons (filtered by the card or spot you picked).
-import type { Decision, Option, State } from "../engine/engine";
+import { toDeath, type Decision, type Option, type State } from "../engine/engine";
 import { optionLabel } from "../text";
 
 export function prompt(S: State, d: Decision): string {
@@ -10,7 +10,10 @@ export function prompt(S: State, d: Decision): string {
     case "action": return `${S.reversed ? "The round run backwards" : "Playing turn"}, step ${S.step}: you face spot ${d.spot! + 1}. Choose one action.`;
     case "late": return "Turn any omens before combat.";
     case "focus": return "The Morrígan may change her Focus once.";
-    case "duel": return `Duel ${S.combat!.duel + 1}${S.reversed ? " (backwards round)" : ""}, turn ${S.combat!.turn + 1} of 4: use a support, rest, or call a champion.`;
+    case "duel": return toDeath(S)
+      ? `${S.combat!.duel === 2 ? "The final duel" : `Duel ${S.combat!.duel + 1}`}, turn ${S.combat!.turn + 1}, to the death: draw from your Reserve, use a support (again, at its price), turn an omen, lay a geis, swear an oath, or rest.${S.combat!.drew ? " You have put a drawn card aside: choose something else." : ""}`
+      : `Duel ${S.combat!.duel + 1}${S.reversed ? " (backwards round)" : ""}, turn ${S.combat!.turn + 1} of 4: use a support, rest, or call a champion.`;
+    case "drawn": return `You drew ${S.combat!.drawn?.def.name ?? "a card"}. Play it now, or put it aside and choose something else.`;
     default: return "Your choice.";
   }
 }
