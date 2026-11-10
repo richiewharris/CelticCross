@@ -41,7 +41,8 @@ if (process.argv.includes("--worker")) {
   const n = Number(args[args.indexOf("--n") + 1]) || 200;
   const tuned = args.includes("--tuned");
   const jobs: Job[] = [];
-  for (const f of FACTIONS) if (f !== me) for (let i = 0; i < n; i += 50) jobs.push({ me, opp: f, from: i, to: Math.min(n, i + 50), tuned });
+  const only = args.includes("--vs") ? args[args.indexOf("--vs") + 1].split(",") : null;
+  for (const f of FACTIONS) if (f !== me && (!only || only.includes(f))) for (let i = 0; i < n; i += 50) jobs.push({ me, opp: f, from: i, to: Math.min(n, i + 50), tuned });
   const recs: Rec[] = [];
   let next = 0;
   await new Promise<void>((resolve) => { let live = 2;
@@ -56,6 +57,7 @@ if (process.argv.includes("--worker")) {
   for (const f of FACTIONS) {
     if (f === me) continue;
     const rs = recs.filter((r) => r.opp === f);
+    if (!rs.length) continue;
     const sum = (k: keyof MatchStats["fx"], who: "me" | "them") => rs.reduce((a, r) => a + r.fx[k][who === "me" ? r.mine : 1 - r.mine], 0);
     const duelsMe = sum("duels", "me"), duelsThem = sum("duels", "them");
     const row = [
@@ -84,6 +86,8 @@ if (process.argv.includes("--worker")) {
   for (const x of lift((r) => r.oppGeasa).slice(0, 8)) console.log(`  ${ALL_DEFS[x.id]?.name.padEnd(30)} ${(100 * x.d).toFixed(1).padStart(6)} pts  n=${x.n}`);
   console.log(`\n${me}'s heroes: how often each is felled when it fights`);
   const hm = new Map<string, { n: number; f: number; s: number }>();
-  for (const r of recs) for (const h of r.myHeroes) { const x = hm.get(h) ?? { n: 0, f: 0, s: 0 }; x.n++; x.s += r.score; if (r.felled.includes(h)) x.f++; hm.set(h, x); }
+  // a joined host's id is "host:monster+monster"; count it by host type and size, and each monster in it
+  const keys = (h: string) => h.includes(":") ? [`${h.split(":")[0]} with ${h.split(":")[1].split("+").length}`, ...h.split(":")[1].split("+").map((m) => `  in a host: ${m}`)] : [h];
+  for (const r of recs) for (const h of r.myHeroes) for (const k of keys(h)) { const x = hm.get(k) ?? { n: 0, f: 0, s: 0 }; x.n++; x.s += r.score; if (r.felled.includes(h)) x.f++; hm.set(k, x); }
   for (const [h, x] of [...hm].sort((a, b) => b[1].n - a[1].n)) console.log(`  ${(ALL_DEFS[h]?.name ?? h).padEnd(30)} fought ${String(x.n).padStart(4)}  felled ${pct(x.f / x.n).padStart(4)}  score ${pct(x.s / x.n)}`);
 }
