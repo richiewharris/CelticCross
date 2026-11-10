@@ -85,7 +85,7 @@ describe("supports", () => {
     const S = mk(B("dagda", "salmon", "salmon", "bres", "gaze", "salmon"));
     use(S, 8);
     expect(V(S)[0]).toBe(2);
-    // Balor after Fergus rests: 3 + 1 kinship + 1 Focus Fire + 2 Evil eye = 7 → Fergus (5) falls
+    // Balor after Fergus rests: 3 + 1 kinship + 1 Focus Fire + 1 Evil eye = 6 → Fergus (5) falls
     const S2 = mk(B("fergus", "salmon", "salmon", "balor", "gaze", "salmon"));
     rest(S2);
     use(S2, 8);
@@ -144,20 +144,20 @@ describe("hero qualities", () => {
     use(S2, 2);
     expect(V(S2)[1]).toBe(3);
   });
-  it("Balor's Evil eye: only his first Strike each duel +2", () => {
-    // Balor vs the Dagda, tie on 1 → Balor first: Cet 2 + 2 = 4 → 2; the Dagda rests (Heal 2) → 4; Cet 2 → 2
+  it("Balor's Evil eye: only his first Strike each duel +1", () => {
+    // Balor vs the Dagda, tie on 1 → Balor first: Cet 2 + 1 = 3 → 3; the Dagda rests (Heal 2) → 5; Cet 2 → 3
     const S = mk(B("dagda", "salmon", "salmon", "balor", "cet_spear", "cet_spear"));
     use(S, 8);
-    expect(V(S)[0]).toBe(2);
+    expect(V(S)[0]).toBe(3);
     rest(S);
-    expect(V(S)[0]).toBe(4);
+    expect(V(S)[0]).toBe(5);
     use(S, 9);
-    expect(V(S)[0]).toBe(2);
+    expect(V(S)[0]).toBe(3);
   });
-  it("Indech: no Strike against him above 3", () => {
+  it("Indech: no Strike against him above 4", () => {
     const S = mk(B("indech", "salmon", "salmon", "liban", "warp", "salmon"));
-    use(S, 8); // 4 → 3
-    expect(V(S)).toEqual([2, 3]);
+    use(S, 8); // the warp-spasm, 5 or more → 4
+    expect(V(S)).toEqual([1, 3]);
   });
   it("Manannán: the first Strike against him each duel misses", () => {
     const S = mk(B("fergus", "caladbolg", "cet_spear", "manannan", "salmon", "salmon"));

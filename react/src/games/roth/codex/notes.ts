@@ -120,9 +120,9 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The giants from under the sea",
     motto: "Huge, slow and blighting. Fomóire heroes **hit hard once** and starve the enemy of healing.",
     plan: [
-      "Balor's first Strike each duel is **+2**, and the gaze of Balor is **Strike 3** in his hands. With kinship and Focus {Fire} Fire, that opening blow is **3 +1 +1 +2 = 7**.",
+      "Balor's first Strike each duel is **+1**, and the gaze of Balor is **Strike 3** in his hands. With kinship and Focus {Fire} Fire, that opening blow is **3 +1 +1 +1 = 6**.",
       "Balor and Indech are slow (Initiative 1 and 2). The **Night of the Fomóire** turns that round: in the first duel, the lower Initiative strikes first. **Druid's sleep** takes 3 Initiative from one enemy hero.",
-      "Indech the sea-giant can't be hit for **more than 3** at once; behind Conand's tower (**Shield 3**) he soaks blow after blow.",
+      "Indech the sea-giant can't be hit for **more than 4** at once; behind Conand's tower (**Shield 3**) he soaks blow after blow.",
       "Cethlenn, Tethra and the stones of Octriallach **drain**: when the Strike wounds, Heal 1.",
       "Bres makes the enemy's Heals **−1**, and the **Geis of Samhain night** forbids Heals for everyone. The Fomóire barely heal, so it costs you little.",
     ],

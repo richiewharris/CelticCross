@@ -301,10 +301,10 @@ export const HEROES: Record<string, HeroDef> = {
   morrigan: hero("morrigan", "The Morrígan", "Sidhe", R, 4, 4, "Wind", "Earth", "Prophecy", "Battle-crow: Strikes +1; once per match, change her Focus to any element at the start of a duel", { strikeAll: 1, shapeShift: true }),
   brigid: hero("brigid", "Brigid", "Sidhe", C, 4, 3, "Fire", "Water", "Forge", "Healer's well: her Heals +1", { healBonus: 1 }),
   // Fomóire: huge, slow, blighting
-  balor: hero("balor", "Balor of the Evil Eye", "Fomoire", L, 5, 1, "Fire", "Water", "Evil eye", "Evil eye: his first Strike each duel +2", { firstStrike: 2 }),
+  balor: hero("balor", "Balor of the Evil Eye", "Fomoire", L, 5, 1, "Fire", "Water", "Evil eye", "Evil eye: his first Strike each duel +1", { firstStrike: 1 }),
   bres: hero("bres", "Bres", "Fomoire", R, 4, 3, "Word", "Wind", "Hospitality", "Niggard king: the enemy hero's Heals −1", { foeHealMalus: 1 }),
   cethlenn: hero("cethlenn", "Cethlenn", "Fomoire", R, 3, 4, "Water", "Earth", "Prophecy", "Bloodied tooth: Strikes +1; when her Strike wounds, Heal 1", { strikeAll: 1, drain: 1 }),
-  indech: hero("indech", "Indech mac Dé Domnann", "Fomoire", C, 5, 2, "Earth", "Wind", "Sea", "Sea-giant: no Strike against him above 3", { capTaken: 3 }),
+  indech: hero("indech", "Indech mac Dé Domnann", "Fomoire", C, 5, 2, "Earth", "Wind", "Sea", "Sea-giant: no Strike against him above 4", { capTaken: 4 }),
   // Merrow: Water, shields, slippery
   manannan: hero("manannan", "Manannán mac Lir", "Merrow", L, 4, 4, "Water", "Earth", "Sea", "Cloak of mist: the first Strike against him each duel misses", { firstHitSoak: 9 }),
   fand: hero("fand", "Fand", "Merrow", R, 3, 5, "Wind", "Fire", "Beauty", "Sea-glamour: Strikes +1", { strikeAll: 1 }),

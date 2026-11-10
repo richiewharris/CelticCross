@@ -187,6 +187,9 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
 69. Running water: a Merrow's Shield holds against Spirit, and Merrow Water Strikes against a host are +1.
     The Hunt's Initiative 2 → 0 and the Púca's +2 → +1 to take the Slúagh off first strike against Ulster and Merrow.
     Matrix (Skilled, n=200): Ulster 48.7, Connacht 48.9, Aos Sídhe 52.8, Fomóire 51.4, Merrow 50.4, Slúagh 47.8.
+70. Duels to the death: the tuned Fomóire deck won 72–74% against the other tuned decks. Single-card tweaks tested
+    (n=40 per pairing): Indech's cap 3 → 4 was worth −7 points, Balor's first Strike +2 → +1 −4, the rest ≤ 2.
+    Both taken: Fomóire 59.5% (Ulster 73, Connacht 55, Merrow 55, Aos Sídhe 33, Slúagh 83).
 
 ## Puzzles
 
