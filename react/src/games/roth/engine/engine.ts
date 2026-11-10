@@ -229,6 +229,26 @@ export function boardFx(S: State): OmenEffect[] {
   return out;
 }
 /** Face-up targeted omens (either player's) aimed at hero spot `spot`. */
+/**
+ * The guided game sets this to a list, and the rules then write down each number that goes into what happens
+ * ("+1 kinship", "Culann's hound −1"...). Off (null) in play and in the solver.
+ */
+export const NARRATE: { lines: string[] | null } = { lines: null };
+const say = (t: string) => { NARRATE.lines!.push(t); };
+const sgn = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
+/** heroFx with the omen each effect comes from (for the guided game). */
+function namedHeroFx(S: State, C: CombatState, p: Side): { name: string; fx: OmenEffect }[] {
+  const out: { name: string; fx: OmenEffect }[] = [];
+  for (const o of S.players[p].omens) if (o.faceUp && o.card.def.type === "omen" && o.card.def.scope === "yours") out.push({ name: o.card.def.name, fx: o.card.def.fx });
+  for (const P of S.players) for (const o of P.omens) if (o.faceUp && o.target === C.hs[p] && o.card.def.type === "omen") out.push({ name: o.card.def.name, fx: o.card.def.fx });
+  return out;
+}
+function namedBoardFx(S: State): { name: string; fx: OmenEffect }[] {
+  const out: { name: string; fx: OmenEffect }[] = [];
+  for (const P of S.players) for (const o of P.omens) if (o.faceUp && o.card.def.type === "omen" && o.card.def.scope === "global") out.push({ name: o.card.def.name, fx: o.card.def.fx });
+  return out;
+}
+
 export function targetFx(S: State, spot: number): OmenEffect[] {
   const out: OmenEffect[] = [];
   for (const P of S.players) for (const o of P.omens) if (o.faceUp && o.target === spot && o.card.def.type === "omen") out.push(o.card.def.fx);
@@ -775,10 +795,21 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
 export function heal(S: State, C: CombatState, p: Side, n: number) {
   const h = fighter(S, C, p);
   const e = fighter(S, C, 1 - p);
+  const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
     + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0);
-  if (n <= 0) return;
-  C.valour[p] = Math.min(Math.max(C.cap[p], C.valour[p]), C.valour[p] + n);
+  const v0 = C.valour[p];
+  if (n > 0) C.valour[p] = Math.min(Math.max(C.cap[p], C.valour[p]), C.valour[p] + n);
+  if (NARRATE.lines) {
+    const bits: string[] = [];
+    if (h.ab.healBonus) bits.push(`${sgn(h.ab.healBonus)} ${h.name}'s quality`);
+    const oh = activeOath(S, C, p)?.boon.heal; if (oh) bits.push(`${sgn(oh)} ${activeOath(S, C, p)!.name}`);
+    for (const x of namedHeroFx(S, C, p)) if (x.fx.heal) bits.push(`${sgn(x.fx.heal)} ${x.name}`);
+    for (const x of namedBoardFx(S)) if (x.fx.healMod) bits.push(`${sgn(x.fx.healMod)} ${x.name}`);
+    if (e.ab.foeHealMalus) bits.push(`−${e.ab.foeHealMalus} ${e.name}'s quality`);
+    const capped = n > 0 && C.valour[p] - v0 < n;
+    say(`${h.name} heals: ${n1}${bits.length ? " " + bits.join(" ") + ` = ${Math.max(0, n)}` : ""}${n <= 0 ? ", so nothing" : ""}${capped ? ` (capped: no more than ${Math.max(C.cap[p], v0)})` : ""}. Valour ${v0} → ${C.valour[p]}.`);
+  }
 }
 
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
@@ -791,6 +822,24 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   const ab = h.ab;
+  const N = NARRATE.lines ? [] as string[] : null;
+  const n1 = n;
+  if (N) {
+    if (ab.strikeAll) N.push(`${sgn(ab.strikeAll)} ${h.name}'s quality`);
+    if (ab.rally && C.valour[a] <= ab.rally.at) N.push(`${sgn(ab.rally.n)} ${h.name} at ${ab.rally.at} Valour`);
+    if (ab.avenger && C.duel === 1 && C.felled[0][a]) N.push(`${sgn(ab.avenger)} ${h.name} avenging`);
+    if (ab.firstStrike && !C.hit[a]) N.push(`${sgn(ab.firstStrike)} first Strike this duel`);
+    if (S.rules.veiled && h.alignment === "Sidhe" && !C.hit[a]) N.push("−1 the veil (an Aos Sídhe's own first Strike)");
+    if (ab.vsBig && e.valour >= 5) N.push(`${sgn(ab.vsBig)} against a big hero`);
+    if (ab.vsTag && e.tag === ab.vsTag.tag) N.push(`${sgn(ab.vsTag.n)} ${h.name} against the ${e.tag}`);
+    const oath = activeOath(S, C, a); if (oath?.boon.strike) N.push(`${sgn(oath.boon.strike)} ${oath.name}`);
+    for (const x of namedHeroFx(S, C, a)) {
+      if (x.fx.strikeDuel && x.fx.strikeDuel.duel === C.duel) N.push(`${sgn(x.fx.strikeDuel.n)} ${x.name}`);
+      if (x.fx.strikeMod) N.push(`${sgn(x.fx.strikeMod)} ${x.name}`);
+    }
+    if (C.nextStrike[a]) N.push(`${sgn(C.nextStrike[a])} carried over to this Strike`);
+    for (const x of namedBoardFx(S)) if (x.fx.debility && debilitated(h, x.fx.debility)) N.push(`−1 ${x.name}`);
+  }
   n += ab.strikeAll ?? 0;
   if (ab.rally && C.valour[a] <= ab.rally.at) n += ab.rally.n;
   if (ab.avenger && C.duel === 1 && C.felled[0][a]) n += ab.avenger;
@@ -812,6 +861,15 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   for (const fx of boardFx(S)) if (fx.truce !== undefined) n = Math.min(n, fx.truce);
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
   const n0 = n;
+  if (N) {
+    for (const x of namedBoardFx(S)) if (x.fx.truce !== undefined) N.push(`(${x.name}: no Strike above ${x.fx.truce})`);
+    if (e.ab.capTaken !== undefined) N.push(`(${e.name}: no Strike against him above ${e.ab.capTaken})`);
+    if (!C.struck[b]) {
+      if (e.ab.firstHitSoak) N.push(`−${e.ab.firstHitSoak} ${e.name}'s quality (first Strike against it)`);
+      if (S.rules.veiled && e.alignment === "Sidhe") N.push("−1 the veil (first Strike against an Aos Sídhe)");
+      for (const x of namedHeroFx(S, C, b)) if (x.fx.firstHitSoak) N.push(`−${x.fx.firstHitSoak} ${x.name} (first Strike against it)`);
+    }
+  }
   if (!C.struck[b]) {
     C.struck[b] = true;
     // the Aos Sídhe are veiled: the first Strike against them each duel −1 (positions saved before this rule leave it out)
@@ -826,6 +884,11 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
   // the uninvited guest: wound it and pay for it
   if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;
+  if (N) {
+    const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
+    const sh = pierce ? " It ignores Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
+    say(`${h.name} strikes: ${shown}.${sh} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}`);
+  }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
 }
@@ -846,17 +909,19 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   let n = 0;
-  if (kin(s.alignment, h.alignment)) n += h.ab.kinBonus ?? 1;
+  const N = NARRATE.lines;
+  if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
-  if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) n += 1;
+  if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
-    if (isElement(ef) && beats(s.element, ef)) n += 1;
-    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) n += 1;
+    if (isElement(ef) && beats(s.element, ef)) { n += 1; if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
+    if (isElement(s.element) && effWeakness(S, b, e).includes(s.element)) { n += 1; if (N) N.push(`+1 weakness (${e.name} is weak to ${s.element})`); }
   }
-  for (const fx of heroFx(S, C, a)) {
-    if (fx.element && s.element === fx.element.el) n += fx.element.n;
-    if (fx.kind && s.kind === fx.kind.kind) n += fx.kind.n;
+  for (const x of N ? namedHeroFx(S, C, a) : heroFx(S, C, a).map((fx) => ({ name: "", fx }))) {
+    const fx = x.fx;
+    if (fx.element && s.element === fx.element.el) { n += fx.element.n; if (N) N.push(`${sgn(fx.element.n)} ${x.name}`); }
+    if (fx.kind && s.kind === fx.kind.kind) { n += fx.kind.n; if (N) N.push(`${sgn(fx.kind.n)} ${x.name}`); }
   }
   return n;
 }
@@ -928,12 +993,29 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
   if (s.stealShield) { const t = Math.min(s.stealShield, C.shield[b]); C.shield[b] -= t; C.shield[a] += t; }
   for (let i = 0; i < effs.length; i++) {
     const eff = effs[i];
+    if (NARRATE.lines && i === 0) {
+      const raw = s.effects[0].n;
+      say(`${s0.name}${s !== s0 && s.element !== s0.element ? ` (counting as ${s.element})` : ""}: ${eff.type === "strike" ? "Strike" : eff.type === "heal" ? "Heal" : "Shield"} ${raw}${eff.n !== raw ? `, ${eff.n} here` : ""}.`);
+    }
     const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
+    if (NARRATE.lines && i === 0) {
+      if (s.attuned) say(`+${s.attuned} attuned by an attendant`);
+      if (eff.type === "strike" && s.channel) say(`+${s.channel} channelled by an attendant`);
+      if (seaVsDead(h, e, s, eff.type)) say("+1 running water (a Merrow's Water against the dead)");
+      say(`= ${n}.`);
+    }
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
     if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || (s.element === "Spirit" && e.alignment !== "Merrow"), (s.drain ?? 0) + (s.element === "Spirit" ? 1 : 0));
     else if (eff.type === "heal") heal(S, C, a, n);
-    else C.shield[a] += Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
+    else {
+      const add = Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
+      if (NARRATE.lines) {
+        const bits = [...namedBoardFx(S).filter((x) => x.fx.shieldMod).map((x) => `${sgn(x.fx.shieldMod!)} ${x.name}`), ...namedHeroFx(S, C, a).filter((x) => x.fx.shield).map((x) => `${sgn(x.fx.shield!)} ${x.name}`)];
+        say(`${h.name} raises Shield: ${n}${bits.length ? " " + bits.join(" ") + ` = ${add}` : ""}. Shield ${C.shield[a]} → ${C.shield[a] + add}.`);
+      }
+      C.shield[a] += add;
+    }
   }
   if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
   if (s.nextStrike) C.nextStrike[a] += s.nextStrike;

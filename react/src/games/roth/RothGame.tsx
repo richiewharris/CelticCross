@@ -9,10 +9,11 @@ import { optionAt, selFilter, Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
 import { CardsGuide, DecksGuide } from "./codex/Codex";
 import { DeckBuilder } from "./DeckBuilder";
+import { Walkthrough } from "./walkthrough/Walkthrough";
 import { FACTION_TITLE } from "./text";
 import { useMatch } from "./useMatch";
 
-type Tab = "play" | "build" | "puzzles" | "cards" | "decks";
+type Tab = "play" | "walk" | "build" | "puzzles" | "cards" | "decks";
 
 export function RothGame() {
   const [tab, setTab] = useStoredState<Tab>("roth-react-tab", "play");
@@ -25,8 +26,8 @@ export function RothGame() {
         <p className="private-note">Private preview: only you can see this page.</p>
       </header>
       <Segmented label="Mode" value={tab} onChange={setTab} className="tabs"
-        options={[{ value: "play", label: "Play the computer" }, { value: "build", label: "Build a deck" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
-      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
+        options={[{ value: "play", label: "Play the computer" }, { value: "walk", label: "Guided game" }, { value: "build", label: "Build a deck" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Tab; label: string }[]} />
+      {tab === "play" ? <Match focus={focus} setFocus={setFocus} /> : tab === "walk" ? <Walkthrough focus={focus} setFocus={setFocus} /> : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} /> : tab === "puzzles" ? <Puzzles focus={focus} setFocus={setFocus} /> : tab === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );
 }

@@ -563,3 +563,19 @@ body.gm-roth .t-attendant .gem { border-color: #dff6ec; }
 body.gm-roth .t-attendant .ln-ability { color: #1f4a3c; }
 body.gm-roth .tag.attendant { background: #12392d; color: #cff3e3; border-color: #3f8e74; }
 body.gm-roth .zone.attendants .c-badge { top: auto; bottom: 36%; }
+
+/* the guided game */
+body.gm-roth .walk .stage { gap: 12px; }
+body.gm-roth .walk-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.gm-roth .walk-count { color: var(--muted); font-size: .9rem; min-width: 8em; text-align: center; }
+body.gm-roth .walk-text { display: grid; gap: 10px; max-width: 72ch; }
+body.gm-roth .walk-text h2, body.gm-roth .walk-text h3 { margin: 0; }
+body.gm-roth .walk-text p { margin: 0; overflow-wrap: anywhere; }
+body.gm-roth .walk-chapter { border-left: 3px solid var(--bronze); padding: 2px 0 2px 12px; display: grid; gap: 8px; }
+body.gm-roth .walk-move { font-weight: 600; font-size: 1.05rem; }
+body.gm-roth .walk-move.theirs { color: var(--muted); }
+body.gm-roth .walk-maths { background: var(--night-3); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; font-variant-numeric: tabular-nums; font-size: .92rem; }
+body.gm-roth .walk-coach { border-radius: 10px; padding: 10px 12px; border: 1px solid #4a6a45; }
+body.gm-roth .walk-coach::before { content: "Why: "; font-weight: 600; color: var(--good); }
+body.gm-roth .walk-others summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+body.gm-roth .walk-others ul { margin: 6px 0 0; padding-left: 1.2em; color: var(--muted); font-size: .9rem; }
