@@ -54,6 +54,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const m = useMatch();
   const [sel, setSel] = useState<Sel>(null);
   const [join, setJoin] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
   const [showResult, setShowResult] = useState(true);
   useEffect(() => { setSel(null); setJoin(null); }, [m.d]);
   useEffect(() => { if (m.over) setShowResult(true); }, [m.over]);
@@ -65,7 +66,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
           <p>Pick your deck and the computer's level, then start. Play one of the five starter decks, or build your own from the pools under <b>Build a deck</b>. The computer builds its own deck too: the stronger the level, the better the deck.</p>
           <RulesPanel />
         </section>
-        <aside><SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch={false} /></aside>
+        <aside><SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch={false} record={m.record} /></aside>
       </div>
     );
   }
@@ -91,7 +92,18 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   return (
     <div className="game">
       <section className="stage" aria-label="Roth Catha table">
-        <div className="status" role="status" aria-live="polite">{status}</div>
+        <div className="status-bar">
+          <div className="status" role="status" aria-live="polite">{status}</div>
+          <div className="status-tools">
+            <button type="button" className="btn small" disabled={!m.canUndo} onClick={() => { setEnding(false); m.undo(); }} title="Take back your last move (and the computer's reply)">↶ Take back</button>
+            {m.over ? null : ending ? (
+              <>
+                <button type="button" className="btn small danger" onClick={() => { setEnding(false); m.quit(); }}>End it, no result</button>
+                <button type="button" className="btn small" onClick={() => setEnding(false)}>Keep playing</button>
+              </>
+            ) : <button type="button" className="btn small" onClick={() => setEnding(true)}>End match</button>}
+          </div>
+        </div>
         <Table S={S} me={m.me} d={d} sel={sel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
@@ -104,7 +116,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       <aside>
         <Inspector def={focus} />
         <LogPanel log={m.log} />
-        <SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch />
+        <SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch record={m.record} />
         <RulesPanel />
       </aside>
       {m.over && showResult && S.result ? <ResultDialog r={S.result} me={m.me} onAgain={() => m.start()} onClose={() => setShowResult(false)} /> : null}

@@ -6,7 +6,7 @@ import type { Result, Side } from "../engine/engine";
 import { DECIDED, FACTION_TITLE, cardText, fighterStats, typeLine } from "../text";
 import { faceLines } from "../faceText";
 import { Rich } from "./Card";
-import type { Level, Setup } from "../useMatch";
+import type { Level, MatchRecord, Pace, Setup } from "../useMatch";
 import { deckProblems, defsOf, useSavedDecks } from "../decks";
 
 const LEVELS: { value: Level; label: string }[] = [
@@ -26,7 +26,15 @@ const BUILD_NOTE: Record<Level, string> = {
   expert: "Its deck was tuned over thousands of games.",
 };
 
-export function SetupPanel(props: { setup: Setup; onStart: (s: Setup) => void; inMatch: boolean; onChange: (s: Setup) => void }) {
+function RecordLine({ record }: { record: MatchRecord }) {
+  const rows = (["novice", "casual", "skilled", "expert"] as const).filter((l) => record[l]);
+  if (!rows.length) return null;
+  return (
+    <p className="note record">Your record: {rows.map((l) => `${l[0].toUpperCase()}${l.slice(1)} ${record[l].w}–${record[l].l}${record[l].d ? `–${record[l].d}` : ""}`).join(" · ")}</p>
+  );
+}
+
+export function SetupPanel(props: { setup: Setup; onStart: (s: Setup) => void; inMatch: boolean; onChange: (s: Setup) => void; record?: MatchRecord }) {
   const s = props.setup;
   const set = (p: Partial<Setup>) => props.onChange({ ...s, ...p });
   const [saved] = useSavedDecks();
@@ -53,7 +61,10 @@ export function SetupPanel(props: { setup: Setup; onStart: (s: Setup) => void; i
       <p className="note">{LEVELS.find((l) => l.value === s.level)!.label}: {LEVEL_NOTE[s.level]}.{(s.theirsDeck ?? "built") === "built" ? ` ${BUILD_NOTE[s.level]}` : ""}</p>
       <Segmented label="Your seat" value={s.seat} onChange={(v) => set({ seat: v })}
         options={[{ value: "first", label: "First" }, { value: "second", label: "Second" }, { value: "random", label: "Random" }] as { value: Setup["seat"]; label: string }[]} />
+      <Segmented label="The computer's pace" value={s.pace ?? "normal"} onChange={(v) => set({ pace: v })}
+        options={[{ value: "quick", label: "Quick" }, { value: "normal", label: "Normal" }, { value: "slow", label: "Slow" }] as { value: Pace; label: string }[]} />
       <button type="button" className="btn primary" onClick={() => props.onStart(s)}>{props.inMatch ? "Start a new match" : "Start the match"}</button>
+      {props.record ? <RecordLine record={props.record} /> : null}
     </div>
   );
 }
@@ -79,7 +90,9 @@ export function LogPanel({ log }: { log: string[] }) {
   return (
     <div className="panel">
       <p className="label">Moves</p>
-      <ol className="log" aria-live="polite">{log.slice(-40).map((l, i) => <li key={i}>{l}</li>)}</ol>
+      <ol className="log" aria-live="polite">
+        {log.slice(-60).map((l, i) => (l.startsWith("§ ") ? <li key={i} className="log-sec">{l.slice(2)}</li> : <li key={i}>{l}</li>))}
+      </ol>
     </div>
   );
 }

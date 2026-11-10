@@ -1,5 +1,6 @@
 // The pending decision as a prompt and a list of buttons (filtered by the card or spot you picked).
-import { toDeath, type Decision, type Option, type State } from "../engine/engine";
+import { useEffect, useMemo } from "react";
+import { applyDecision, cloneState, NARRATE, toDeath, type Decision, type Option, type State } from "../engine/engine";
 import { optionLabel } from "../text";
 
 export function prompt(S: State, d: Decision): string {
@@ -22,15 +23,42 @@ export function prompt(S: State, d: Decision): string {
   }
 }
 
+/** What a duel choice would do, from the rules' own arithmetic: "Ailill 5 → 2 · Shield 3 → 0". Drawing is left
+ *  alone (the card is unknown until drawn). */
+export function previewOf(S: State, d: Decision, i: number): string | null {
+  const o = d.options[i];
+  if ((d.kind !== "duel" && d.kind !== "drawn") || o.t === "draw" || (o.t === "drawn" && o.how !== "play")) return null;
+  const T = cloneState(S);
+  const lines: string[] = [];
+  NARRATE.lines = lines;
+  try { applyDecision(T, d, i, false); } catch { return null; } finally { NARRATE.lines = null; }
+  const bits = lines.join(" ").split(/(?<=\.)\s+/).filter((x) => x.includes("→")).map((x) => x.replace(/\.$/, "").replace(/^\d+ wounds?: /, "").replace(/^0 wounds: /, ""));
+  return bits.length ? bits.join(" · ") : null;
+}
+
 export function Choices(props: { S: State; d: Decision; filter: ((o: Option) => boolean) | null; onPick: (i: number) => void; onClear: () => void }) {
   const { S, d } = props;
   const items = d.options.map((o, i) => ({ o, i })).filter(({ o }) => !props.filter || props.filter(o));
+  const previews = useMemo(() => d.options.map((_, i) => previewOf(S, d, i)), [S, d]);
+  // 1–9 pick the first nine choices shown
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || (e.target as HTMLElement)?.closest?.("input, textarea, select")) return;
+      const k = Number(e.key);
+      if (k >= 1 && k <= 9 && items[k - 1]) { e.preventDefault(); props.onPick(items[k - 1].i); }
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  });
   return (
     <div className="choices">
       <p className="prompt">{prompt(S, d)}</p>
       <div className="choice-list">
         {items.map(({ o, i }) => (
-          <button key={i} type="button" className={`btn choice${o.t === "hold" ? " quiet" : ""}`} onClick={() => props.onPick(i)}>{optionLabel(S, d, o)}</button>
+          <button key={i} type="button" className={`btn choice${o.t === "hold" ? " quiet" : ""}`} onClick={() => props.onPick(i)}>
+            {items.indexOf(items.find((x) => x.i === i)!) < 9 ? <kbd className="choice-key" aria-hidden="true">{items.findIndex((x) => x.i === i) + 1}</kbd> : null}
+            <span className="choice-txt">{optionLabel(S, d, o)}{previews[i] ? <small className="choice-preview">{previews[i]}</small> : null}</span>
+          </button>
         ))}
         {props.filter ? <button type="button" className="btn quiet" onClick={props.onClear}>Show every choice</button> : null}
       </div>
