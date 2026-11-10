@@ -3,7 +3,7 @@
 // text box with a named ability and plain reminder text. "compact" is a small tile for the whole-wheel view.
 // Size comes from the font-size around it; when the text box would overflow, the card steps its text down.
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
-import type { CardDef, Effect, FighterDef } from "../engine/cards";
+import { reuseOf, type CardDef, type Effect, type FighterDef, type Reuse } from "../engine/cards";
 import { ALIGN, cardText, fighterStats, typeLine } from "../text";
 import { faceLines } from "../faceText";
 import { CardArt, Ogham } from "./Art";
@@ -170,12 +170,36 @@ function FullBody({ d }: { d: CardDef }) {
   );
 }
 
+/** The price of using a placed support again, in a few characters: "↻ not twice running", "rest", "1 Valour", "1 card". */
+function reuseShort(r: Reuse): { text: string; title: string }[] {
+  const out: { text: string; title: string }[] = [];
+  if (r.turns) out.push({ text: "↻", title: r.turns === 1 ? "Again: not two turns running" : `Again: ${r.turns} other actions between` });
+  if (r.rest) out.push({ text: r.rest === 1 ? "rest" : `${r.rest} rests`, title: `Again: after ${r.rest === 1 ? "a rest" : `${r.rest} rests`}` });
+  if (r.valour) out.push({ text: `${r.valour}♥`, title: `Again: pay ${r.valour} Valour` });
+  if (r.draw) out.push({ text: `${r.draw}▭`, title: `Again: discard ${r.draw === 1 ? "the top card" : `${r.draw} cards`} of your Reserve` });
+  return out;
+}
+
 function CompactBody({ d }: { d: CardDef }) {
   if (d.type === "unknown") return <span className="back" aria-hidden="true">᚛᚜</span>;
+  const f = d.type === "hero" || d.type === "champion" ? d : null;
+  const weak = f ? (f.weaknesses ?? [f.weakness]) : d.type === "monster" || d.type === "host" ? [d.weakness] : [];
+  const focus = f?.focus ?? (d.type === "host" ? d.focus : null);
   return (
     <>
-      <span className="c-name"><Icon name={kindIcon(d)} className="glyph" /><span>{d.name}</span></span>
+      <span className="c-head"><Icon name={kindIcon(d)} className="glyph" /><span className="c-name" title={d.name}>{d.type === "hero" && d.host ? d.name : splitName(d.name)[0]}</span></span>
       <span className="c-short"><Tokens d={d} /></span>
+      <span className="c-foot">
+        {focus ? <span className="c-chip" title={`Focus: ${focus}`}><Icon name={focus} className={`ink-${focus}`} />{focus}</span> : null}
+        {weak.filter((w): w is NonNullable<typeof w> => !!w).map((w) => <span key={w} className="c-chip weak" title={`Weak to ${w}`}>weak <Icon name={w} className={`ink-${w}`} /></span>)}
+        {d.type === "support" ? (
+          <>
+            <span className="c-chip" title={`${d.element} ${d.kind}`}>{d.element ? <Icon name={d.element} className={`ink-${d.element}`} /> : null}{d.kind}</span>
+            {reuseShort(reuseOf(d)).map((x) => <span key={x.title} className="c-chip again" title={x.title}>{x.text}</span>)}
+          </>
+        ) : null}
+        {d.type === "geis" || d.type === "oath" || d.type === "omen" || d.type === "attendant" ? <span className="c-rule">{d.text}</span> : null}
+      </span>
     </>
   );
 }

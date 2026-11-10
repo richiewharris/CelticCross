@@ -252,17 +252,36 @@ body.gm-roth .cf-back { flex: 1; border-radius: .45em; color: var(--bronze); bac
 body.gm-roth .cf-back svg { width: 100%; height: 100%; }
 body.gm-roth .card.full.t-unknown { background: #1a1410; }
 
-/* compact tile */
+/* compact tile: name, the card's numbers, then focus and weakness (a fighter) or element, kind and the price to use
+   it again (a support) */
 body.gm-roth .card.compact {
-  display: flex; flex-direction: column; gap: .25em; width: 100%; min-height: 4.6em; padding: .35em .45em .4em; border-radius: .6em;
-  background: linear-gradient(180deg, #2c241c, #211b15); border: .14em solid var(--al); border-top-width: .4em; line-height: 1.12; overflow: hidden;
+  display: flex; flex-direction: column; gap: .3em; width: 100%; min-height: 5.4em; padding: .4em .45em .45em; border-radius: .6em;
+  background: linear-gradient(180deg, #2c241c, #211b15); border: .14em solid var(--al); border-top-width: .45em; line-height: 1.12; overflow: hidden;
+  color: #efe6d2;
 }
-body.gm-roth .card.compact.theirs { background: linear-gradient(180deg, #241d1b, #1a1514); }
+body.gm-roth .card.compact.theirs { background: linear-gradient(180deg, #2a1f1d, #1b1514); border-style: solid; }
+body.gm-roth .card.compact.theirs .c-name { color: #e6cfc6; }
+body.gm-roth .card.compact.t-support.x-Fire { background: linear-gradient(180deg, #3a2018, #211b15 70%); }
+body.gm-roth .card.compact.t-support.x-Water { background: linear-gradient(180deg, #16303a, #1b1a17 70%); }
+body.gm-roth .card.compact.t-support.x-Wind { background: linear-gradient(180deg, #232f3c, #1c1a18 70%); }
+body.gm-roth .card.compact.t-support.x-Earth { background: linear-gradient(180deg, #33281a, #1f1a15 70%); }
+body.gm-roth .card.compact.t-support.x-Spirit { background: linear-gradient(180deg, #2a2236, #1c1820 70%); }
 body.gm-roth .card.compact.r-legendary { border-color: #e9c56a; border-top-color: var(--al); box-shadow: 0 0 .5em rgba(240, 190, 90, .4); }
-body.gm-roth .card.compact .c-name { font-weight: 600; font-size: .92em; display: flex; gap: .25em; align-items: flex-start; overflow-wrap: break-word; hyphens: auto; min-width: 0; }
-body.gm-roth .card.compact .glyph { color: color-mix(in srgb, var(--al) 70%, #fff); margin-top: .08em; }
-body.gm-roth .card.compact .c-short { display: flex; flex-wrap: wrap; gap: .2em; font-size: .72em; }
+body.gm-roth .card.compact .c-head { display: flex; gap: .3em; align-items: flex-start; min-width: 0; }
+body.gm-roth .card.compact .c-name { font-weight: 600; font-size: .95em; overflow-wrap: break-word; hyphens: auto; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.gm-roth .card.compact .glyph { color: color-mix(in srgb, var(--al) 70%, #fff); margin-top: .1em; }
+body.gm-roth .card.compact .c-short { display: flex; flex-wrap: wrap; gap: .25em; font-size: .9em; }
 body.gm-roth .card.compact .tok-pierce, body.gm-roth .card.compact .tok-scope { width: 1.8em; height: 1.8em; }
+body.gm-roth .card.compact .c-foot { display: flex; flex-wrap: wrap; gap: .2em .3em; font-size: .7em; color: #c9bba0; margin-top: auto; }
+body.gm-roth .card.compact .c-chip { display: inline-flex; align-items: center; gap: .15em; padding: .05em .35em; border-radius: 999px; background: rgb(255 255 255 / .07); white-space: nowrap; }
+body.gm-roth .card.compact .c-chip.weak { background: rgb(190 60 40 / .22); color: #f0c2b4; }
+body.gm-roth .card.compact .c-chip.again { background: transparent; border: 1px dashed rgb(255 255 255 / .25); }
+body.gm-roth .card.compact .c-chip .ico { color: #e8dcc4; }
+body.gm-roth .card.compact .ink-Fire { color: #ff9466; } body.gm-roth .card.compact .ink-Water { color: #6cc3dc; }
+body.gm-roth .card.compact .ink-Wind { color: #a9c3dc; } body.gm-roth .card.compact .ink-Earth { color: #d6ad62; }
+body.gm-roth .card.compact .ink-Spirit { color: #c7b0ea; }
+body.gm-roth .card.compact .c-rule { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 body.gm-roth .card.compact.t-unknown { align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #2a2119, #2a2119 6px, #231c15 6px, #231c15 12px); }
 body.gm-roth .card .back { color: var(--bronze); font-size: 1.2em; }
 body.gm-roth .card.r-legendary.compact .c-name::after { content: "\25C6"; color: #ffb066; margin-left: .2em; }
