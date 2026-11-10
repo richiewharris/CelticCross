@@ -13,17 +13,17 @@
   "gae_bolga",
   "sencha",
   "thunder",
-  "brown_bull",
+  "warp",
   "thunder",
   "g_giant",
-  "g_door",
+  "g_spear",
   "g_slow",
   "v_shieldwall",
-  "v_druid",
+  "v_stone",
   "o_emain",
   "o_truce",
   "o_culann",
-  "o_mantle"
+  "o_sleep"
  ],
  "connacht": [
   "ferdiad",
@@ -46,7 +46,7 @@
   "g_slow",
   "v_shieldwall",
   "v_watch",
-  "o_cruachan",
+  "o_keen",
   "o_herolight",
   "o_rath",
   "o_truce"
