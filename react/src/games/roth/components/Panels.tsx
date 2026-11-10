@@ -91,8 +91,9 @@ export function Inspector({ def }: { def: CardDef | null }) {
 /** What every icon on the table means. */
 const LEGEND: { title: string; rows: [string, string][] }[] = [
   { title: "Numbers", rows: [["strike", "Strike: wounds the enemy (Shield soaks it first)"], ["shield", "Shield: soaks wounds"], ["heal", "Heal: Valour back, up to 2 above the start"], ["valour", "Valour: what a fighter can lose before falling"], ["init", "Initiative: the higher acts first"], ["pierce", "Ignores Shield"]] },
-  { title: "Elements and kinds", rows: [["Fire", "Fire"], ["Wind", "Wind"], ["Earth", "Earth"], ["Water", "Water"], ["Spirit", "Spirit (the Slúagh): ignores Shield, steals 1"], ["Weapon", "Weapon"], ["Feat", "Feat"], ["Ally", "Ally"], ["Word", "Word"]] },
+  { title: "Elements and kinds", rows: [["Fire", "Fire"], ["Wind", "Wind"], ["Earth", "Earth"], ["Water", "Water"], ["Spirit", "Spirit (the Slúagh): passes Shield (not Armour or Blocks), steals 1"], ["Weapon", "Weapon"], ["Feat", "Feat"], ["Ally", "Ally"], ["Word", "Word"]] },
   { title: "On a hero", rows: [["geis", "Geis: forbids something; breaking it costs 2 Valour"], ["global", "Global geis: on every hero"], ["oath", "Oath: a boon with a vow"], ["omen", "Omen, turned on this hero"], ["champion", "A champion standing in"]] },
+  { title: "Defence", rows: [["armour", "Passive card: Armour, every blow less while it's placed"], ["block", "Reaction card: tap it when struck to block"], ["rest", "Rest: Shield 1, and the next Shield, Heal or Block +1 (+2 after two rests)"]] },
   { title: "Using a support again", rows: [["again", "Its price to use again:"], ["between", "not two turns running"], ["rest", "after a rest"], ["valour", "pay Valour"], ["card", "discard the top of your Reserve"]] },
 ];
 export function Legend() {
@@ -153,6 +154,8 @@ export function RulesPanel() {
         <li><b>The Ford.</b> Duels to the death: spots 1 and 7, then 4 and 10. Higher Initiative strikes first (a tie goes to the first player), then turns alternate until a hero falls. On your turn: <b>draw</b> the top card of your Reserve and play it, or put it aside and do something else; <b>use</b> one of your quadrant's supports (the first time free, then at the price on the card: a turn between, a rest, Valour, or a card off the Reserve); turn an omen, lay a geis or swear an oath from hand; call a champion; or <b>rest</b>.</li>
         <li><b>The Reserve.</b> Everything you set aside or didn't draw at the Muster, shuffled before the first duel. When it runs out, your discards are shuffled back in.</li>
         <li><b>Using a support.</b> Unwilling supports (Ulaid–Connachta, Sídhe–Fomóire) do nothing. A support forbidden by a geis or your oath needs breaking: 2 Valour first. +1 each for kinship, Focus, an element strong against the enemy's Focus, and the enemy's Weakness.</li>
+        <li><b>At the ford.</b> Every fighter starts its duel with its Valour <b>+3</b>, and there is no cap on healing. A rest <b>braces</b>: Shield 1, and your next Shield, Heal or Block is +1 (+2 after two rests in a row). After 20 turns the duel wears both down: each turn costs the side acting 1 Valour (2 after 40).</li>
+        <li><b>Defence.</b> <b>Shield</b> soaks wounds and is used up. <b>Passive</b> cards give <b>Armour</b> just by being placed beside the hero: every Strike against it is less, all duel. <b>Reaction</b> cards <b>Block</b>: when the enemy strikes, tap one to take its Block off that blow; it can block again after one of your own turns. What ignores Shield ignores Armour and Blocks too; a Spirit blow passes Shield but not Armour or Blocks.</li>
         <li><b>Winning.</b> Fell more enemy heroes. One each? The two survivors meet in a <b>final duel</b>, with the Valour they have left. A duel that runs 60 turns stops with both standing; then wounds decide.</li>
       </ul>
     </details>

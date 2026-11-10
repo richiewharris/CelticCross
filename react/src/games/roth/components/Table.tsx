@@ -97,7 +97,7 @@ export function Table(props: {
     const target = o.target !== undefined ? `on ${S.board[o.target]?.def.name ?? "spot " + (o.target + 1)}` : undefined;
     return (
       <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"}
-        variant={mine && !small ? "full" : "compact"} faceDown={mine && !o.faceUp} badge={o.faceUp ? target : mine && !o.faceUp && small ? "face down" : undefined} onFocusCard={props.onFocusCard}
+        variant={mine && !small ? "full" : "compact"} faceDown={mine && !o.faceUp} badge={o.faceUp ? target : undefined} onFocusCard={props.onFocusCard}
         playable={mine && playable.has(o.card.uid)} selected={sel?.uid === o.card.uid}
         onClick={mine && playable.has(o.card.uid) ? () => props.onCard!(o.card.uid) : undefined} />
     );

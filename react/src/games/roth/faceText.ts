@@ -25,7 +25,7 @@ export const FACE: Record<string, Face> = {
   conchobar: { ability: "King's due", text: "Once per duel, he may use an unused support from your other hero's quadrant." },
   emer: { ability: "Six gifts", text: "When she rests, {heal} **Heal 2**." },
   medb: { ability: "Queen of Cruachan", text: "**Kinship** gives her **+2**, not +1, when she uses a support of her own people." },
-  ferdiad: { ability: "Horn-skin", text: "Starts each duel with {shield} **Shield 2**." },
+  ferdiad: { ability: "Horn-skin", text: "{armour} **Armour 1**: every Strike against him is **1** less, all duel (what ignores Shield ignores it)." },
   fergus: { ability: "Old oath", text: "His Strikes are **−1** against a hero whose geis is **Hound**." },
   ailill: { ability: "Pillow-talk", text: "His Heals **+1**." },
   lugh: { ability: "Samildánach", text: "Every support counts as his **Focus**, so each one gets **+1**." },
@@ -235,8 +235,10 @@ export const FACE: Record<string, Face> = {
 const EFF_WORD: Record<Effect["type"], string> = { strike: "Strike", heal: "Heal", shield: "Shield" };
 /** The support's effects as words, built from its numbers: "{strike} **Strike 2**, ignoring Shield". */
 export function effectLine(d: SupportDef): string {
+  if (d.use === "passive") return `{armour} **Armour ${d.armour ?? 0}**, passive: while it is placed beside your hero, every Strike against the hero is **${d.armour ?? 0}** less (what ignores Shield ignores it).`;
+  if (d.use === "reaction") return `{block} **Block ${d.effects[0]?.n ?? 0}**, a reaction: when the enemy strikes, tap it to take **${d.effects[0]?.n ?? 0}** off that blow (+1 kinship, +1 Focus, +1 or +2 if your hero has just rested).`;
   const parts = d.effects.map((e) => `{${e.type}} **${EFF_WORD[e.type]} ${e.n}**`);
-  if (d.element === "Spirit") return parts.join(" and ") + " of **Spirit**: it ignores Shield and steals {heal} **1** when it wounds.";
+  if (d.element === "Spirit") return parts.join(" and ") + " of **Spirit**: it passes Shield (not Armour or Blocks) and steals {heal} **1** when it wounds.";
   return parts.join(" and ") + (d.pierce ? ", **ignoring Shield**." : ".");
 }
 const KIND_PLURAL: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };
@@ -367,7 +369,9 @@ export function faceLines(d: CardDef): FaceLine[] {
       push("text", `${abLine(d.ab) || "No quality of its own."}${d.hybrid ? ` **Hybrid**: each of the host's {Spirit} Spirit blows may land as {${d.hybrid}} **${d.hybrid}** instead (element bonuses count; Shield soaks it; nothing stolen).` : ""} Weak to {${d.weakness}} **${d.weakness}**, but the host takes it on only if the host or another monster shares it.`);
       push("lore", f.lore); break;
     case "support":
-      push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore); push("reuse", reuseLine(reuseOf(d))); break;
+      push("effect", effectLine(d)); push("ability", f.ability); push("text", f.text); push("lore", f.lore);
+      // in a duel to the death: passive cards work by being placed; reactions are tapped against a blow
+      push("reuse", d.use === "passive" ? "Passive: nothing to use, it works while placed beside its hero." : d.use === "reaction" ? "Reaction: tap it when struck. Again: after one of your own turns." : reuseLine(reuseOf(d))); break;
     case "geis":
       push("rule", forbidLine(d.forbids, d.scope === "global")); push("ability", f.ability); push("text", f.text); push("lore", f.lore); push("break", BREAK); break;
     case "oath":

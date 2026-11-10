@@ -96,7 +96,9 @@ function Tokens({ d }: { d: CardDef }) {
     case "support":
       return (
         <>
-          {d.effects.map((e, i) => <Token key={i} kind={e.type} n={e.n} title={`${EFF_TITLE[e.type]} ${e.n}`} />)}
+          {d.use === "passive" ? <span className="tok tok-use passive" title={`Passive: Armour ${d.armour}`}><Icon name="armour" /><b>{d.armour}</b></span>
+            : d.use === "reaction" ? <span className="tok tok-use reaction" title={`Reaction: Block ${d.effects[0]?.n}`}><Icon name="block" /><b>{d.effects[0]?.n}</b></span>
+            : d.effects.map((e, i) => <Token key={i} kind={e.type} n={e.n} title={`${EFF_TITLE[e.type]} ${e.n}`} />)}
           {d.pierce ? <span className="tok tok-pierce" title="Ignores Shield"><Icon name="pierce" /></span> : null}
         </>
       );
@@ -196,7 +198,8 @@ function CompactBody({ d }: { d: CardDef }) {
         {d.type === "support" ? (
           <>
             <span className="c-chip" title={`${d.element} ${d.kind}`}>{d.element ? <Icon name={d.element} className={`ink-${d.element}`} /> : null}{d.kind}</span>
-            {reuseShort(reuseOf(d)).length ? (
+            {d.use ? <span className={`c-chip use ${d.use}`}>{d.use === "passive" ? "Passive" : "Reaction"}</span> : null}
+            {!d.use && reuseShort(reuseOf(d)).length ? (
               <span className="c-chip again" title={reuseShort(reuseOf(d)).map((x) => x.title).join("; ")}>
                 <Icon name="again" />{reuseShort(reuseOf(d)).map((x) => <span key={x.icon} className="c-price"><Icon name={x.icon} />{x.n ?? ""}</span>)}
               </span>

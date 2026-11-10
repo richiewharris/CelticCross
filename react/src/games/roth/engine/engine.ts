@@ -16,7 +16,9 @@ export interface Rules {
   /** The Aos Sídhe are veiled: the first Strike against each of their fighters each duel −1. */
   veiled?: boolean;
   valourBonus: number;
-  /** Heals can raise a hero this far above its starting Valour (printed + boons). */
+  /** Duels to the death: every fighter enters the ford with this much more Valour (default 3). */
+  fordValour?: number;
+  /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
   geisBreakCost: number;
   oathBreakCost: number;
@@ -107,6 +109,14 @@ export interface CombatState {
   lastUse: number[];
   /** Per board spot: rests its side has taken since it was last used. */
   restsSince: number[];
+  /** Duels to the death: rests in a row by each side (0–2), for the next Shield or Heal. */
+  rested?: number[];
+  /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
+  armour?: number[];
+  /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
+  pending?: Option | null;
+  /** Block to take off the next Strike against each side (set by a reaction, used once). */
+  block?: number[];
   /** Actions each side has taken this match. */
   acts: number[];
   /** The card the side to act has just drawn and not yet played or put aside. */
@@ -211,8 +221,10 @@ export type Option =
   /** ...then play it (keep it, for a hero or champion: into your hand) or put it aside on the discard. */
   | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element }
   /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
-  | { t: "duelCard"; uid: number; target?: number };
-export type DecisionKind = "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn";
+  | { t: "duelCard"; uid: number; target?: number }
+  /** A reaction: tap the Block card at `spot` against the blow coming (−1: take it). */
+  | { t: "block"; spot: number };
+export type DecisionKind = "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn" | "block";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
 // ---------------------------------------------------------------- helpers
@@ -373,7 +385,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -677,7 +689,7 @@ export function newCombat(S: State): CombatState {
     felled: [[false, false], [false, false], [false, false]], endValour: [[0, 0], [0, 0], [0, 0]], startV: [[0, 0], [0, 0], [0, 0]],
     cap: [0, 0], init: [0, 0], hit: [false, false], champ: [null, null], champs,
     hostAdj: [null, null, null, null], sacrificed: [false, false], summoned: [false, false],
-    uses: Array(12).fill(0), lastUse: Array(12).fill(-99), restsSince: Array(12).fill(0), acts: [0, 0], drawn: null, drew: false,
+    uses: Array(12).fill(0), lastUse: Array(12).fill(-99), restsSince: Array(12).fill(0), rested: [0, 0], acts: [0, 0], drawn: null, drew: false,
     endChamp: [[null, null], [null, null], [null, null]],
   };
   startDuel(S, C, 0, S.stats);
@@ -696,6 +708,9 @@ function startCombat(S: State) {
 }
 
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
+  C.rested = [0, 0]; // a new duel: no rests yet
+  C.armour = [0, 0];
+  C.pending = null; C.block = [0, 0];
   C.duel = d;
   // the backwards round fights the second pair of heroes first
   C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
@@ -725,9 +740,9 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   for (const p of [0, 1] as Side[]) {
     const fx = heroFx(S, C, p);
     const oath = activeOath(S, C, p);
-    let v = h[p].valour + R.valourBonus + (oath?.boon.valour ?? 0);
+    let v = h[p].valour + R.valourBonus + (toDeath(S) ? R.fordValour ?? FORD_VALOUR : 0) + (oath?.boon.valour ?? 0);
     for (const e of fx) if (e.startValour && e.startValour.duel === d) v += e.startValour.n;
-    C.cap[p] = v + R.capOver;
+    C.cap[p] = v + (toDeath(S) ? NO_CAP : R.capOver);
     // the dead do not sleep: nothing lowers a Slúagh host's Initiative below its own
     const sleepless = h[p].type === "hero" && !!h[p].host;
     const initFx = sumFx(fx, (e) => (sleepless ? Math.max(0, e.initMod ?? 0) : e.initMod ?? 0));
@@ -746,6 +761,15 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     C.init[p] = init;
     sv[d][p] = Math.max(0, v);
     C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart);
+    if (toDeath(S)) {
+      // passive cards beside the hero: their Armour holds from the start (the highest counts)
+      let arm = h[p].ab.armour ?? 0;
+      for (const sp of [C.hs[p] + 1, C.hs[p] + 2]) {
+        const c = S.board[sp]?.def;
+        if (c?.type === "support" && c.use === "passive" && !unwilling(h[p].alignment, c.alignment)) arm = Math.max(arm, c.armour ?? 0);
+      }
+      C.armour![p] = arm;
+    }
     if (h[p].ab.shapeShift) todo.push(p); // each hero fights one duel, so this is once per match
   }
   C.startV = sv;
@@ -840,11 +864,62 @@ export function takeTop(S: State, p: Side): Card | null {
   return P.reserve.shift()!;
 }
 
+/** The Block cards side b could tap now: reactions beside its hero, willing, and not used since its own last turn. */
+export function blockSpots(S: State, C: CombatState, b: Side): number[] {
+  if (!toDeath(S)) return [];
+  const h = fighter(S, C, b);
+  const out: number[] = [];
+  for (const sp of [C.hs[b] + 1, C.hs[b] + 2]) {
+    const c = S.board[sp]?.def;
+    if (c?.type !== "support" || c.use !== "reaction" || unwilling(h.alignment, c.alignment)) continue;
+    if (C.uses[sp] && C.acts[b] <= C.lastUse[sp]) continue; // like a Weapon: it needs one of your turns between
+    out.push(sp);
+  }
+  return out;
+}
+/** Would this option strike the defender with a blow a Block can meet (not one that ignores Shield)? */
+function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
+  let s: SupportDef | null = null;
+  if (o.t === "duel" && o.act === "use") s = S.board[o.spot]!.def as SupportDef;
+  else if (o.t === "drawn" && o.how === "play" && C.drawn?.def.type === "support") s = C.drawn.def;
+  if (!s || !s.effects.some((e) => e.type === "strike")) return false;
+  const h = fighter(S, C, a);
+  if (unwilling(h.alignment, s.alignment)) return false;
+  if (s.pierce) return false; // a Spirit blow passes Shield, but a Block or Armour still meets it
+  return true;
+}
+/** What a Block card takes off the blow: its Block, +1 kinship, +1 Focus, and +1 or +2 if its hero has rested. */
+export function blockValue(S: State, C: CombatState, b: Side, spot: number): number {
+  const s = S.board[spot]!.def as SupportDef;
+  const h = fighter(S, C, b);
+  let n = s.effects.find((e) => e.type === "shield")?.n ?? 0;
+  if (kin(s.alignment, h.alignment)) n += h.ab.kinBonus ?? 1;
+  if (h.ab.focusAny || h.focus === s.element || h.focus === s.kind) n += 1;
+  return n + (C.rested?.[b] ?? 0);
+}
+/** A hero still in hand heals its side 1 as a guest, then leaves the hand. */
+function guestHeals(S: State, C: CombatState, a: Side, uid: number, stats: MatchStats | null) {
+  const gs = C.guests.slice();
+  gs[a] = C.guests[a].filter((x) => x.uid !== uid);
+  C.guests = gs;
+  C.guestUsed[a] = true;
+  heal(S, C, a, 1);
+  if (stats) stats.guests++;
+  if (C === S.combat) { // real match: the guest leaves the hand
+    const P = S.players[a];
+    const j = P.hand.findIndex((c) => c.uid === uid);
+    if (j >= 0) P.discard.push(P.hand.splice(j, 1)[0]);
+  }
+}
+/** Set while a pending blow is being carried out, so it isn't paused again. */
+const RESUMING = { on: false };
+
 export function duelActs(S: State, C: CombatState, a: Side): Option[] {
   const h = fighter(S, C, a);
   const acts: Option[] = [];
   for (const { spot } of usableSpots(S, C, a)) {
     const s = S.board[spot]!.def as SupportDef;
+    if (toDeath(S) && s.use) continue; // passive cards work by being there; reactions wait for the enemy's blow
     if (unwilling(h.alignment, s.alignment)) { acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "normal" }); continue; }
     // a host with hybrid monsters may strike with a Spirit support as Spirit, or as any of its hybrids
     const ways: (Element | undefined)[] = [undefined];
@@ -1007,6 +1082,7 @@ export function combatDecision(S: State, C: CombatState): Decision | null {
     return { kind: "focus", player: p, options: opts };
   }
   const a = actorOf(C);
+  if (C.pending) return { kind: "block", player: (1 - a) as Side, options: [...blockSpots(S, C, (1 - a) as Side).map((spot) => ({ t: "block" as const, spot })), { t: "block", spot: -1 }] };
   if (C.drawn) return { kind: "drawn", player: a, options: drawnOptions(S, C, a, C.drawn) };
   const acts = duelActs(S, C, a);
   const options = acts.slice();
@@ -1050,6 +1126,14 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   }
 }
 
+/** Duels to the death: extra Valour at the ford, no heal cap, and what a rest gives. */
+export const FORD_VALOUR = 3;
+const NO_CAP = 1000;
+export const REST_SHIELD = 1;
+/** Valour lost at the end of each turn of a long duel: 1 after the 20th turn, 2 after the 40th. */
+export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 ? 1 : 0);
+/** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
+const RESTED_NOW = { on: false };
 /** Set while a placed support is being used again: a Spirit blow steals only the first time a card is used. */
 const REUSING = { on: false };
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
@@ -1057,7 +1141,8 @@ function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
   return t === "strike" && s.element === "Water" && h.type === "hero" && h.alignment === "Merrow" && e.type === "hero" && !!e.host;
 }
 
-export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0) {
+/** `pierce`: ignores Shield, Armour and Blocks; `spirit`: a Spirit blow, which passes Shield but not Armour or Blocks. */
+export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false) {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
@@ -1119,18 +1204,24 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const ward = (e.ab.firstHitSoak ?? 0) + veil + sumFx(heroFx(S, C, b), (x) => x.firstHitSoak);
     n = Math.max(0, n - (toDeath(S) ? Math.min(2, ward) : ward));
   }
-  const soak = pierce ? 0 : Math.min(C.shield[b], n);
+  // a Block meets this blow (once)
+  const blk = !pierce ? C.block?.[b] ?? 0 : 0;
+  if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
+  if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); n = Math.max(0, n - blk); }
+  // Armour takes its share off every blow (what ignores Shield ignores it too)
+  const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
+  if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); n = Math.max(0, n - arm); }
+  const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
   const dmg = n - soak;
   C.valour[b] -= dmg;
   const dr = (ab.drain ?? 0) + drain;
-  // in a duel to the death, what a blow steals back never lifts a hero above the Valour it started the duel with
-  if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr, toDeath(S) ? Math.min(C.cap[a], C.startV[C.duel][a]) : undefined);
+    if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
   // the uninvited guest: wound it and pay for it
   if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
-    const sh = pierce ? " It ignores Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
+    const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
     say(`${h.name} strikes: ${shown}.${sh} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}`);
   }
   const F = S.stats?.fx;
@@ -1224,7 +1315,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     if (kin(s.alignment, h0.alignment)) F.kinHits[a]++;
     const f0 = focusOf(C, a, h0);
     if (h0.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind || (s.spiritAs && f0 === "Spirit")))) F.focusHits[a]++;
-    if (s.effects[0].type === "strike" && s.element) {
+    if (s.effects[0]?.type === "strike" && s.element) {
       const ef = focusOf(C, b, e0);
       if (isElement(ef) && beats(s.element, ef)) F.beatsHits[a]++;
       if (isElement(s.element) && effWeakness(S, b, e0).includes(s.element)) F.weakHits[a]++;
@@ -1250,15 +1341,27 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     }
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce || (s.element === "Spirit" && e.alignment !== "Merrow"), (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0));
-    else if (eff.type === "heal") heal(S, C, a, n);
-    else {
-      const add = Math.max(0, n + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
+    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow");
+    else if (eff.type === "heal") {
+      const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
+      if (rb && NARRATE.lines) say(`+${rb} rested.`);
+      heal(S, C, a, n + rb);
+    } else {
+      const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
+      if (rb && NARRATE.lines) say(`+${rb} rested.`);
+      const add = Math.max(0, n + rb + sumFx(boardFx(S), (x) => x.shieldMod) + sumFx(heroFx(S, C, a), (x) => x.shield));
       if (NARRATE.lines) {
         const bits = [...namedBoardFx(S).filter((x) => x.fx.shieldMod).map((x) => `${sgn(x.fx.shieldMod!)} ${x.name}`), ...namedHeroFx(S, C, a).filter((x) => x.fx.shield).map((x) => `${sgn(x.fx.shield!)} ${x.name}`)];
         say(`${h.name} raises Shield: ${n}${bits.length ? " " + bits.join(" ") + ` = ${add}` : ""}. Shield ${C.shield[a]} → ${C.shield[a] + add}.`);
       }
       C.shield[a] += add;
+    }
+  }
+  if (s.armour && toDeath(S)) {
+    const cur = C.armour?.[a] ?? 0;
+    if (s.armour > cur) {
+      C.armour = [C.armour?.[0] ?? 0, C.armour?.[1] ?? 0]; C.armour[a] = s.armour;
+      if (NARRATE.lines) say(`${h.name} puts on Armour ${s.armour}: every Strike against ${h.name} ${s.armour} less.`);
     }
   }
   if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
@@ -1271,6 +1374,27 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
 }
 
 export function combatApply(S: State, C: CombatState, o: Option, stats: MatchStats | null) {
+  if (o.t === "block") {
+    const b = (1 - actorOf(C)) as Side;
+    if (o.spot >= 0) {
+      const v = blockValue(S, C, b, o.spot);
+      C.block = [C.block?.[0] ?? 0, C.block?.[1] ?? 0]; C.block[b] = v;
+      C.uses[o.spot]++; C.lastUse[o.spot] = C.acts[b];
+      if (NARRATE.lines) say(`${fighter(S, C, b).name} blocks with ${S.board[o.spot]!.def.name}: the blow ${v} less.`);
+    }
+    const p = C.pending!;
+    C.pending = null;
+    RESUMING.on = true;
+    try { combatApply(S, C, p, stats); } finally { RESUMING.on = false; }
+    return;
+  }
+  // a blow the defender could block: wait for their answer first (a guest's heal happens now, so the paused blow
+  // carries nothing from the attacker's hand)
+  if (!RESUMING.on && toDeath(S) && C.stage === "turns" && blockable(S, C, actorOf(C), o) && blockSpots(S, C, (1 - actorOf(C)) as Side).length) {
+    if (o.t === "duel" && o.guest >= 0) { guestHeals(S, C, actorOf(C), o.guest, stats); o = { ...o, guest: -1 }; }
+    C.pending = o;
+    return;
+  }
   if (o.t === "focus") {
     const p = C.focusTodo[0];
     C.focusTodo = C.focusTodo.slice(1);
@@ -1347,11 +1471,13 @@ function callChampion(S: State, C: CombatState, a: Side, card: Card, stats: Matc
     // wounds so far stay counted: the duel's start becomes (Valour already lost) + the champion's Valour
     const sv = C.startV.slice();
     sv[d] = sv[d].slice();
-    sv[d][a] = Math.max(0, C.startV[d][a] - C.valour[a]) + def.valour + S.rules.valourBonus;
+    const cv = def.valour + S.rules.valourBonus + (toDeath(S) ? S.rules.fordValour ?? FORD_VALOUR : 0);
+    sv[d][a] = Math.max(0, C.startV[d][a] - C.valour[a]) + cv;
     C.startV = sv;
-    C.valour[a] = def.valour + S.rules.valourBonus;
-    C.cap[a] = C.valour[a] + S.rules.capOver;
+    C.valour[a] = cv;
+    C.cap[a] = C.valour[a] + (toDeath(S) ? NO_CAP : S.rules.capOver);
     C.shield[a] = def.ab.shieldStart ?? 0;
+    if (toDeath(S)) { C.armour = [C.armour?.[0] ?? 0, C.armour?.[1] ?? 0]; C.armour[a] = def.ab.armour ?? 0; }
     C.nextStrike[a] = 0; C.struck[a] = false; C.hit[a] = false;
     const f = C.focus.slice(); f[a] = null; C.focus = f;
     if (stats) { stats.champions++; stats.championsBySide[a]++; }
@@ -1391,20 +1517,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
   }
   if (o.t !== "duel") throw new Error("bad combat option");
   const a = actorOf(C);
-  if (o.guest >= 0) {
-    const g = C.guests[a].find((x) => x.uid === o.guest)!;
-    const gs = C.guests.slice();
-    gs[a] = C.guests[a].filter((x) => x.uid !== o.guest);
-    C.guests = gs;
-    C.guestUsed[a] = true;
-    heal(S, C, a, 1);
-    if (stats) stats.guests++;
-    if (C === S.combat) { // real match: the guest leaves the hand
-      const P = S.players[a];
-      const j = P.hand.findIndex((c) => c.uid === g.uid);
-      if (j >= 0) P.discard.push(P.hand.splice(j, 1)[0]);
-    }
-  }
+  if (o.guest >= 0) guestHeals(S, C, a, o.guest, stats);
   if (o.act === "use" && toDeath(S) && unwilling(fighter(S, C, a).alignment, (S.board[o.spot]!.def as SupportDef).alignment)) {
     // in a duel to the death an unwilling support is cast out: it goes back to its owner's discards, and the hero
     // draws in its place (and must play or put aside what comes)
@@ -1446,7 +1559,18 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
     const ab = fighter(S, C, a).ab;
     if (C.valour[a] > 0 && ab.restHeal && !crowActive(S, C)) heal(S, C, a, ab.restHeal);
     if (C.valour[a] > 0 && ab.restShield) C.shield[a] += ab.restShield;
-    if (toDeath(S)) for (const hs of heroSpotsOf(a)) for (const sp of [hs + 1, hs + 2]) C.restsSince[sp]++;
+    if (toDeath(S)) {
+      for (const hs of heroSpotsOf(a)) for (const sp of [hs + 1, hs + 2]) C.restsSince[sp]++;
+      // a rest braces the hero: Shield 1, and the next Shield or Heal is stronger for each rest in a row (up to 2)
+      if (C.valour[a] > 0) {
+        C.shield[a] += REST_SHIELD;
+        const r = C.rested ?? [0, 0];
+        C.rested = [r[0], r[1]];
+        C.rested[a] = Math.min(2, r[a] + 1);
+        if (NARRATE.lines) say(`${fighter(S, C, a).name} rests and braces: Shield ${C.shield[a] - REST_SHIELD} → ${C.shield[a]}; the next Shield or Heal +${C.rested[a]}.`);
+      }
+      RESTED_NOW.on = true;
+    }
   }
   endTurn(S, C, stats);
 }
@@ -1475,7 +1599,17 @@ function useSupport(S: State, C: CombatState, a: Side, s: SupportDef, mode: Duel
 /** A turn is over: count it, and end the duel if a hero has fallen (or the duel has run its length). */
 function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
   const a = actorOf(C);
-  if (toDeath(S)) { C.acts[a]++; C.drew = false; }
+  if (toDeath(S)) {
+    C.acts[a]++; C.drew = false;
+    if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
+    RESTED_NOW.on = false;
+    // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)
+    const w = weariness(C.turn);
+    if (w && C.valour[a] > 0) {
+      C.valour[a] -= w;
+      if (NARRATE.lines) say(`${fighter(S, C, a).name} is weary: −${w} Valour.`);
+    }
+  }
   C.turn++;
   const lim = toDeath(S) ? S.rules.maxTurns ?? 60 : 4;
   if (C.valour[0] <= 0 || C.valour[1] <= 0 || C.turn >= lim) endDuel(S, C, stats);
@@ -1647,6 +1781,12 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (p === 1 && C.duel === 0) return "the second player may call a champion only in the second duel";
       return null;
     }
+    case "block": {
+      const C = S.combat;
+      if (S.phase !== "combat" || !C || !C.pending || actorOf(C) === p) return "no blow to block";
+      const d = combatDecision(S, C);
+      return d && d.player === p && d.options.some((x) => sameOption(x, o)) ? null : "that can't block now";
+    }
     case "draw": case "drawn": case "duelCard": {
       const C = S.combat;
       if (S.phase !== "combat" || !C || C.stage !== "turns" || actorOf(C) !== p) return "not your duel turn";
@@ -1809,6 +1949,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
     case "draw":
     case "drawn":
     case "duelCard":
+    case "block":
       combatApply(S, S.combat!, o, st);
       return;
   }

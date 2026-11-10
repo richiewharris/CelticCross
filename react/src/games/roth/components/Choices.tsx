@@ -1,6 +1,6 @@
 // The pending decision as a prompt and a list of buttons (filtered by the card or spot you picked).
 import { useEffect, useMemo } from "react";
-import { applyDecision, cloneState, NARRATE, toDeath, type Decision, type Option, type State } from "../engine/engine";
+import { applyDecision, cloneState, nextDecision, NARRATE, toDeath, type Decision, type Option, type State } from "../engine/engine";
 import { optionLabel } from "../text";
 
 export function prompt(S: State, d: Decision): string {
@@ -18,6 +18,11 @@ export function prompt(S: State, d: Decision): string {
     case "duel": return toDeath(S)
       ? `${S.combat!.duel === 2 ? "The final duel" : `Duel ${S.combat!.duel + 1}`}, turn ${S.combat!.turn + 1}, to the death: draw from your Reserve, use a support (again, at its price), turn an omen, lay a geis, swear an oath, or rest.${S.combat!.drew ? " You have put a drawn card aside: choose something else." : ""}`
       : `Duel ${S.combat!.duel + 1}${S.reversed ? " (backwards round)" : ""}, turn ${S.combat!.turn + 1} of 4: use a support, rest, or call a champion.`;
+    case "block": {
+      const p = S.combat!.pending;
+      const what = p?.t === "duel" && p.act === "use" ? S.board[p.spot]?.def.name : p?.t === "drawn" ? S.combat!.drawn?.def.name : null;
+      return `The enemy strikes${what ? ` with ${what}` : ""}. Block it with a Reaction card, or take the blow?`;
+    }
     case "drawn": {
       const c = S.combat!.drawn?.def;
       const keep = c?.type === "hero" || c?.type === "champion";
@@ -31,12 +36,17 @@ export function prompt(S: State, d: Decision): string {
  *  alone (the card is unknown until drawn). */
 export function previewOf(S: State, d: Decision, i: number): string | null {
   const o = d.options[i];
-  if ((d.kind !== "duel" && d.kind !== "drawn") || o.t === "draw" || (o.t === "drawn" && o.how !== "play")) return null;
+  if ((d.kind !== "duel" && d.kind !== "drawn" && d.kind !== "block") || o.t === "draw" || (o.t === "drawn" && o.how !== "play")) return null;
   const T = cloneState(S);
   const lines: string[] = [];
   NARRATE.lines = lines;
-  try { applyDecision(T, d, i, false); } catch { return null; } finally { NARRATE.lines = null; }
-  return summarize(lines);
+  try {
+    applyDecision(T, d, i, false);
+    // a blow the enemy could block: preview it as taken
+    for (let k = 0; k < 3 && T.combat?.pending; k++) { const d2 = nextDecision(T)!; applyDecision(T, d2, d2.options.length - 1, false); }
+  } catch { return null; } finally { NARRATE.lines = null; }
+  const sum = summarize(lines);
+  return d.kind === "block" && sum === "no change" ? "no wounds: it stops the blow" : sum;
 }
 
 /** The changes in a move's arithmetic, briefly: "Ailill 5 → 2 · Shield 3 → 0". Null if nothing changed hands. */

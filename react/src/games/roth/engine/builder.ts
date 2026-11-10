@@ -92,7 +92,7 @@ function attendantScore(a: AttendantDef, sups: SupportDef[], heroes: FighterDef[
     const el = a.mode === "reforge" ? s.element : a.to ?? s.element;
     const kind = a.mode === "reforge" ? a.toKind ?? s.kind : s.kind;
     v += 1.2 * (focus(el, kind) - focus(s.element, s.kind));
-    if (a.mode === "channel" && s.effects[0].type === "strike") v += 0.35;
+    if (a.mode === "channel" && s.effects[0]?.type === "strike") v += 0.35;
     if (a.mode === "reforge" && s.kind === "Weapon") v += 0.25;
   }
   return a.scope === "global" ? 0.6 * v : v;

@@ -41,6 +41,7 @@ export interface HeroAb {
   restHeal?: number; // Heal n when it rests
   restShield?: number; // Shield n when it rests
   shieldStart?: number; // Shield n at the start of each duel
+  armour?: number; // Armour n from the start of each duel: every Strike against it n less
   firstHitSoak?: number; // the first Strike against it each duel −n
   capTaken?: number; // no Strike against it above n
   drain?: number; // when its Strike wounds, Heal n
@@ -103,6 +104,10 @@ export interface SupportDef {
   firstBonus?: number; // primary +n if it is the first support used in the duel
   vsBig?: number; // primary Strike +n against a hero of printed Valour 5+
   pierce?: boolean; // its Strikes ignore Shield
+  armour?: number; // Armour n: every Strike against the hero n less for the rest of the duel (doesn't add up; the highest counts)
+  /** How it's used in a duel to the death: an action on your turn (the default), passive (works just by being placed
+   *  beside the hero), or a reaction (tapped when the enemy strikes, to block that blow). */
+  use?: "passive" | "reaction";
   drain?: number; // if its Strike wounds, Heal n
   /** Set only on a support seen through a Channel attendant: its primary Strike +n (and the user pays n Valour). */
   channel?: number;
@@ -292,7 +297,7 @@ export const HEROES: Record<string, HeroDef> = {
   emer: hero("emer", "Emer", "Ulaid", C, 4, 2, "Word", "Fire", "Hospitality", "Six gifts: when she rests, Heal 2", { restHeal: 2 }),
   // Connachta: Earth, weapons, attrition
   medb: hero("medb", "Medb", "Connachta", L, 4, 4, "Earth", "Water", "Bounty", "Queen of Cruachan: kinship gives her +2, not +1", { kinBonus: 2 }),
-  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Shield 2 at the start of each duel", { shieldStart: 2 }),
+  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Armour 1 (every Strike against him 1 less)", { armour: 1 }),
   fergus: hero("fergus", "Fergus mac Róich", "Deorad", R, 5, 3, "Weapon", "Wind", "Feast", "Old oath: Strikes vs Hound −1", { vsTag: { tag: "Hound", n: -1 } }),
   ailill: hero("ailill", "Ailill mac Máta", "Connachta", C, 5, 3, "Word", "Fire", "Hoard", "Pillow-talk: his Heals +1", { healBonus: 1 }),
   // Sídhe (Tuatha Dé Danann): Wind and Word, many-skilled, healers
@@ -343,13 +348,13 @@ const H = (n: number): Effect => ({ type: "heal", n });
 const Sh = (n: number): Effect => ({ type: "shield", n });
 
 export const SUPPORTS: Record<string, SupportDef> = {
-  salmon: sup("salmon", "Salmon leap", "Water", "Feat", "Unaligned", C, [Sh(2)], "Shield 2"),
+  salmon: sup("salmon", "Salmon leap", "Water", "Feat", "Unaligned", C, [Sh(2)], "Reaction: Block 2", { use: "reaction" }),
   // Ulaid
   gae_bolga: sup("gae_bolga", "Gáe Bolga", "Water", "Weapon", "Ulaid", L, [S(2)], "Strike 2, ignores Shield; Strike 4 if Cú Chulainn uses it", { forHero: { id: "cu", n: 4 }, pierce: true }),
   thunder: sup("thunder", "Thunder feat", "Fire", "Feat", "Ulaid", C, [S(3)], "Strike 3; ignores Shield", { pierce: true }),
   warp: sup("warp", "The warp-spasm", "Fire", "Feat", "Ulaid", R, [S(4)], "Strike 4; your hero loses 1", { selfLoss: 1 }),
   sling: sup("sling", "Sling of Emain", "Wind", "Weapon", "Ulaid", C, [S(2)], "Strike 2; +1 if it is the first support used in the duel", { firstBonus: 1 }),
-  ochain: sup("ochain", "Ochain, the roaring shield", "Wind", "Weapon", "Ulaid", R, [Sh(2)], "Shield 2"),
+  ochain: sup("ochain", "Ochain, the roaring shield", "Wind", "Weapon", "Ulaid", R, [], "Passive: Armour 1", { armour: 1, use: "passive" }),
   laeg: sup("laeg", "Láeg, the charioteer", "Wind", "Ally", "Ulaid", R, [H(1)], "Heal 1; your next Strike +1", { nextStrike: 1 }),
   brown_bull: sup("brown_bull", "The Brown Bull of Cúailnge", "Earth", "Ally", "Ulaid", R, [H(2)], "Heal 2"),
   cathbad: sup("cathbad", "Cathbad the druid", "Wind", "Word", "Ulaid", R, [S(1)], "Strike 1; your hero may ignore one geis or oath this duel without cost", { cathbad: true }),
@@ -358,7 +363,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   host: sup("host", "The host of Cruachan", "Earth", "Ally", "Connachta", C, [S(1), H(1)], "Strike 1 + Heal 1"),
   medb_chariot: sup("medb_chariot", "Medb's war-chariot", "Wind", "Ally", "Connachta", R, [H(1)], "Heal 1; your next Strike +1", { nextStrike: 1 }),
   fedelm: sup("fedelm", "Fedelm's prophecy", "Wind", "Word", "Connachta", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
-  horn_shield: sup("horn_shield", "Ferdiad's horn-shield", "Water", "Weapon", "Connachta", C, [Sh(2)], "Shield 2"),
+  horn_shield: sup("horn_shield", "Ferdiad's horn-shield", "Water", "Weapon", "Connachta", C, [], "Passive: Armour 1", { armour: 1, use: "passive" }),
   finnbennach: sup("finnbennach", "Finnbennach, the white-horned bull", "Earth", "Ally", "Connachta", R, [H(2)], "Heal 2"),
   caladbolg: sup("caladbolg", "Caladbolg", "Earth", "Weapon", "Deorad", L, [S(3)], "Strike 3"),
   barach: sup("barach", "Bárach's feast", "Fire", "Word", "Connachta", C, [S(1)], "Strike 1; Invoke Hospitality", { invoke: "Hospitality" }),
@@ -370,10 +375,10 @@ export const SUPPORTS: Record<string, SupportDef> = {
   raven: sup("raven", "Raven's war-cry", "Fire", "Word", "Sidhe", C, [S(2)], "Strike 2"),
   dian_cecht: sup("dian_cecht", "Dian Cécht's well", "Earth", "Ally", "Sidhe", R, [H(2)], "Heal 2"),
   uaithne: sup("uaithne", "Uaithne, the Dagda's harp", "Wind", "Word", "Sidhe", R, [H(1)], "Heal 1; your next Strike +1", { nextStrike: 1 }),
-  fe_fiada: sup("fe_fiada", "The féth fíada", "Water", "Word", "Sidhe", C, [Sh(2)], "Shield 2"),
+  fe_fiada: sup("fe_fiada", "The féth fíada", "Water", "Word", "Sidhe", C, [Sh(2)], "Reaction: Block 2", { use: "reaction" }),
   // Fomóire
   gaze: sup("gaze", "The gaze of Balor", "Fire", "Feat", "Fomoire", L, [S(2)], "Strike 2; Strike 3 if Balor uses it", { forHero: { id: "balor", n: 3 } }),
-  tower: sup("tower", "Conand's tower", "Earth", "Ally", "Fomoire", R, [Sh(3)], "Shield 3"),
+  tower: sup("tower", "Conand's tower", "Earth", "Ally", "Fomoire", R, [Sh(3)], "Reaction: Block 3", { use: "reaction" }),
   sea_raid: sup("sea_raid", "Sea-raid", "Water", "Feat", "Fomoire", C, [S(2)], "Strike 2"),
   galley: sup("galley", "Fomorian galley", "Water", "Ally", "Fomoire", C, [S(2), Sh(1)], "Strike 2 + Shield 1"),
   club: sup("club", "Club of the Fomóire", "Earth", "Weapon", "Fomoire", C, [S(2)], "Strike 2"),
@@ -385,7 +390,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   cliodhna: sup("cliodhna", "Clíodhna's wave", "Water", "Feat", "Merrow", R, [S(2)], "Strike 2; ignores Shield", { pierce: true }),
   undertow: sup("undertow", "Undertow", "Water", "Feat", "Merrow", C, [S(2)], "Strike 2"),
   riptide: sup("riptide", "Riptide", "Wind", "Feat", "Merrow", C, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
-  sealskin: sup("sealskin", "Sealskin", "Water", "Word", "Merrow", C, [Sh(3)], "Shield 3"),
+  sealskin: sup("sealskin", "Sealskin", "Water", "Word", "Merrow", C, [Sh(3)], "Reaction: Block 3", { use: "reaction" }),
   pearl: sup("pearl", "Pearl of the deep", "Earth", "Word", "Merrow", R, [H(2)], "Heal 2"),
   soul_cage: sup("soul_cage", "The soul cage", "Earth", "Ally", "Merrow", R, [S(1)], "Strike 1; if it wounds, Heal 1", { drain: 1 }),
   scuab: sup("scuab", "Scuabtuinne, the wave-sweeper", "Wind", "Ally", "Merrow", R, [S(2)], "Strike 2"),
@@ -397,7 +402,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   spine_whip: sup("spine_whip", "The Dullahan's whip", "Spirit", "Weapon", "Sluagh", R, [S(2)], "Strike 2 (Spirit)"),
   corpse_candle: sup("corpse_candle", "Corpse-candle", "Fire", "Word", "Sluagh", C, [S(1)], "Strike 1; the enemy's next Strike −1", { foeNext: 1 }),
   death_coach: sup("death_coach", "The cóiste bodhar", "Spirit", "Ally", "Sluagh", R, [S(2)], "Strike 2 (Spirit); your host loses 1 Valour", { selfLoss: 1 }),
-  bone_dust: sup("bone_dust", "Bone-dust", "Earth", "Word", "Sluagh", C, [Sh(1)], "Shield 1"),
+  bone_dust: sup("bone_dust", "Bone-dust", "Earth", "Word", "Sluagh", C, [Sh(1)], "Reaction: Block 1", { use: "reaction" }),
   hungry_grass: sup("hungry_grass", "The hungry grass", "Spirit", "Ally", "Sluagh", C, [S(1)], "Strike 1 (Spirit); Invoke Feast", { invoke: "Feast" }),
   hunt_horn: sup("hunt_horn", "The horn of the hunt", "Wind", "Ally", "Sluagh", R, [S(1)], "Strike 1; your next Strike +1", { nextStrike: 1 }),
   wail: sup("wail", "The wail", "Wind", "Word", "Sluagh", R, [S(1)], "Strike 1; the enemy loses 1 Valour", { foeLoss: 1 }),
@@ -426,11 +431,11 @@ export const SUPPORTS: Record<string, SupportDef> = {
   ferdiad_sword: sup("ferdiad_sword", "Ferdiad's gilded sword", "Earth", "Weapon", "Connachta", R, [S(2)], "Strike 2; Strike 3 if Ferdiad uses it", { forHero: { id: "ferdiad", n: 3 } }),
   medb_druids: sup("medb_druids", "Medb's druids", "Fire", "Word", "Connachta", C, [S(2)], "Strike 2; Invoke Druid's word", { invoke: "Druid's word" }),
   finnabair: sup("finnabair", "Finnabair's favour", "Wind", "Ally", "Connachta", R, [H(2)], "Heal 2; your next Strike +1", { nextStrike: 1 }),
-  fergus_shield: sup("fergus_shield", "Fergus's shield", "Water", "Weapon", "Deorad", R, [Sh(3)], "Shield 3"),
+  fergus_shield: sup("fergus_shield", "Fergus's shield", "Water", "Weapon", "Deorad", R, [], "Passive: Armour 1", { armour: 1, use: "passive" }),
   // Sídhe
   cauldron: sup("cauldron", "The Dagda's cauldron", "Earth", "Ally", "Sidhe", L, [H(3)], "Heal 3"),
   dagda_club: sup("dagda_club", "The Dagda's club", "Earth", "Weapon", "Sidhe", R, [S(2)], "Strike 2; Strike 4 if the Dagda uses it", { forHero: { id: "dagda", n: 4 } }),
-  credne: sup("credne", "Credne's rivets", "Fire", "Weapon", "Sidhe", C, [S(1), Sh(1)], "Strike 1 + Shield 1"),
+  credne: sup("credne", "Credne's rivets", "Fire", "Weapon", "Sidhe", C, [], "Passive: Armour 1", { armour: 1, use: "passive" }),
   failinis: sup("failinis", "Failinis, Lugh's hound", "Wind", "Ally", "Sidhe", R, [S(2)], "Strike 2; +1 if it is the first support used in the duel", { firstBonus: 1 }),
   ogham: sup("ogham", "Ogma's ogham", "Earth", "Word", "Sidhe", C, [S(1)], "Strike 1; Invoke Evil eye", { invoke: "Evil eye" }),
   airmed: sup("airmed", "Airmed's herbs", "Earth", "Word", "Sidhe", C, [H(1), Sh(1)], "Heal 1 + Shield 1"),
@@ -451,7 +456,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   seawall: sup("seawall", "Indech's sea-wall", "Earth", "Ally", "Fomoire", R, [S(2), Sh(2)], "Strike 2 + Shield 2"),
   bitter_well: sup("bitter_well", "The bitter well", "Water", "Word", "Fomoire", C, [S(2)], "Strike 2; Invoke Prophecy", { invoke: "Prophecy" }),
   lochlann: sup("lochlann", "The host of Lochlann", "Water", "Ally", "Fomoire", R, [S(3)], "Strike 3"),
-  sea_mist: sup("sea_mist", "Sea-mist of Lochlann", "Water", "Word", "Fomoire", C, [Sh(2)], "Shield 2"),
+  sea_mist: sup("sea_mist", "Sea-mist of Lochlann", "Water", "Word", "Fomoire", C, [Sh(2)], "Reaction: Block 2", { use: "reaction" }),
   domnann: sup("domnann", "Spears of the Domnann", "Earth", "Weapon", "Fomoire", C, [S(2)], "Strike 2; +1 if it is the first support used in the duel", { firstBonus: 1 }),
   // Merrow (still no Weapons)
   tide_wrath: sup("tide_wrath", "The tide's wrath", "Water", "Feat", "Merrow", L, [S(3)], "Strike 3"),
@@ -459,7 +464,7 @@ export const SUPPORTS: Record<string, SupportDef> = {
   fand_tears: sup("fand_tears", "Fand's tears", "Water", "Word", "Merrow", C, [H(1), Sh(1)], "Heal 1 + Shield 1"),
   wave_break: sup("wave_break", "The wave breaks", "Water", "Feat", "Merrow", C, [S(1), Sh(1)], "Strike 1 + Shield 1"),
   net: sup("net", "The drowning net", "Earth", "Feat", "Merrow", R, [S(1)], "Strike 1; +2 against a hero of Valour 5 or more", { vsBig: 2 }),
-  kelp: sup("kelp", "Kelp-wrack", "Earth", "Ally", "Merrow", C, [Sh(2)], "Shield 2"),
+  kelp: sup("kelp", "Kelp-wrack", "Earth", "Ally", "Merrow", C, [Sh(2)], "Reaction: Block 2", { use: "reaction" }),
   siren: sup("siren", "The merrow's song", "Wind", "Word", "Merrow", C, [S(1)], "Strike 1; Invoke Vengeance", { invoke: "Vengeance" }),
   crane_bag: sup("crane_bag", "Manannán's crane-bag", "Earth", "Word", "Merrow", R, [S(1), H(1)], "Strike 1 + Heal 1"),
   roane_lament: sup("roane_lament", "The roane's lament", "Wind", "Word", "Merrow", C, [S(1)], "Strike 1; Invoke Satire", { invoke: "Satire" }),
@@ -660,7 +665,18 @@ export const FIRST_PRINTING: Record<string, CardDef> = {
   cu: reprint<HeroDef>("cu", (d) => ({ ...d, valour: 4 })),
   conchobar: reprint<HeroDef>("conchobar", (d) => ({ ...d, valour: 5 })),
   ailill: reprint<HeroDef>("ailill", (d) => ({ ...d, valour: 4 })),
-  ferdiad: reprint<HeroDef>("ferdiad", (d) => ({ ...d, quality: "Horn-skin: Shield 1 at the start of each duel", ab: { ...d.ab, shieldStart: 1 } })),
+  ferdiad: reprint<HeroDef>("ferdiad", (d) => { const { armour: _a, ...ab } = d.ab; return { ...d, quality: "Horn-skin: Shield 1 at the start of each duel", ab: { ...ab, shieldStart: 1 } }; }),
+  salmon: reprint<SupportDef>("salmon", (d) => ({ ...d, text: "Shield 2", use: undefined })),
+  fe_fiada: reprint<SupportDef>("fe_fiada", (d) => ({ ...d, text: "Shield 2", use: undefined })),
+  tower: reprint<SupportDef>("tower", (d) => ({ ...d, text: "Shield 3", use: undefined })),
+  sealskin: reprint<SupportDef>("sealskin", (d) => ({ ...d, text: "Shield 3", use: undefined })),
+  bone_dust: reprint<SupportDef>("bone_dust", (d) => ({ ...d, text: "Shield 1", use: undefined })),
+  sea_mist: reprint<SupportDef>("sea_mist", (d) => ({ ...d, text: "Shield 2", use: undefined })),
+  kelp: reprint<SupportDef>("kelp", (d) => ({ ...d, text: "Shield 2", use: undefined })),
+  ochain: reprint<SupportDef>("ochain", (d) => ({ ...d, use: undefined, effects: [{ type: "shield", n: 2 }], text: "Shield 2", armour: undefined })),
+  horn_shield: reprint<SupportDef>("horn_shield", (d) => ({ ...d, use: undefined, effects: [{ type: "shield", n: 2 }], text: "Shield 2", armour: undefined })),
+  fergus_shield: reprint<SupportDef>("fergus_shield", (d) => ({ ...d, use: undefined, effects: [{ type: "shield", n: 3 }], text: "Shield 3", armour: undefined })),
+  credne: reprint<SupportDef>("credne", (d) => ({ ...d, use: undefined, effects: [{ type: "strike", n: 1 }, { type: "shield", n: 1 }], text: "Strike 1 + Shield 1", armour: undefined })),
   indech: reprint<HeroDef>("indech", (d) => ({ ...d, valour: 5, quality: "Sea-giant: no Strike against him above 3", ab: { ...d.ab, capTaken: 3 } })),
   balor: reprint<HeroDef>("balor", (d) => ({ ...d, quality: "Evil eye: his first Strike each duel +2", ab: { ...d.ab, firstStrike: 2 } })),
   dullahan: reprint<MonsterDef>("dullahan", (d) => ({ ...d, valour: 3 })),

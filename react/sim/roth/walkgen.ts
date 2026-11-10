@@ -6,7 +6,7 @@
 import { writeFileSync } from "node:fs";
 import { DECKS } from "../../src/games/roth/engine/cards";
 import { applyDecision, newMatch, nextDecision, observe, NARRATE } from "../../src/games/roth/engine/engine";
-import { makePolicy } from "../../src/games/roth/engine/ai";
+import { CasualPolicy, makePolicy } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 
 const tries = Number(process.argv[process.argv.indexOf("--tries") + 1]) || 200;
@@ -16,6 +16,9 @@ for (let t = 1; t <= tries; t++) {
   const S = newMatch([DECKS.ulster, DECKS.connacht], {}, seed, false);
   const pols = [makePolicy("skilled"), makePolicy("skilled")];
   const rngs = [new Rng(hashSeed(seed, 1)), new Rng(hashSeed(seed, 2))];
+  // the Muster as the guided game replays it: both sides keep what they draw
+  const keeper = new CasualPolicy(), krng = new Rng(1);
+  for (let d = nextDecision(S); d && S.phase === "muster"; d = nextDecision(S)) applyDecision(S, d, keeper.choose(S, d, krng));
   const picks: number[] = [];
   const seen = new Set<string>();
   let duelActs = 0;
@@ -33,15 +36,16 @@ for (let t = 1; t <= tries; t++) {
     applyDecision(S, d, i);
     const txt = NARRATE.lines.join(" ");
     NARRATE.lines = null;
-    for (const k of ["weakness", "the wheel", "Focus", "Shield soaks", "heals", "kinship", "first Strike against it"]) if (txt.includes(k)) seen.add(k);
+    for (const k of ["weakness", "the wheel", "Focus", "Shield soaks", "heals", "kinship", "first Strike against it", "blocks with", "Armour", "rests and braces", "rested"]) if (txt.includes(k)) seen.add(k);
   }
   const r = S.result!;
   if (r.tiebreak || r.winner !== 0 || r.decidedBy !== "felled") continue;
   if (S.combat!.startV[2][0] || S.combat!.startV[2][1]) seen.add("final");
-  const want = ["bind0", "swear0", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "draw0", "draw1", "drawn-play", "drawn-discard", "duelCard0", "reuse", "final", "break"];
+  const want = ["bind0", "swear0", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "draw0", "draw1", "drawn-play", "drawn-discard", "duelCard0", "reuse", "final", "break", "blocks with", "Armour", "rests and braces", "rested"];
   const got = want.filter((k) => seen.has(k));
   // a whole game, but one a person can read through: not too long
-  const score = got.length - Math.max(0, duelActs - 40) / 5;
+  // the new defence is worth showing above all: a block, Armour, a braced rest
+  const score = got.length + 2 * got.filter((k) => ["blocks with", "Armour", "rests and braces", "rested"].includes(k)).length - Math.max(0, duelActs - 60) / 5;
   if (!best || score > best.score) best = { score, seed, picks, why: got };
 }
 if (!best) throw new Error("no game found");

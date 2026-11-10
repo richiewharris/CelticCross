@@ -19,10 +19,10 @@ const pick = (S: State, pred: (o: { t: string; id?: string; act?: string; spot?:
 
 describe("Charm", () => {
   it("goes through Shield, takes the enemy's Shield, and dulls its next Strike", () => {
-    // Lugh (P1, Initiative 6, strikes first) charms Ferdiad (Shield 2 at the start of his duel)
+    // Lugh (P1, Initiative 6, strikes first) charms Ferdiad, who has Shield 2
     const S = combatState({ board: ["lugh", "glamour", "salmon", "emer", "salmon", "salmon", "ferdiad", "cet_spear", "cet_spear", "conall", "salmon", "salmon"], rules: { veiled: false } });
     const C = S.combat!;
-    expect(C.shield[1]).toBe(2);
+    C.shield[1] = 2;
     pick(S, (o) => o.t === "duel" && o.act === "use" && o.spot === 1);
     expect(C.shield).toEqual([1, 1]); // 1 of Ferdiad's Shield is now Lugh's
     expect(C.nextStrike[1]).toBe(0);

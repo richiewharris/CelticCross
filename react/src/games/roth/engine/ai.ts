@@ -2,7 +2,7 @@
 // Expert (Skilled + determinized Monte Carlo lookahead in drafting and the playing turn).
 
 import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, type FighterDef, type HeroDef, type OmenEffect, type SupportDef } from "./cards";
-import {
+import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
@@ -35,6 +35,7 @@ function looks(s: SupportDef, h: FighterDef | null): number {
   if (h && unwillingPair(h.alignment, s.alignment)) return -5;
   let v = s.forHero && h?.id === s.forHero.id ? s.forHero.n : s.effects.reduce((a, e) => a + e.n, 0);
   if (s.cathbad) v = 0.5;
+  v += 2.5 * (s.armour ?? 0); // Armour: every enemy blow for the rest of the duel
   if (h) {
     if (kin(s.alignment, h.alignment)) v += 1;
     if (h.ab.focusAny || h.focus === s.element || h.focus === s.kind) v += 1;
@@ -171,6 +172,13 @@ export class CasualPolicy implements Policy {
         return 0;
       case "focus":
         return 0;
+      case "block": {
+        // meet the blow with the strongest Block ready
+        const C = V.combat!;
+        let best = o.length - 1, bv = 0;
+        o.forEach((x, i) => { if (x.t === "block" && x.spot >= 0) { const v = blockValue(V, C, me, x.spot); if (v > bv) { bv = v; best = i; } } });
+        return best;
+      }
       case "drawn": {
         const C = V.combat!;
         const c = C.drawn!.def;
@@ -236,10 +244,15 @@ function casualDeathTurn(V: State, d: Decision, me: Side): number {
     let v = -Infinity;
     if (x.t === "draw") v = 2.2;
     else if (x.t === "duel" && x.guest < 0) {
-      if (x.act === "rest") v = h.ab.restHeal || h.ab.restShield ? 0.5 : -1;
-      else {
+      if (x.act === "rest") {
+        // a rest braces (Shield 1) and makes the next Shield or Heal stronger; worth more when hurt and holding one
+        const mend = [C.hs[me] + 1, C.hs[me] + 2].some((sp) => V.board[sp]?.def.type === "support" && (V.board[sp]!.def as SupportDef).effects.some((e) => e.type === "heal" || e.type === "shield"));
+        const hurt = C.valour[me] < (C.startV[C.duel]?.[me] ?? C.valour[me]) - 2;
+        v = 1.1 + (h.ab.restHeal || h.ab.restShield ? 0.8 : 0) + (mend && hurt ? 0.7 : 0) - ((C.rested?.[me] ?? 0) >= 2 ? 1.6 : 0);
+      } else {
         const s = V.board[x.spot]!.def as SupportDef;
-        v = unwillingPair(h.alignment, s.alignment) ? 2.3 : looks(s, h) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
+        const mends = s.effects.some((e) => e.type === "heal" || e.type === "shield");
+        v = unwillingPair(h.alignment, s.alignment) ? 2.3 : looks(s, h) + (mends ? 0.8 * (C.rested?.[me] ?? 0) : 0) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
       }
       if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 2;
     } else if (x.t === "duelCard") {
@@ -378,6 +391,7 @@ export class SkilledPolicy implements Policy {
         return argmax(this.scoreOptions(V, d));
       case "drawn":
       case "focus":
+      case "block":
       case "duel": {
         if (toDeath(V)) return this.fast ? new CasualPolicy().choose(V, d, rng) : deathChoice(V, d, rng);
         const C2 = cloneCombat(V.combat!);
@@ -457,10 +471,12 @@ function deathEval(S: State, me: Side): number {
     }
     return best + C.nextStrike[p] + (h.ab.strikeAll ?? 0);
   };
-  const vm = C.valour[me] + 0.7 * C.shield[me], vo = C.valour[o] + 0.7 * C.shield[o];
+  const vm = C.valour[me] + 0.7 * C.shield[me] + 2 * (C.armour?.[me] ?? 0), vo = C.valour[o] + 0.7 * C.shield[o] + 2 * (C.armour?.[o] ?? 0);
   // turns each side needs to fell the other, roughly; fewer is better
   const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o));
-  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2);
+  // a rested side's next Shield or Heal is stronger
+  const rest = 0.6 * ((C.rested?.[me] ?? 0) - (C.rested?.[o] ?? 0));
+  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest;
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */
 function topCards(S: State, p: Side): { uid: number; w: number }[] {

@@ -176,6 +176,7 @@ export function quickSupportValue(s: SupportDef, h: HeroDef, e: HeroDef | null):
   if (s.drain) v += 0.5 * s.drain;
   if (s.nextStrike) v += 0.8 * s.nextStrike;
   if (s.cathbad) v += 0.6;
+  if (s.armour) v += 2.2 * s.armour; // Armour holds for the rest of the duel
   return v;
 }
 

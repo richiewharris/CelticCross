@@ -38,6 +38,7 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "lateDone": return `${who} done turning omens`;
     case "focus": return `${who}'s shape-shift: Focus -> ${o.el ?? "unchanged"}`;
     case "draw": return `${who} draws from the Reserve`;
+    case "block": return `${who} ${o.spot < 0 ? "takes the blow" : `blocks with ${S.board[o.spot]?.def.name ?? "?"}`}`;
     case "drawn": return `${who} ${o.how === "discard" ? "puts aside" : o.how === "keep" ? "keeps" : "plays"} ${S.combat?.drawn?.def.name ?? "?"}${o.mode === "break" ? " (breaks a geis/oath)" : ""}${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
     case "duelCard": return `${who} plays ${cardName(S, o.uid)} mid-duel${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
     case "duel": {

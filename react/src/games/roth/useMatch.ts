@@ -91,7 +91,10 @@ export function useMatch() {
     const ev: MoveEvent = { mine: d.player === saved.me, text: line, fx, spot: o.t === "duel" && o.act === "use" ? o.spot : undefined, n: saved.log.length };
     const { S, d: next } = settle(T);
     const after = sectionOf(S);
-    const log = [...saved.log, line, ...(after !== before ? [`§ ${after}`] : [])].slice(-240);
+    // the result, in words, when the match ends
+    const res = !next && S.result ? S.result : null;
+    const resultLine = res ? `${res.winner === -1 ? "A draw" : res.winner === saved.me ? "You win" : "The computer wins"}: heroes felled, you ${res.felled[1 - saved.me]}, the computer ${res.felled[saved.me]}.` : null;
+    const log = [...saved.log, line, ...(after !== before ? [`§ ${after}`] : []), ...(resultLine ? [resultLine] : [])].slice(-240);
     // your own moves can be taken back; the Muster's are quick enough to keep out of the way
     const back = d.player === saved.me && d.kind !== "muster" ? [...(saved.back ?? []), { S: saved.S, log: saved.log }].slice(-BACK_MAX) : saved.back;
     let recorded = saved.recorded;

@@ -887,3 +887,16 @@ body.gm-roth .place-sheet .place-head { padding-right: 90px; }
 body.gm-roth .lane-spot.m-target .empty-spot { cursor: pointer; font-size: 2.2em; color: var(--bronze-hi); }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { body.gm-roth .place-sheet { animation: none; } }
+
+/* ---- defence: passive Armour, reaction Blocks, rested ---- */
+body.gm-roth .tok-use { display: inline-flex; align-items: center; gap: .15em; padding: .1em .35em; border-radius: .5em; font-weight: 700; }
+body.gm-roth .tok-use .ico { width: 1.4em; height: 1.4em; }
+body.gm-roth .tok-use.passive { background: #3b4552; color: #e4edf7; }
+body.gm-roth .tok-use.reaction { background: #2f4f6e; color: #e4f0fb; }
+body.gm-roth .card.compact .c-chip.use.passive { background: rgb(150 170 195 / .25); color: #dfe9f5; }
+body.gm-roth .card.compact .c-chip.use.reaction { background: rgb(90 150 210 / .28); color: #dcecfb; }
+body.gm-roth .duel-def { display: flex; flex-wrap: wrap; gap: 4px; }
+body.gm-roth .tag.armour { background: rgb(150 170 195 / .2); color: #dfe9f5; }
+body.gm-roth .tag.rested { background: rgb(110 170 110 / .2); color: #cfe9c8; }
+body.gm-roth .legend .ink-armour { color: #b9c9db; } body.gm-roth .legend .ink-block { color: #8fb3e0; } body.gm-roth .legend .ink-rest { color: #a9d39a; }
+body.gm-roth .ink-armour { color: #5f7187; } body.gm-roth .ink-block { color: #3f6d9c; }

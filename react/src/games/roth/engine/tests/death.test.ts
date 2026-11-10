@@ -125,3 +125,67 @@ describe("to the death", () => {
     expect(finals).toBeGreaterThan(2);
   });
 });
+
+describe("the ford's defence", () => {
+  // Conall (P1, spot 1) against the Dagda (P2, spot 7); P1 acts first
+  const duel = (board: string[]) => {
+    const S = combatState({ board, rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
+    S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
+    return S;
+  };
+  it("fighters enter the ford with Valour +3, and heals have no cap", () => {
+    const S = duel(["conall", "thunder", "sling", "emer", "salmon", "salmon", "dagda", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"]);
+    expect(S.combat!.valour).toEqual([ALL_DEFS.conall.type === "hero" ? (ALL_DEFS.conall as { valour: number }).valour + 3 : 0, (ALL_DEFS.dagda as { valour: number }).valour + 3]);
+    const v = S.combat!.valour[1];
+    rest(S); // Conall
+    use(S, 8); // the Dagda: Láeg, Heal 1 (+1 rested? no: he hasn't rested) — above his start
+    expect(S.combat!.valour[1]).toBeGreaterThan(v);
+  });
+  it("a rest braces: Shield 1, and the next Shield or Heal +1 (+2 after two rests in a row)", () => {
+    const S = duel(["conall", "thunder", "sling", "emer", "salmon", "salmon", "dagda", "laeg@1", "fedelm@1", "fergus", "salmon", "salmon"]);
+    rest(S); // Conall
+    expect(S.combat!.shield[0]).toBe(1);
+    expect(S.combat!.rested![0]).toBe(1);
+    rest(S); // the Dagda
+    rest(S); // Conall again
+    expect(S.combat!.shield[0]).toBe(2);
+    expect(S.combat!.rested![0]).toBe(2);
+    rest(S);
+    use(S, 2); // a Strike: the rested count goes
+    expect(S.combat!.rested![0]).toBe(0);
+  });
+  it("a passive card gives Armour from the start of the duel; every blow is less", () => {
+    const S = duel(["conall", "ochain", "sling", "emer", "salmon", "salmon", "dagda", "sling@1", "fedelm@1", "fergus", "salmon", "salmon"]);
+    expect(S.combat!.armour).toEqual([1, 0]);
+    expect(canUse(S, 2)).toBe(false); // nothing to use: it works by being there
+    rest(S);
+    const v = S.combat!.valour[0];
+    use(S, 8); // the Dagda's sling: Strike 2, 1 less for the Armour
+    expect(v - S.combat!.valour[0]).toBe(1);
+  });
+  it("a reaction card blocks: when struck, tap it to take its Block off the blow; again after one of your turns", () => {
+    const S = duel(["conall", "sling", "salmon", "emer", "salmon", "salmon", "dagda", "sling@1", "sling@1", "fergus", "salmon", "salmon"]);
+    expect(canUse(S, 3)).toBe(false); // not an action on your own turn
+    rest(S); // Conall
+    use(S, 8); // the Dagda strikes: Conall may block
+    const d = nextDecision(S)!;
+    expect(d.kind).toBe("block");
+    expect(d.player).toBe(0);
+    const v = S.combat!.valour[0];
+    act(S, { t: "block", spot: 2 });
+    expect(S.combat!.valour[0]).toBeGreaterThan(v - 2); // Salmon leap's Block soaked the Sling
+    expect(S.combat!.turn).toBe(2); // and the Dagda's turn is over
+    rest(S); // Conall's own turn
+    use(S, 9); // the Dagda's second sling (a Weapon each): the Salmon leap may block again
+    expect(nextDecision(S)!.kind).toBe("block");
+  });
+  it("a long duel wears both down: from the 20th turn each turn costs the side acting Valour", () => {
+    const S = duel(["conall", "salmon", "salmon", "emer", "salmon", "salmon", "dagda", "salmon@1", "salmon@1", "fergus", "salmon", "salmon"]);
+    S.players[0].reserve = []; S.players[1].reserve = [];
+    for (let i = 0; i < 20; i++) rest(S);
+    const v = S.combat!.valour[0];
+    rest(S);
+    expect(S.combat!.valour[0]).toBe(v - 1);
+  });
+});

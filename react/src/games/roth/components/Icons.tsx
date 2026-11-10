@@ -22,6 +22,9 @@ const ICONS: Record<string, ReactNode> = {
   strike: <><P d="M5 19 13 11" /><P fill d="M21 3c-1 4.5-3.5 8-7.5 9.5L11.5 10.5C13 6.5 16.5 4 21 3z" /><P d="M3 21l2-2" /></>,
   heal: <><P fill d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" /></>,
   shield: <><P fill d="M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" /></>,
+  // Armour (passive): a breastplate; Block (a reaction): a shield raised against a blow
+  armour: <><P fill d="M6 3h3l3 2 3-2h3l3 4-3 2v11H6V9L3 7z" /></>,
+  block: <><P fill d="M10 4 17 6.5v5c0 4-2.8 7.2-7 8.8-4.2-1.6-7-4.8-7-8.8v-5z" /><P d="M22 3l-4 4M22 8h-3M17 2v3" /></>,
   valour: <><P fill d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z" /></>,
   init: <><P fill d="M13 2 4 14h7l-1 8 9-12h-7z" /></>,
   // card types

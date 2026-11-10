@@ -33,6 +33,8 @@ export function useNarrow(max = 760): boolean {
 
 /** Valour as pips: filled for what the fighter has, hollow for what it has lost, faint for room to heal; Shield in blue. */
 export function ValourBar({ v, start, cap, shield }: { v: number; start: number; cap: number; shield: number }) {
+  // a cap far above the start means no cap (duels to the death): no "room to heal" pips
+  if (cap - start > 6) cap = start;
   const top = Math.max(cap, v, start);
   return (
     <span className="vbar" role="img" aria-label={`Valour ${v} of ${start}${cap > start ? `, can heal to ${cap}` : ""}${shield ? `, Shield ${shield}` : ""}`}>
@@ -121,6 +123,12 @@ export function DuelView(props: {
           <div className="duel-info">
             <p className="duel-name"><b>{f.name}</b> <small>{mine ? "you" : "the enemy"} · Initiative {C.init[p]}{felled ? " · felled" : ""}</small></p>
             <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
+            {C.armour?.[p] || C.rested?.[p] || (C.block?.[p] ?? 0) > 0 ? (
+              <span className="duel-def">
+                {C.armour?.[p] ? <span className="tag armour" title={`Armour ${C.armour[p]}: every Strike against ${f.name} ${C.armour[p]} less`}><Icon name="armour" /> Armour {C.armour[p]}</span> : null}
+                {C.rested?.[p] ? <span className="tag rested" title={`Rested: the next Shield, Heal or Block +${C.rested[p]}`}><Icon name="rest" /> Rested +{C.rested[p]}</span> : null}
+              </span>
+            ) : null}
             {death ? <p className="duel-pile"><Icon name="omen" /> Reserve {S.players[p].reserve.length} · discards {S.players[p].discard.length}</p> : null}
           <div className="duel-tags">
             {C.champ[p] ? <span className="tag champ"><Icon name="champion" /> standing in for {hero.def.name}</span> : null}

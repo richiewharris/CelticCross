@@ -49,7 +49,7 @@ export function typeLine(d: CardDef): string {
   switch (d.type) {
     case "hero": return `${ALIGN[d.alignment]} hero · ${RAR[d.rarity]}`;
     case "champion": return `${ALIGN[d.alignment]} champion · ${RAR[d.rarity]}`;
-    case "support": return `${d.element} ${d.kind} · ${ALIGN[d.alignment]} · ${RAR[d.rarity]}`;
+    case "support": return `${d.element} ${d.kind}${d.use === "passive" ? " · Passive" : d.use === "reaction" ? " · Reaction" : ""} · ${ALIGN[d.alignment]} · ${RAR[d.rarity]}`;
     case "geis": return `${d.scope === "global" ? "Global" : "Targeted"} geis · ${RAR[d.rarity]}`;
     case "oath": return `Oath · ${RAR[d.rarity]}`;
     case "omen": return `${d.scope === "global" ? "Global" : d.scope === "targeted" ? "Targeted" : "Your"} omen · ${RAR[d.rarity]}`;
@@ -111,6 +111,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     case "sacrifice": return `Sacrifice ${ALL_DEFS[o.id]?.name ?? o.id} (the host takes back its Valour)`;
     case "summon": return `Summon ${ALL_DEFS[o.id]?.name ?? o.id} from your other host`;
     case "draw": return "Draw from your Reserve";
+    case "block": return o.spot < 0 ? "Take the blow" : `Block with ${S.board[o.spot]?.def.name ?? "it"}`;
     case "drawn": {
       const c = S.combat?.drawn?.def;
       const n = c?.name ?? "it";
@@ -166,6 +167,7 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "summon": return `${who} summoned ${ALL_DEFS[o.id]?.name ?? o.id} from the other host.`;
     case "duel": return `${who}: ${optionLabel(S, d, o)}.`;
     case "draw": return `${who} drew from the Reserve.`;
+    case "block": return o.spot < 0 ? `${who} took the blow.` : `${who} blocked with ${S.board[o.spot]?.def.name ?? "a card"}.`;
     case "drawn": {
       const n = S.combat?.drawn?.def.name ?? "a card";
       if (o.how === "discard") return `${who} put ${mine || S.combat?.drawn?.def.type !== "support" ? n : n} aside.`;

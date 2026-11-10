@@ -111,7 +111,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const tableSel: Sel = d && d.kind === "place" ? sel : actNow ? (actNow.uid !== undefined ? { uid: actNow.uid } : actNow.spot !== undefined ? { spot: actNow.spot } : null) : null;
   const panel = m.myTurn && d && d.kind !== "muster" && d.kind !== "place"
     ? <ActionPanel S={S} d={d} pick={act} group={group} onPick={setAct} onGroup={setGroup} onCommit={pick} /> : null;
-  const status = m.over ? "The match is over." : m.myTurn ? "Your move." : m.thinking ? "The computer is thinking…" : "…";
+  const status = m.over && S.result ? `The match is over: ${S.result.winner === -1 ? "a draw" : S.result.winner === m.me ? "you win" : "the computer wins"} (heroes felled: you ${S.result.felled[1 - m.me]}, the computer ${S.result.felled[m.me]}).` : m.over ? "The match is over." : m.myTurn ? "Your move." : m.thinking ? "The computer is thinking…" : "…";
   return (
     <div className="game">
       <section className="stage" aria-label="Roth Catha table">
