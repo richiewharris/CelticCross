@@ -7,6 +7,7 @@ import type { Result, Side } from "../engine/engine";
 import { DECIDED, FACTION_TITLE, cardText, fighterStats, typeLine } from "../text";
 import { faceLines } from "../faceText";
 import { Rich } from "./Card";
+import { Icon } from "./Icons";
 import type { Level, MatchRecord, Pace, Setup } from "../useMatch";
 import { deckProblems, defsOf, useSavedDecks } from "../decks";
 
@@ -87,6 +88,26 @@ export function Inspector({ def }: { def: CardDef | null }) {
   );
 }
 
+/** What every icon on the table means. */
+const LEGEND: { title: string; rows: [string, string][] }[] = [
+  { title: "Numbers", rows: [["strike", "Strike: wounds the enemy (Shield soaks it first)"], ["shield", "Shield: soaks wounds"], ["heal", "Heal: Valour back, up to 2 above the start"], ["valour", "Valour: what a fighter can lose before falling"], ["init", "Initiative: the higher acts first"], ["pierce", "Ignores Shield"]] },
+  { title: "Elements and kinds", rows: [["Fire", "Fire"], ["Wind", "Wind"], ["Earth", "Earth"], ["Water", "Water"], ["Spirit", "Spirit (the Slúagh): ignores Shield, steals 1"], ["Weapon", "Weapon"], ["Feat", "Feat"], ["Ally", "Ally"], ["Word", "Word"]] },
+  { title: "On a hero", rows: [["geis", "Geis: forbids something; breaking it costs 2 Valour"], ["global", "Global geis: on every hero"], ["oath", "Oath: a boon with a vow"], ["omen", "Omen, turned on this hero"], ["champion", "A champion standing in"]] },
+  { title: "Using a support again", rows: [["again", "Its price to use again:"], ["between", "not two turns running"], ["rest", "after a rest"], ["valour", "pay Valour"], ["card", "discard the top of your Reserve"]] },
+];
+export function Legend() {
+  return (
+    <div className="legend">
+      {LEGEND.map((g) => (
+        <div key={g.title} className="legend-group">
+          <p className="legend-title">{g.title}</p>
+          <ul>{g.rows.map(([icon, text]) => <li key={g.title + icon}><Icon name={icon} className={`ink-${icon}`} /> {text}</li>)}</ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function LogPanel({ log }: { log: string[] }) {
   // follow the newest move
   const ref = useRef<HTMLOListElement>(null);
@@ -122,6 +143,7 @@ export function RulesPanel() {
   return (
     <details className="panel rules-panel">
       <summary className="label">How to play</summary>
+      <Legend />
       <ul className="rules">
         <li><b>Decks.</b> 24 cards: 4–6 heroes, up to 2 champions, 8–12 supports, 2–6 geasa, up to 4 oaths, 4–6 omens, up to 2 attendants. Common cards up to 2 copies, rare and legendary 1, at most 2 legendaries. Cards from at most two peoples; exiles go with Ulster or Connacht; unaligned supports, every geis and oath, and the omens not tied to one people go with anyone. Build one under <i>Build a deck</i>, or play a starter.</li>
         <li><b>Muster.</b> Draw four cards at a time. Keep each in hand (up to 12) or set it aside for the Reserve; put omens face down in your four Omen spots. You can't finish short of 2 heroes and 4 supports.</li>

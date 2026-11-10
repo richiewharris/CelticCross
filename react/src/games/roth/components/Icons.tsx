@@ -49,6 +49,10 @@ const ICONS: Record<string, ReactNode> = {
   // a monster: a horned skull
   monster: <><P fill d="M12 4c4.4 0 7 3 7 6.8 0 2.4-1.2 4-2.7 4.9V19h-8.6v-3.3C6.2 14.8 5 13.2 5 10.8 5 7 7.6 4 12 4zM9.2 10a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm5.6 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" /><P d="M6 6 3 2M18 6l3-4" /></>,
   rest: <><P d="M4 14h16v4H4zM6 14V9h5v5" /><P d="M15 4h4l-4 5h4" /></>,
+  // used again: a turning arrow; a turn between: the arrow with a bar; a card off the Reserve
+  again: <><P d="M19 12a7 7 0 1 1-2.1-5" /><P fill d="M20.5 3.5 21 9l-5.5-.6z" /></>,
+  between: <><P d="M17 12a5 5 0 1 1-1.5-3.6" /><P fill d="M18.4 5.6 18.8 10l-4.4-.4z" /><P d="M3 21h18" /></>,
+  card: <><P d="M7 3h10v18H7z" /><P d="M10 8h4M10 12h4" /></>,
   // pierce: a spear passing through a shield
   pierce: <><P d="M10 4.5 15 6.5v5c0 3.5-2.2 6.3-5 7.5-2.8-1.2-5-4-5-7.5v-5z" /><P d="M1.5 12h18" /><P fill d="m18 8.5 4.5 3.5-4.5 3.5z" /></>,
 };

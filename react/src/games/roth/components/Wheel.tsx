@@ -5,6 +5,7 @@ import { useRef, type ReactNode } from "react";
 import type { CardDef } from "../engine/cards";
 import { isHeroSpot, ownerOfSpot, quadOf, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
+import { Icon } from "./Icons";
 
 export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen";
 
@@ -32,6 +33,8 @@ export function Wheel(props: {
   onFocusCard?: (d: CardDef) => void; center?: ReactNode; label?: string; focus?: number | null;
   /** Whole-wheel view: the spot to turn to the bottom centre (where you are). */
   front?: number | null;
+  /** Two spots joined by a highlighted line through the hub (your spot and the one you face). */
+  chord?: [number, number];
 }) {
   const { S, me, marks } = props;
   const turn = me === 0 ? 0 : 180;
@@ -62,7 +65,11 @@ export function Wheel(props: {
               const a = ((30 * (3 * q) + turn) * Math.PI) / 180;
               return <line key={q} x1={31 * Math.cos(a)} y1={31 * Math.sin(a)} x2={48 * Math.cos(a)} y2={48 * Math.sin(a)} className="spoke" />;
             })}
-            {!zoom ? <line x1="-46" y1="0" x2="46" y2="0" className="ford" transform={`rotate(${turn})`} /> : null}
+            {!zoom && props.front == null ? <line x1="-46" y1="0" x2="46" y2="0" className="ford" transform={`rotate(${turn})`} /> : null}
+            {props.chord ? (() => {
+              const [a, b] = props.chord.map((s) => (angleOf(s, turn) * Math.PI) / 180);
+              return <line x1={31 * Math.cos(a)} y1={31 * Math.sin(a)} x2={31 * Math.cos(b)} y2={31 * Math.sin(b)} className="chord" />;
+            })() : null}
           </svg>
           {S.board.map((c, spot) => {
             if (zoom && quadOf(spot) !== quadOf(props.focus!)) return null; // zoomed: just the quadrant in play
@@ -93,11 +100,11 @@ export function Wheel(props: {
                   )}
                   {geis || oath || omens.length || val || champ ? (
                     <div className="spot-tags" aria-hidden="true">
-                      {val ? <span className={`valour${val.live ? " live" : ""}`}>♥{val.v}{val.shield ? ` ◈${val.shield}` : ""}</span> : null}
-                      {champ ? <span className="tag champ">⚜ {champ.def.name}</span> : null}
-                      {geis ? <span className="tag geis">⊘ {geis.def.name.replace(/^Geis of (the )?/, "")}</span> : null}
-                      {oath ? <span className="tag oath">✠ {oath.def.name.replace(/^Oath (of|on) (the )?/, "")}</span> : null}
-                      {omens.map((n, i) => <span key={i} className="tag omen">☽ {n}</span>)}
+                      {val ? <span className={`valour${val.live ? " live" : ""}`}><Icon name="valour" />{val.v}{val.shield ? <><Icon name="shield" />{val.shield}</> : null}</span> : null}
+                      {champ ? <span className="tag champ"><Icon name="champion" /> {champ.def.name}</span> : null}
+                      {geis ? <span className="tag geis"><Icon name="geis" /> {geis.def.name.replace(/^Geis of (the )?/, "")}</span> : null}
+                      {oath ? <span className="tag oath"><Icon name="oath" /> {oath.def.name.replace(/^Oath (of|on) (the )?/, "")}</span> : null}
+                      {omens.map((n, i) => <span key={i} className="tag omen"><Icon name="omen" /> {n}</span>)}
                     </div>
                   ) : null}
                 </div>

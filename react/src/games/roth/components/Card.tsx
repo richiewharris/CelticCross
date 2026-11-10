@@ -171,13 +171,13 @@ function FullBody({ d }: { d: CardDef }) {
   );
 }
 
-/** The price of using a placed support again, in a few characters: "↻ not twice running", "rest", "1 Valour", "1 card". */
-function reuseShort(r: Reuse): { text: string; title: string }[] {
-  const out: { text: string; title: string }[] = [];
-  if (r.turns) out.push({ text: "↻", title: r.turns === 1 ? "Again: not two turns running" : `Again: ${r.turns} other actions between` });
-  if (r.rest) out.push({ text: r.rest === 1 ? "rest" : `${r.rest} rests`, title: `Again: after ${r.rest === 1 ? "a rest" : `${r.rest} rests`}` });
-  if (r.valour) out.push({ text: `${r.valour}♥`, title: `Again: pay ${r.valour} Valour` });
-  if (r.draw) out.push({ text: `${r.draw}▭`, title: `Again: discard ${r.draw === 1 ? "the top card" : `${r.draw} cards`} of your Reserve` });
+/** The price of using a placed support again, as icons: a turn between, a rest, Valour, a card off the Reserve. */
+function reuseShort(r: Reuse): { icon: string; n?: number; title: string }[] {
+  const out: { icon: string; n?: number; title: string }[] = [];
+  if (r.turns) out.push({ icon: "between", title: r.turns === 1 ? "Again: not two turns running" : `Again: ${r.turns} other actions between` });
+  if (r.rest) out.push({ icon: "rest", n: r.rest > 1 ? r.rest : undefined, title: `Again: after ${r.rest === 1 ? "a rest" : `${r.rest} rests`}` });
+  if (r.valour) out.push({ icon: "valour", n: r.valour, title: `Again: pay ${r.valour} Valour` });
+  if (r.draw) out.push({ icon: "card", n: r.draw, title: `Again: discard ${r.draw === 1 ? "the top card" : `${r.draw} cards`} of your Reserve` });
   return out;
 }
 
@@ -196,7 +196,11 @@ function CompactBody({ d }: { d: CardDef }) {
         {d.type === "support" ? (
           <>
             <span className="c-chip" title={`${d.element} ${d.kind}`}>{d.element ? <Icon name={d.element} className={`ink-${d.element}`} /> : null}{d.kind}</span>
-            {reuseShort(reuseOf(d)).map((x) => <span key={x.title} className="c-chip again" title={x.title}>{x.text}</span>)}
+            {reuseShort(reuseOf(d)).length ? (
+              <span className="c-chip again" title={reuseShort(reuseOf(d)).map((x) => x.title).join("; ")}>
+                <Icon name="again" />{reuseShort(reuseOf(d)).map((x) => <span key={x.icon} className="c-price"><Icon name={x.icon} />{x.n ?? ""}</span>)}
+              </span>
+            ) : null}
           </>
         ) : null}
         {d.type === "geis" || d.type === "oath" || d.type === "omen" || d.type === "attendant" ? <span className="c-rule">{d.text}</span> : null}

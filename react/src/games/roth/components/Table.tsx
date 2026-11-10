@@ -2,11 +2,14 @@
 import { useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import type { CardDef } from "../engine/cards";
-import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
+import { draftSpot, facedSpot, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
 import { DuelView, MoveTicker } from "./DuelView";
 import type { MoveEvent } from "../useMatch";
 import { MusterView } from "./MusterView";
+import { FordLane } from "./FordLane";
+import { Icon } from "./Icons";
+import { Legend } from "./Panels";
 import { globalGeasa } from "../text";
 import { Wheel, type Mark } from "./Wheel";
 
@@ -109,9 +112,13 @@ export function Table(props: {
       ) : null}
       <div className="view-bar">
         <span className="phase-line">{phaseText(S)}{S.globalGeis.length ? ` · on every hero: ${globalGeasa(S, me).map((g) => g.text).join(", ")}` : ""}</span>
+        <details className="legend-pop">
+          <summary aria-label="What the icons mean">?</summary>
+          <Legend />
+        </details>
         {focus !== null || duel ? (
           <button type="button" className="btn quiet small" aria-pressed={wide} onClick={() => setWide(!wide)}>
-            {wide ? (duel ? "Back to the duel" : "Zoom in") : "Whole wheel"}
+            {wide ? (duel ? "Back to the duel" : "Close up") : "Whole wheel"}
           </button>
         ) : null}
       </div>
@@ -123,13 +130,17 @@ export function Table(props: {
           <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
             lastSpot={(() => { const e = props.last?.[props.last.length - 1]; return e && e.spot !== undefined ? { spot: e.spot, n: e.n } : undefined; })()} />
         </>
+      ) : !wide && focus !== null ? (
+        <FordLane S={S} me={me} mine={ownerOfSpot(focus) === me ? quadOf(focus) : (quadOf(focus) + 2) % 4} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} />
       ) : (
         <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
-          focus={wide || focus === null ? null : Math.floor(focus / 3) * 3 + 1 /* the middle of the quadrant: hero and both supports */}
-          front={focus}
+          focus={null}
+          // your spot at the bottom centre: the one you're filling, or yours across from the spot you face
+          front={focus === null ? null : ownerOfSpot(focus) === me ? focus : (focus + 6) % 12}
+          chord={focus !== null && S.phase === "play" ? [focus, (focus + 6) % 12] : undefined}
           center={(
             <>
-              {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis global" title={g.text}>⊘ {g.text}</span>)}
+              {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis global" title={g.text}><Icon name="global" /> {g.text}</span>)}
             </>
           )} />
       )}
