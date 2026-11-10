@@ -1,6 +1,7 @@
 // The duel at the ford, up close: each fighter as a full card with its Valour and Shield, its geis and oath,
 // and the two supports of its quadrant (used ones dimmed). Your side at the bottom.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MoveEvent } from "../useMatch";
 import type { CardDef } from "../engine/cards";
 import { actorOf, effSupport, effWeakness, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
 import { reuseOf, type SupportDef } from "../engine/cards";
@@ -44,14 +45,60 @@ export function ValourBar({ v, start, cap, shield }: { v: number; start: number;
   );
 }
 
+/** The moves since your last one, in words, with what they changed. */
+export function MoveTicker({ last }: { last: MoveEvent[] }) {
+  let from = last.length - 1;
+  while (from > 0 && !last[from].mine) from--;
+  const shown = last.slice(Math.max(0, from)).slice(-3);
+  if (!shown.length) return null;
+  return (
+    <div className="ticker" role="log" aria-live="polite" aria-label="The last moves">
+      {shown.map((e) => (
+        <p key={e.n} className={`tick ${e.mine ? "mine" : "theirs"}`}>
+          <span className="tick-text">{e.text}</span>{e.fx ? <span className="tick-fx">{e.fx}</span> : null}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Floating "−3" / "+2" over a fighter whose Valour or Shield just changed. */
+function useFloats(S: State) {
+  const C = S.combat;
+  const prev = useRef<{ key: string; v: number[]; sh: number[] } | null>(null);
+  const [floats, setFloats] = useState<{ p: Side; text: string; kind: string; id: number }[]>([]);
+  const key = C ? `${C.duel}:${C.hs[0]}:${C.hs[1]}:${C.champ[0]?.uid ?? ""}:${C.champ[1]?.uid ?? ""}` : "";
+  const v = C ? [C.valour[0], C.valour[1]] : [0, 0], sh = C ? [C.shield[0], C.shield[1]] : [0, 0];
+  useEffect(() => {
+    const was = prev.current;
+    prev.current = { key, v, sh };
+    if (!was || was.key !== key) return;
+    const add: { p: Side; text: string; kind: string; id: number }[] = [];
+    for (const p of [0, 1] as Side[]) {
+      const dv = v[p] - was.v[p], ds = sh[p] - was.sh[p];
+      if (dv) add.push({ p, text: `${dv > 0 ? "+" : "−"}${Math.abs(dv)}`, kind: dv > 0 ? "heal" : "hurt", id: Math.random() });
+      if (ds > 0) add.push({ p, text: `+${ds} Shield`, kind: "shield", id: Math.random() });
+    }
+    if (!add.length) return;
+    setFloats((f) => [...f, ...add]);
+    const t = setTimeout(() => setFloats((f) => f.filter((x) => !add.includes(x))), 1400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, v[0], v[1], sh[0], sh[1]]);
+  return floats;
+}
+
 export function DuelView(props: {
   S: State; me: Side; usable?: Set<number>; chosen?: number; onSpot?: (spot: number) => void; onFocusCard?: (d: CardDef) => void;
+  /** The support used by the last move, to pulse it. */
+  lastSpot?: { spot: number; n: number };
 }) {
   const { S, me } = props;
   const C = S.combat;
+  const floats = useFloats(S);
+  const narrow = useNarrow();
   if (!C) return null;
   const death = toDeath(S);
-  const narrow = useNarrow();
   const side = (p: Side) => {
     const hs = C.hs[p];
     const q = quadOf(hs);
@@ -65,7 +112,8 @@ export function DuelView(props: {
     const felled = done ? C.felled[C.duel][p] : C.valour[p] <= 0;
     const mine = p === me;
     return (
-      <div className={`duel-side ${mine ? "mine" : "theirs"}${felled ? " felled" : ""}${!done && (death || C.turn < 4) && actorOf(C) === p ? " acting" : ""}`}>
+      <div className={`duel-side ${mine ? "mine" : "theirs"}${felled ? " felled" : ""}${!done && (death || C.turn < 4) && actorOf(C) === p ? " acting" : ""}${floats.some((x) => x.p === p && x.kind === "hurt") ? " hit" : ""}`}>
+        {floats.filter((x) => x.p === p).map((x) => <span key={x.id} className={`float ${x.kind}`} aria-hidden="true">{x.text}</span>)}
         <div className="duel-fighter">
           <div className="duel-portrait">
             <CardFace def={f} owner={hero.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} onFocusCard={props.onFocusCard} label={`${f.name}, ${mine ? "your" : "the enemy's"} fighter: Valour ${v}${sh ? `, Shield ${sh}` : ""}`} />
@@ -95,10 +143,12 @@ export function DuelView(props: {
             const eff = effSupport(S, p, sd);
             const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${(eff.channel ?? 0) + (eff.attuned ?? 0) ? `, +${(eff.channel ?? 0) + (eff.attuned ?? 0)}` : ""}` : null;
             return (
-              <CardFace key={s} def={c.def} owner={c.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} dim={used} playable={can} selected={props.chosen === s}
+              <div key={props.lastSpot?.spot === s ? `${s}-${props.lastSpot.n}` : s} className={`sup-wrap${props.lastSpot?.spot === s ? " pulse" : ""}`}>
+              <CardFace def={c.def} owner={c.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} dim={used} playable={can} selected={props.chosen === s}
                 badge={death ? [again, c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined
                   : used ? "used" : [c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined}
                 onFocusCard={props.onFocusCard} onClick={can && props.onSpot ? () => props.onSpot!(s) : undefined} />
+              </div>
             );
           })}
         </div>

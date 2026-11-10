@@ -8,7 +8,8 @@ import { computerDeck } from "./engine/computerDecks";
 import { Rng } from "./engine/rng";
 import { loadSavedDecks, resolveDeck } from "./decks";
 import { FACTION_TITLE } from "./text";
-import { applyDecision, cloneState, newMatch, nextDecision, upgradeState, type Decision, type Side, type State } from "./engine/engine";
+import { applyDecision, cloneState, fighter, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
+import { summarize } from "./components/Choices";
 import { cancelComputer, computerChoice } from "./aiClient";
 import { logLine } from "./text";
 
@@ -26,7 +27,9 @@ export const DEFAULT_SETUP: Setup = { mine: "ulster", theirs: "random", theirsDe
 
 /** The state before each of your recent moves, so you can take one back (and the computer's replies with it). */
 interface Back { S: State; log: string[] }
-interface Saved { v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: string[]; seed: number; back?: Back[]; recorded?: boolean }
+/** A move as the table shows it afterwards: who, what, what changed, and the support it used. */
+export interface MoveEvent { mine: boolean; text: string; fx: string | null; spot?: number; n: number }
+interface Saved { v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: string[]; seed: number; back?: Back[]; recorded?: boolean; last?: MoveEvent[] }
 const BACK_MAX = 10;
 
 /** A heading for the log when the match moves into a new part. */
@@ -78,7 +81,14 @@ export function useMatch() {
     const T = cloneState(saved.S);
     const line = logLine(T, d, d.options[i], saved.me);
     const before = sectionOf(T);
-    applyDecision(T, d, i);
+    const o = d.options[i];
+    const lines: string[] = [];
+    NARRATE.lines = lines;
+    try { applyDecision(T, d, i); } finally { NARRATE.lines = null; }
+    // name whose Valour or Shield it was ("Valour 5 → 7" alone doesn't say)
+    const who = T.combat ? fighter(T, T.combat, d.player).name : null;
+    const fx = summarize(lines)?.replace(/(^|· )(Valour|Shield) /g, (_m, a: string, k: string) => `${a}${who ? `${who}${k === "Shield" ? "'s Shield" : ""} ` : `${k} `}`) ?? null;
+    const ev: MoveEvent = { mine: d.player === saved.me, text: line, fx, spot: o.t === "duel" && o.act === "use" ? o.spot : undefined, n: saved.log.length };
     const { S, d: next } = settle(T);
     const after = sectionOf(S);
     const log = [...saved.log, line, ...(after !== before ? [`§ ${after}`] : [])].slice(-240);
@@ -90,7 +100,8 @@ export function useMatch() {
       const r = S.result, lv = saved.setup.level, cur = record[lv] ?? { w: 0, l: 0, d: 0 };
       setRecord({ ...record, [lv]: { w: cur.w + (r.winner === saved.me ? 1 : 0), l: cur.l + (r.winner === 1 - saved.me ? 1 : 0), d: cur.d + (r.winner === -1 ? 1 : 0) } });
     }
-    setSaved({ ...saved, S, log, back, recorded });
+    const last = T.phase === "combat" || S.phase === "combat" ? [...(saved.last ?? []), ev].slice(-4) : [];
+    setSaved({ ...saved, S, log, back, recorded, last });
   }, [saved, d, setSaved, record, setRecord]);
 
   /** Take back your last move, and the computer's replies since. */
@@ -99,7 +110,7 @@ export function useMatch() {
     cancelComputer();
     busy.current++;
     const back = saved.back.slice(0, -1), b = saved.back[saved.back.length - 1];
-    setSaved({ ...saved, S: b.S, log: [...b.log, "You took back a move."], back });
+    setSaved({ ...saved, S: b.S, log: [...b.log, "You took back a move."], back, last: [] });
   }, [saved, setSaved]);
 
   // The computer's turn
@@ -119,7 +130,7 @@ export function useMatch() {
 
   return {
     setup, setSetup, start, quit, play, thinking, undo, canUndo: !!saved?.back?.length && !saved.recorded, record,
-    S: saved?.S ?? null, me: saved?.me ?? (0 as Side), d, log: saved?.log ?? [], theirs: saved?.theirs ?? null,
+    S: saved?.S ?? null, me: saved?.me ?? (0 as Side), d, log: saved?.log ?? [], theirs: saved?.theirs ?? null, last: saved?.last ?? [],
     myTurn: !!saved && !!d && d.player === saved.me,
     over: !!saved && !d && !!saved.S.result,
   };

@@ -36,6 +36,11 @@ export function previewOf(S: State, d: Decision, i: number): string | null {
   const lines: string[] = [];
   NARRATE.lines = lines;
   try { applyDecision(T, d, i, false); } catch { return null; } finally { NARRATE.lines = null; }
+  return summarize(lines);
+}
+
+/** The changes in a move's arithmetic, briefly: "Ailill 5 → 2 · Shield 3 → 0". Null if nothing changed hands. */
+export function summarize(lines: string[]): string | null {
   const bits = lines.join(" ").split(/(?<=\.)\s+/).filter((x) => x.includes("→")).map((x) => x.replace(/\.$/, "").replace(/^\d+ wounds?: /, "").replace(/^0 wounds: /, ""));
   if (!bits.length) return null;
   // drop what doesn't change; a fighter brought to 0 or below is felled

@@ -790,3 +790,27 @@ body.gm-roth .zone.theirs .omens > .card { flex: 0 0 auto; }
   body.gm-roth .zone.theirs .omens .card.compact { width: 8.5rem; font-size: 11px; }
   body.gm-roth .zone.theirs .omens .card.compact .c-rule { -webkit-line-clamp: 1; }
 }
+
+/* ---- feedback: what the last moves did ---- */
+body.gm-roth .ticker { display: grid; gap: 3px; padding: 8px 12px; border-radius: 12px; background: #201913; border: 1px solid var(--line); font-size: .9rem; }
+body.gm-roth .tick { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; animation: tick-in .35s ease-out; }
+body.gm-roth .tick.theirs .tick-text { color: #e6c9bf; }
+body.gm-roth .tick.mine .tick-text { color: #efe2c6; }
+body.gm-roth .tick-fx { color: var(--bronze-hi); font-variant-numeric: tabular-nums; }
+body.gm-roth .tick:last-child { font-weight: 600; }
+body.gm-roth .duel-side { position: relative; }
+body.gm-roth .float { position: absolute; left: 7rem; top: 10px; z-index: 6; font: 700 1.6rem/1 var(--font-display); pointer-events: none; text-shadow: 0 2px 6px rgb(0 0 0 / .8); animation: float-up 1.3s ease-out forwards; }
+body.gm-roth .float.hurt { color: #ff7a66; }
+body.gm-roth .float.heal { color: #8fdc8f; }
+body.gm-roth .float.shield { color: #9cc0ea; font-size: 1.1rem; top: 40px; }
+body.gm-roth .duel-side.hit .vbar { animation: flash .6s ease-out; }
+body.gm-roth .sup-wrap.pulse > .card { animation: pulse 0.9s ease-out; }
+@keyframes float-up { 0% { opacity: 0; transform: translateY(8px) scale(.9); } 15% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-26px) scale(1); } }
+@keyframes flash { 0%, 100% { filter: none; } 30% { filter: brightness(1.8) drop-shadow(0 0 6px #ff7a66); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(233 211 157 / .9); } 100% { box-shadow: 0 0 0 14px rgb(233 211 157 / 0); } }
+@keyframes tick-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  body.gm-roth .float { animation: none; opacity: 1; transform: none; transition: none; }
+  body.gm-roth .sup-wrap.pulse > .card, body.gm-roth .tick { animation: none; }
+  body.gm-roth .sup-wrap.pulse > .card { outline: 3px solid var(--bronze-hi); }
+}

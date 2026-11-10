@@ -4,7 +4,8 @@ import { useStoredState } from "../../../kit/useStoredState";
 import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
-import { DuelView } from "./DuelView";
+import { DuelView, MoveTicker } from "./DuelView";
+import type { MoveEvent } from "../useMatch";
 import { MusterView } from "./MusterView";
 import { globalGeasa } from "../text";
 import { Wheel, type Mark } from "./Wheel";
@@ -54,6 +55,8 @@ export function Table(props: {
   onPick?: (i: number) => void;
   /** Shown right under the wheel (the drafting slider). */
   afterWheel?: ReactNode;
+  /** Recent moves, for the duel's ticker and to pulse the support just used. */
+  last?: MoveEvent[];
 }) {
   const { S, me, d, sel } = props;
   const [wide, setWide] = useState(false);
@@ -115,7 +118,11 @@ export function Table(props: {
       {S.phase === "muster" ? (
         <MusterView S={S} me={me} d={d} onPick={props.onPick} onFocusCard={props.onFocusCard} />
       ) : duel && !wide ? (
-        <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard} />
+        <>
+          {props.last?.length ? <MoveTicker last={props.last} /> : null}
+          <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
+            lastSpot={(() => { const e = props.last?.[props.last.length - 1]; return e && e.spot !== undefined ? { spot: e.spot, n: e.n } : undefined; })()} />
+        </>
       ) : (
         <Wheel S={S} me={me} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
           focus={wide || focus === null ? null : Math.floor(focus / 3) * 3 + 1 /* the middle of the quadrant: hero and both supports */}

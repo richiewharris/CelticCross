@@ -118,7 +118,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
           </div>
         </div>
         <Table S={S} me={m.me} d={d} sel={tableSel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
-          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined}
+          onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} last={m.last}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
             <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
               onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
