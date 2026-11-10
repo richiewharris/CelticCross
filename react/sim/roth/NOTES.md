@@ -190,6 +190,15 @@ npx tsx sim/roth/makepuzzles.ts candidates.json > src/games/roth/puzzles/boards.
 70. Duels to the death: the tuned Fomóire deck won 72–74% against the other tuned decks. Single-card tweaks tested
     (n=40 per pairing): Indech's cap 3 → 4 was worth −7 points, Balor's first Strike +2 → +1 −4, the rest ≤ 2.
     Both taken: Fomóire 59.5% (Ulster 73, Connacht 55, Merrow 55, Aos Sídhe 33, Slúagh 83).
+71. A holistic pass (duels to the death). Profile, tuned decks: duels last ~4 turns at Skilled, so Valour, Initiative
+    and the first big blow decide them; Ulster dealt the least per blow (2.5) and took the most, the Fomóire the reverse.
+    Levers screened one at a time (n=24 per pairing), then together. Taken: Cú Chulainn Valour 4 → 5, Conchobar 5 → 6,
+    Thunder feat Strike 2 → 3; Ailill 4 → 5, Ferdiad's horn-skin Shield 1 → 2; Indech Valour 5 → 4; the Dullahan 3 → 4;
+    for the Fomóire starter (hit twice by its heroes' nerfs), Fomorian galley and Blight Strike 1 → 2. Bres stays 4.
+    Tuned decks (n=40): Ulster 49.5, Connacht 50.0, Aos Sídhe 52.5, Fomóire 52.0, Merrow 46.0, Slúagh 50.0.
+    Starters (n=40): Ulster 55.5, Connacht 47.5, Aos Sídhe 54.5, Fomóire 39.0, Merrow 49.0, Slúagh 54.5.
+    The board puzzles keep the cards as first printed (FIRST_PRINTING in cards.ts), since their answers and
+    explanations rest on those numbers.
 
 ## Puzzles
 

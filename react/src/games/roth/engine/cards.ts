@@ -302,7 +302,7 @@ export const HEROES: Record<string, HeroDef> = {
   brigid: hero("brigid", "Brigid", "Sidhe", C, 4, 3, "Fire", "Water", "Forge", "Healer's well: her Heals +1", { healBonus: 1 }),
   // Fomóire: huge, slow, blighting
   balor: hero("balor", "Balor of the Evil Eye", "Fomoire", L, 5, 1, "Fire", "Water", "Evil eye", "Evil eye: his first Strike each duel +1", { firstStrike: 1 }),
-  bres: hero("bres", "Bres", "Fomoire", R, 3, 3, "Word", "Wind", "Hospitality", "Niggard king: the enemy hero's Heals −1", { foeHealMalus: 1 }),
+  bres: hero("bres", "Bres", "Fomoire", R, 4, 3, "Word", "Wind", "Hospitality", "Niggard king: the enemy hero's Heals −1", { foeHealMalus: 1 }),
   cethlenn: hero("cethlenn", "Cethlenn", "Fomoire", R, 3, 4, "Water", "Earth", "Prophecy", "Bloodied tooth: Strikes +1; when her Strike wounds, Heal 1", { strikeAll: 1, drain: 1 }),
   indech: hero("indech", "Indech mac Dé Domnann", "Fomoire", C, 4, 2, "Earth", "Wind", "Sea", "Sea-giant: no Strike against him above 4", { capTaken: 4 }),
   // Merrow: Water, shields, slippery
@@ -375,11 +375,11 @@ export const SUPPORTS: Record<string, SupportDef> = {
   gaze: sup("gaze", "The gaze of Balor", "Fire", "Feat", "Fomoire", L, [S(2)], "Strike 2; Strike 3 if Balor uses it", { forHero: { id: "balor", n: 3 } }),
   tower: sup("tower", "Conand's tower", "Earth", "Ally", "Fomoire", R, [Sh(3)], "Shield 3"),
   sea_raid: sup("sea_raid", "Sea-raid", "Water", "Feat", "Fomoire", C, [S(2)], "Strike 2"),
-  galley: sup("galley", "Fomorian galley", "Water", "Ally", "Fomoire", C, [S(1), Sh(1)], "Strike 1 + Shield 1"),
+  galley: sup("galley", "Fomorian galley", "Water", "Ally", "Fomoire", C, [S(2), Sh(1)], "Strike 2 + Shield 1"),
   club: sup("club", "Club of the Fomóire", "Earth", "Weapon", "Fomoire", C, [S(2)], "Strike 2"),
   tribute: sup("tribute", "Tribute of Mag Céidne", "Earth", "Word", "Fomoire", R, [S(1), H(1)], "Strike 1 + Heal 1; Invoke Plenty", { invoke: "Plenty" }),
   octriallach: sup("octriallach", "Stones of Octriallach", "Water", "Word", "Fomoire", R, [S(1)], "Strike 1; if it wounds, Heal 1", { drain: 1 }),
-  blight: sup("blight", "Blight of the Fomóire", "Wind", "Word", "Fomoire", C, [S(1)], "Strike 1; Invoke Forge", { invoke: "Forge" }),
+  blight: sup("blight", "Blight of the Fomóire", "Wind", "Word", "Fomoire", C, [S(2)], "Strike 2; Invoke Forge", { invoke: "Forge" }),
   // Merrow
   cohuleen: sup("cohuleen", "The cohuleen druith", "Water", "Ally", "Merrow", L, [Sh(2), H(1)], "Shield 2 + Heal 1"),
   cliodhna: sup("cliodhna", "Clíodhna's wave", "Water", "Feat", "Merrow", R, [S(2)], "Strike 2; ignores Shield", { pierce: true }),
@@ -661,10 +661,11 @@ export const FIRST_PRINTING: Record<string, CardDef> = {
   conchobar: reprint<HeroDef>("conchobar", (d) => ({ ...d, valour: 5 })),
   ailill: reprint<HeroDef>("ailill", (d) => ({ ...d, valour: 4 })),
   ferdiad: reprint<HeroDef>("ferdiad", (d) => ({ ...d, quality: "Horn-skin: Shield 1 at the start of each duel", ab: { ...d.ab, shieldStart: 1 } })),
-  bres: reprint<HeroDef>("bres", (d) => ({ ...d, valour: 4 })),
   indech: reprint<HeroDef>("indech", (d) => ({ ...d, valour: 5, quality: "Sea-giant: no Strike against him above 3", ab: { ...d.ab, capTaken: 3 } })),
   balor: reprint<HeroDef>("balor", (d) => ({ ...d, quality: "Evil eye: his first Strike each duel +2", ab: { ...d.ab, firstStrike: 2 } })),
   dullahan: reprint<MonsterDef>("dullahan", (d) => ({ ...d, valour: 3 })),
+  galley: reprint<SupportDef>("galley", (d) => ({ ...d, effects: [{ type: "strike", n: 1 }, { type: "shield", n: 1 }], text: "Strike 1 + Shield 1" })),
+  blight: reprint<SupportDef>("blight", (d) => ({ ...d, effects: [{ type: "strike", n: 1 }], text: "Strike 1; Invoke Forge" })),
   thunder: reprint<SupportDef>("thunder", (d) => ({ ...d, effects: [{ type: "strike", n: 2 }], text: "Strike 2; ignores Shield" })),
 };
 
