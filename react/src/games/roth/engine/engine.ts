@@ -1215,7 +1215,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.shield[b] -= soak;
   const dmg = n - soak;
   C.valour[b] -= dmg;
-  const dr = (ab.drain ?? 0) + drain;
+  // what a blow steals back: never more than 1 a Strike
+  const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
   // the uninvited guest: wound it and pay for it
   if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;

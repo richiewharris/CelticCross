@@ -50,7 +50,7 @@ export const FACE: Record<string, Face> = {
   elatha: { ability: "Golden king", text: "No special quality: he is simply big." },
   tethra: { ability: "Sea-crow", text: "When his Strike wounds, {heal} **Heal 1**." },
   roane: { ability: "Seal-hide", text: "Steps in with {shield} **Shield 1**." },
-  banshee: { ability: "The keen", text: "When her Strike wounds, {heal} **Heal 1**." },
+  banshee: { ability: "The keen", text: "The enemy's {heal} **Heals −1**." },
   fear_doirich: { ability: "Lord of the host", text: "His first Strike after he steps in **+1**." },
   muirdris: { ability: "Sea-beast", text: "No Strike against it can be more than **3**." },
 
@@ -238,7 +238,7 @@ export function effectLine(d: SupportDef): string {
   if (d.use === "passive") return `{armour} **Armour ${d.armour ?? 0}**, passive: while it is placed beside your hero, every Strike against the hero is **${d.armour ?? 0}** less (what ignores Shield ignores it).`;
   if (d.use === "reaction") return `{block} **Block ${d.effects[0]?.n ?? 0}**, a reaction: when the enemy strikes, tap it to take **${d.effects[0]?.n ?? 0}** off that blow (+1 kinship, +1 Focus, +1 or +2 if your hero has just rested).`;
   const parts = d.effects.map((e) => `{${e.type}} **${EFF_WORD[e.type]} ${e.n}**`);
-  if (d.element === "Spirit") return parts.join(" and ") + " of **Spirit**: it passes Shield (not Armour or Blocks) and steals {heal} **1** when it wounds.";
+  if (d.element === "Spirit") return parts.join(" and ") + " of **Spirit**: it passes Shield (not Armour or Blocks) and steals {heal} **1** when it wounds (never more than 1 a Strike).";
   return parts.join(" and ") + (d.pierce ? ", **ignoring Shield**." : ".");
 }
 const KIND_PLURAL: Record<string, string> = { Weapon: "Weapons", Feat: "Feats", Ally: "Allies", Word: "Words" };

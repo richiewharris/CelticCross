@@ -333,7 +333,7 @@ export const CHAMPIONS: Record<string, ChampionDef> = {
   tethra: champ("tethra", "Tethra", "Fomoire", R, 4, "Water", "Earth", "Sea-crow: when his Strike wounds, Heal 1", { drain: 1 }),
   roane: champ("roane", "The Roane", "Merrow", C, 4, "Water", "Fire", "Seal-hide: Shield 1 when it steps in", { shieldStart: 1 }),
   // the Slúagh: monsters that stand in for a host
-  banshee: champ("banshee", "The Banshee", "Sluagh", C, 4, "Spirit", "Wind", "Her keening steals: when her Strike wounds, Heal 1", { drain: 1 }),
+  banshee: champ("banshee", "The Banshee", "Sluagh", C, 4, "Spirit", "Wind", "Her keening: the enemy's Heals −1", { foeHealMalus: 1 }),
   fear_doirich: champ("fear_doirich", "Fear Doirich, the dark man", "Sluagh", R, 5, "Spirit", "Fire", "Lord of the host: his first Strike +1", { firstStrike: 1 }),
   muirdris: champ("muirdris", "The Muirdris", "Merrow", R, 5, "Water", "Earth", "Sea-beast: no Strike against it above 3", { capTaken: 3 }),
 };
@@ -563,7 +563,7 @@ const host = (id: string, name: string, rarity: Rarity, kind: HostDef["kind"], i
 export const HOSTS: Record<string, HostDef> = {
   hunt: host("hunt", "The Hunt", R, "hunt", 0, 0, "Fire", "Spirit", "Night", { firstStrike: 1 }, "The host rides: its first Strike each duel +1. Torches drive it off: weak to Fire"),
   prey: host("prey", "The Prey", C, "prey", 1, 0, "Earth", "Spirit", "Night", { firstHitSoak: 1 }, "The host flees and scatters: the first Strike against it each duel −1. Cold earth holds it: weak to Earth"),
-  taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { drain: 1 }, "The host is a curse: when its Strike wounds, Heal 1. It cannot cross running water: weak to Water"),
+  taboo: host("taboo", "The Taboo", R, "taboo", 1, 0, "Water", "Spirit", "Night", { foeHealMalus: 1 }, "The host is a curse: the enemy's Heals −1. It cannot cross running water: weak to Water"),
 };
 const mon = (id: string, name: string, rarity: Rarity, valour: number, init: number, weakness: Element, ab: HeroAb, quality: string, hybrid?: Element): MonsterDef =>
   ({ type: "monster", id, name, alignment: "Sluagh", rarity, valour, init, weakness, ab, quality, ...(hybrid ? { hybrid } : {}) });
@@ -571,7 +571,7 @@ export const MONSTERS: Record<string, MonsterDef> = {
   // hybrid damage: the element opposite a monster's weakness (Fire against Water, Wind against Earth)
   dullahan: mon("dullahan", "The Dullahan", L, 4, 0, "Water", { strikeAll: 1 }, "Headless rider: Strikes +1; the host's Spirit blows burn as Fire too", "Fire"),
   puca: mon("puca", "The Púca", R, 2, 1, "Earth", { firstStrike: 1 }, "Shape-shifter: Initiative +1; its first Strike each duel +1"),
-  dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { drain: 1 }, "Blood-drinker: when the host's Strike wounds, Heal 1; the host's Spirit blows run as Water too", "Water"),
+  dearg_due: mon("dearg_due", "The Dearg-due", R, 2, 0, "Fire", { foeHealMalus: 1 }, "Blood-drinker: the enemy's Heals −1; the host's Spirit blows run as Water too", "Water"),
   fear_dearg: mon("fear_dearg", "The Fear Dearg", C, 2, 1, "Earth", { foeHealMalus: 1, reflect: 1 }, "The red man: Initiative +1; the enemy's Heals −1. Uninvited guest: when a Strike wounds the host, the striker loses 1 Valour. The host's Spirit blows blow as Wind too", "Wind"),
   bean_nighe: mon("bean_nighe", "The Bean Nighe", C, 2, 0, "Wind", { firstHitSoak: 1 }, "Washer at the ford: the first Strike against the host each duel −1; the host's Spirit blows strike as Earth too", "Earth"),
   marbh: mon("marbh", "The restless dead", C, 3, -1, "Fire", {}, "Many and slow: Initiative −1"),

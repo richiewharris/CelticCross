@@ -17,12 +17,12 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     motto: "A monster deck. No heroes: **hosts** of two or three monsters fight as one, and their blows are **Spirit**, which no Shield stops and which feeds the host.",
     plan: [
       "Place a **host** on a hero spot and join **2 or 3 monsters** from your hand to it. The host fights as one: its Valour is the monsters' added together, less one (a host of the dead is a ragged thing), its Initiative the host's plus theirs, and it is weak to the **host's own** element, plus any **monster weakness that two of them share** (a lone monster's weakness is covered by the rest).",
-      "Two monsters make a quick, lean host; three make a big one with more Valour and more weaknesses. The **Hunt** opens hard, the **Prey** turns the first blow, the **Taboo** drinks life.",
+      "Two monsters make a quick, lean host; three make a big one with more Valour and more weaknesses. The **Hunt** opens hard, the **Prey** turns the first blow, the **Taboo** is a curse that spoils the enemy's Heals.",
       "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
       "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too. But the dead cannot cross running water: a **Merrow** hero's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**.",
       "**The dead do not sleep**: omens can't lower a host's Initiative (Druid's sleep does nothing to it). A geis still can.",
       "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
-      "Some monsters carry **hybrid** damage, the element opposite their weakness. Each Spirit blow is a choice: as **Spirit** it goes through Shield and steals 1; as the **hybrid** element it gets the element wheel and weakness bonuses, but Shield soaks it and nothing is stolen. The Dullahan burns as {Fire} Fire, the Fear Dearg blows as {Wind} Wind (and makes a striker pay 1 Valour for wounding his host), the Bean Nighe strikes as {Earth} Earth, the Dearg-due runs as {Water} Water.",
+      "Some monsters carry **hybrid** damage, the element opposite their weakness. Each Spirit blow is a choice: as **Spirit** it passes Shield and steals 1 (never more than 1 a Strike); as the **hybrid** element it gets the element wheel and weakness bonuses, but Shield soaks it and nothing is stolen. The Dullahan burns as {Fire} Fire, the Fear Dearg blows as {Wind} Wind (and makes a striker pay 1 Valour for wounding his host), the Bean Nighe strikes as {Earth} Earth, the Dearg-due runs as {Water} Water.",
       "A deck holds at most **6** of the 9 monsters. A host placed with fewer than two monsters in hand takes the rest from the Reserve.",
       "In a duel a host may **sacrifice** one of its monsters (once a duel): the monster's Valour comes back to the host, and its weakness and quality leave with it.",
       "Once a match a host may **summon** a monster from your other host: its Valour, weakness and quality join the one fighting now, and the other host fights without it.",
@@ -240,7 +240,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
     how: [
       "The host's {valour} **Valour** is its monsters' added together, **less one**; its {init} **Initiative** is the host's own plus each monster's (which can be negative).",
       "It is weak to **every** element its monsters and its host type bring, so a bigger host is tougher but easier to hit hard.",
-      "The host type changes the nature of the monsters in it: the Hunt's **first Strike each duel +1**, the Prey turns the **first blow** against it, the Taboo **drinks life**.",
+      "The host type changes the nature of the monsters in it: the Hunt's **first Strike each duel +1**, the Prey turns the **first blow** against it, the Taboo is a **curse**: the enemy's Heals −1.",
       "Its Focus is {Spirit} **Spirit**: Slúagh supports of Spirit ignore Shield and steal 1 when they wound. Oaths, geasa, omens and attendants treat a host just like a hero, except that an omen can't lower its Initiative.",
     ],
   },
