@@ -50,7 +50,7 @@ function sideWorth(r: R, side: 0 | 1) {
     if (!x) continue;
     if (kind === "shield") add(id, "save", raised ? (x * soaked) / raised : 0);
     else if (k === "save:shield") { if (!raised) add("shield", "save", x); }
-    else add(id, kind as Cat, x);
+    else if ((CATS as readonly string[]).includes(kind)) add(id, kind as Cat, x);
   }
   return src;
 }

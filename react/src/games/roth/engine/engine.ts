@@ -1286,8 +1286,16 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.shield[b] -= soak;
   let dmg = n - soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
-  const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el))
+  let halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el))
     && !(pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("hide"));
+  // the Hound's cry: an Ulster blow that ignores Shield may spend the top card of the Reserve to land in full on giant-kin
+  if (halved && dmg >= 2 && pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("cry") && drawable(S, a) > 0) {
+    halved = false;
+    if (C === S.combat) { const c = takeTop(S, a); if (c) (S.rules.ulster!.includes("crylost") ? S.players[a].lost : S.players[a].discard).push(c); }
+    const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2);
+    led(S, C, a, "deal:people:cry", dmg - h2); led(S, C, a, "deal:" + SRC.id, -(dmg - h2)); led(S, C, a, "n:cry", 1);
+    if (N) N.push(`the Hound's cry (a Reserve card spent): through the giant's hide`);
+  }
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
   // staggered: every blow that wounds it lands 1 more
   if (dmg > 0 && C.stagger?.[b]) { dmg += 1; led(S, C, a, "deal:people:stagger", 1); }
