@@ -26,6 +26,15 @@ export interface Rules {
   bleedCap?: number;
   /** Switch off the Hound's cry (Ulster), for experiments. */
   noCry?: boolean;
+  /** The Slúagh's dead-flesh aura: switch it off, or round the half up, for experiments. */
+  noAura?: boolean;
+  /** Trial: switch the aura on (off by default while it is tuned). */
+  aura?: boolean;
+  auraUp?: boolean;
+  /** The share of their full Valour that one blow can take (default 1/2). */
+  auraFrac?: number;
+  /** The aura never holds a blow below this (default 1). */
+  auraMin?: number;
   /** Trial Ulster powers (duels to the death): "light" first Strike each duel +2; "fury" Strikes +1 at half Valour or
    *  less; "stand" a felled Ulster hero strikes once more (Strike 3). */
   ulster?: string;
@@ -1174,6 +1183,15 @@ export const HALF = { up: true };
 const RIPOSTE = { on: false };
 /** The card or power whose effect is resolving now (for the ledger). */
 const SRC = { id: "other" };
+/** The dead-flesh aura (the Slúagh, duels to the death): no blow wounds them for more than half their full Valour
+ *  (all the host's monsters together, as printed; rounded down). Hacking at dead flesh does them little harm. Infinity when it doesn't apply. */
+export function auraCap(S: State, C: CombatState, b: Side): number {
+  if (!toDeath(S) || !S.rules.aura || S.rules.noAura || fighter(S, C, b).alignment !== "Sluagh") return Infinity;
+  // the host's full Valour in a duel: all its monsters together, as printed, and the ford's Valour
+  const full = fighter(S, C, b).valour + S.rules.valourBonus + (S.rules.fordValour ?? FORD_VALOUR);
+  const half = full * (S.rules.auraFrac ?? 0.5);
+  return Math.max(S.rules.auraMin ?? 1, S.rules.auraUp ? Math.ceil(half) : Math.floor(half));
+}
 /** Set while a support used with the Hound's cry resolves. */
 const CRY = { on: false };
 /** The Hound's cry (Ulster, duels to the death): once a duel, when an Ulster hero uses a support that ignores Shield
@@ -1322,6 +1340,9 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     if (N) N.push(`through the giant's hide (the Hound's cry)`);
   }
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
+  // the dead-flesh aura: no blow wounds the Slúagh for more than half their full Valour
+  const ac = auraCap(S, C, b);
+  if (dmg > ac) { led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }
   // staggered: every blow that wounds it lands 1 more
   if (dmg > 0 && C.stagger?.[b]) { dmg += 1; led(S, C, a, "deal:people:stagger", 1); }
   const wasUp = C.valour[b] > 0;

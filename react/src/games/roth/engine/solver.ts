@@ -2,7 +2,7 @@
 
 import { beats, isElement, reuseOf, unwillingPair, type CardDef, type FighterDef, type HeroDef, type SupportDef } from "./cards";
 import {
-  activeOath, baseEffects, blockValue, effWeakness, giantKin, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
+  activeOath, auraCap, baseEffects, blockValue, effWeakness, giantKin, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -217,6 +217,7 @@ function supWorth(S: State, C: CombatState, a: Side, s0: SupportDef): number {
       n += (h.ab.strikeAll ?? 0) + (activeOath(S, C, a)?.boon.strike ?? 0);
       for (const fx of heroFx(S, C, a)) n += fx.strikeMod ?? 0;
       if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
+      n = Math.min(n, auraCap(S, C, (1 - a) as Side));
       if (giantKin(S, e) && !(isElement(s.element) && effWeakness(S, 1 - a as Side, e, C).includes(s.element))) n /= 2;
       v += Math.max(0, n) * (s.pierce || s.element === "Spirit" ? 1.1 : 1);
     } else v += 0.8 * Math.max(0, n);
