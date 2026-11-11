@@ -38,6 +38,9 @@ export interface Rules {
   noSpiritResist?: boolean;
   /** Override the Sídhe's resistance to Spirit, for experiments. */
   resistSidhe?: number;
+  /** Trial Merrow powers: "water" a blow that ignores Shield still meets a Merrow's Block; "ebb" the Merrow fighter
+   *  gains Shield 1 whenever its enemy heals. Combine with "+". */
+  merrow?: string;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
   auraFrac?: number;
@@ -929,7 +932,8 @@ function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
   if (!s || !s.effects.some((e) => e.type === "strike")) return false;
   const h = fighter(S, C, a);
   if (unwilling(h.alignment, s.alignment)) return false;
-  if (s.pierce) return false; // a Spirit blow passes Shield, but a Block or Armour still meets it
+  // a blow that ignores Shield ignores Blocks too, unless (trial) it meets a Merrow: water can't be pierced
+  if (s.pierce && !(toDeath(S) && fighter(S, C, (1 - a) as Side).alignment === "Merrow" && (S.rules.merrow ?? "").includes("water"))) return false;
   // trial: a Spirit blow can't be Blocked either (Armour still meets it)
   const asEl = o.t === "duel" || o.t === "drawn" ? o.as : undefined;
   if (toDeath(S) && (S.rules.spiritUnblock ?? true) && !asEl && effSupport(S, a, s).element === "Spirit") return false;
@@ -1167,6 +1171,12 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   led(S, C, p, "heal:" + SRC.id, C.valour[p] - v0);
+  // trial: the ebb and flow: when the enemy of a Merrow heals, the Merrow rises with the tide (Shield 1)
+  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? "").includes("ebb") && C.valour[1 - p] > 0) {
+    C.shield[1 - p] += 1;
+    led(S, C, 1 - p, "shield:people:ebb", 1);
+    if (NARRATE.lines) say(`${e.name} rises with the tide: Shield +1.`);
+  }
   if (C.bleed?.[p]) led(S, C, 1 - p, "deny:people:bleed", Math.min(C.bleed[p], Math.max(0, n + C.bleed[p])));
   if (NARRATE.lines) {
     const bits: string[] = [];
@@ -1331,7 +1341,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     n = nw;
   }
   // a Block meets this blow (once)
-  const blk = !pierce ? C.block?.[b] ?? 0 : 0;
+  const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? "").includes("water")) ? C.block?.[b] ?? 0 : 0;
   if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
   if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
