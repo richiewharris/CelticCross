@@ -151,6 +151,8 @@ export interface CombatState {
   stagger?: number[];
   /** The Hound's cry given this duel (Ulster: once a duel each). */
   cried?: number[];
+  /** Ebb and flow given this enemy turn (trial "ebb1": once per enemy turn). */
+  ebbed?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
   /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
@@ -431,7 +433,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], cried: C.cried ? [C.cried[0], C.cried[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], cried: C.cried ? [C.cried[0], C.cried[1]] : [0, 0], ebbed: C.ebbed ? [C.ebbed[0], C.ebbed[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -1173,7 +1175,9 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   led(S, C, p, "heal:" + SRC.id, C.valour[p] - v0);
   // trial: the ebb and flow: when the enemy of a Merrow heals, the Merrow rises with the tide (Shield 1)
-  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("ebb") && C.valour[1 - p] > 0) {
+  const mr = S.rules.merrow ?? MERROW_DEFAULT;
+  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && mr.includes("ebb") && C.valour[1 - p] > 0 && !(mr.includes("ebb1") && C.ebbed?.[1 - p])) {
+    if (mr.includes("ebb1")) { const eb = [C.ebbed?.[0] ?? 0, C.ebbed?.[1] ?? 0]; eb[1 - p] = 1; C.ebbed = eb; }
     C.shield[1 - p] += 1;
     led(S, C, 1 - p, "shield:people:ebb", 1);
     if (NARRATE.lines) say(`${e.name} rises with the tide: Shield +1.`);
@@ -1197,8 +1201,9 @@ export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
 /** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
 export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
-/** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block. */
-export const MERROW_DEFAULT = "water";
+/** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block; "tide",
+ *  a Water blow that wounds a Merrow heals it 1. */
+export const MERROW_DEFAULT = "water+tide";
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
 export const DREAMS = 2;
 const NO_CAP = 1000;
@@ -1850,6 +1855,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
   if (toDeath(S)) {
     C.acts[a]++; C.drew = false;
     if (C.bleed?.[a]) { C.bleed = [C.bleed[0], C.bleed[1]]; C.bleed[a] = 0; } // the bleeding stops after its turn
+    if (C.ebbed?.[0] || C.ebbed?.[1]) C.ebbed = [0, 0]; // the tide turns with the turn
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
     RESTED_NOW.on = false;
     // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)
