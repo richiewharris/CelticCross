@@ -21,6 +21,9 @@ export interface Rules {
   /** The Aos Sídhe's mound (duels to the death): how much it soaks off each blow, and in all over the match. */
   moundAC?: number;
   moundValour?: number;
+  /** Sim levers: turn Connacht's bleed off; cap how far it stacks. */
+  noBleed?: boolean;
+  bleedCap?: number;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
   geisBreakCost: number;
@@ -167,7 +170,7 @@ export interface MatchStats {
   used: { side: Side; id: string; unwilling: boolean; effect: boolean }[];
   p2First: number;
   /** Per side (the side that dealt it, or suffered it for startLoss/initLoss): where damage came from. */
-  fx: Record<"strikes" | "dmg" | "soaked" | "blunted" | "weakHits" | "beatsHits" | "focusHits" | "kinHits" | "healed" | "startLoss" | "initLoss" | "first" | "broke" | "duels", [number, number]>;
+  fx: Record<"strikes" | "dmg" | "soaked" | "blunted" | "weakHits" | "beatsHits" | "focusHits" | "kinHits" | "healed" | "startLoss" | "initLoss" | "first" | "broke" | "duels" | "bled" | "ripostes" | "swift", [number, number]>;
   bound: { side: Side; id: string }[];
   sworn: { side: Side; id: string; hero: string }[];
   omensTurned: { side: Side; id: string }[];
@@ -359,7 +362,7 @@ function emptyStats(): MatchStats {
   return {
     exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0, attend: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
-    fx: Object.fromEntries(["strikes", "dmg", "soaked", "blunted", "weakHits", "beatsHits", "focusHits", "kinHits", "healed", "startLoss", "initLoss", "first", "broke", "duels"].map((k) => [k, [0, 0]])) as MatchStats["fx"],
+    fx: Object.fromEntries(["strikes", "dmg", "soaked", "blunted", "weakHits", "beatsHits", "focusHits", "kinHits", "healed", "startLoss", "initLoss", "first", "broke", "duels", "bled", "ripostes", "swift"].map((k) => [k, [0, 0]])) as MatchStats["fx"],
     placed: [], used: [], bound: [], sworn: [], omensTurned: [],
   };
 }
@@ -1121,6 +1124,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
     + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0);
   const v0 = C.valour[p];
   const cap = capTo ?? C.cap[p];
+  if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   if (NARRATE.lines) {
     const bits: string[] = [];
@@ -1152,7 +1156,7 @@ export const MOUND_AC = 1;
 export const MOUND_VALOUR = 5;
 /** Connacht's blows bleed (duels to the death): every one that wounds makes the enemy's Heals 1 less until the end of
  *  its next turn, and it stacks. */
-export const bleeds = (S: State, h: FighterDef) => toDeath(S) && h.alignment === "Connachta";
+export const bleeds = (S: State, h: FighterDef) => toDeath(S) && h.alignment === "Connachta" && !S.rules.noBleed;
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
 export function hasMound(S: State, p: Side): boolean {
   return toDeath(S) && S.players[p].deckList.some((d) => d.type === "hero" && d.alignment === "Sidhe");
@@ -1253,7 +1257,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); dmg = h2; }
   C.valour[b] -= dmg;
   // Connacht's blows bleed: each that wounds makes the enemy's Heals 1 less until the end of its next turn
-  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b]++; C.bleed = bl; }
+  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(S.rules.bleedCap ?? 99, bl[b] + 1); C.bleed = bl; }
   // what a blow steals back: never more than 1 a Strike
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
@@ -1267,6 +1271,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   // a Connacht riposte: when its Shield takes a blow, a free Strike back (not answered by another riposte)
   if (soak > 0 && toDeath(S) && e.ab.riposte && !RIPOSTE.on && C.valour[b] > 0 && C.valour[a] > 0) {
     if (NARRATE.lines) say(`${e.name} ripostes off the Shield.`);
+    if (S.stats && C === S.combat) S.stats.fx.ripostes[b]++;
     RIPOSTE.on = true;
     try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; }
   }
@@ -1404,6 +1409,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       // a swift Connacht hero: a blow that wounds for 1 or less is followed at once by a second
       if (i === 0 && dmg <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
         if (NARRATE.lines) say(`${h.name} is swift: a second blow.`);
+        if (S.stats && C === S.combat) S.stats.fx.swift[a]++;
         hit();
       }
     }
