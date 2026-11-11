@@ -247,9 +247,9 @@ describe("the mound of the Aos Sídhe", () => {
     expect(v - S.combat!.valour[1]).toBe(v - S0.combat!.valour[1] - 1);
     expect(S.combat!.mound![1]).toBe(0);
   });
-  it("what ignores Shield ignores the mound", () => {
+  it("nothing pierces it: even a blow that ignores Shield and Armour", () => {
     const S = duel(10);
     use(S, 3); // Thunder feat
-    expect(S.combat!.mound![1]).toBe(10);
+    expect(S.combat!.mound![1]).toBe(8);
   });
 });

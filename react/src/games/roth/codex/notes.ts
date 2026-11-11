@@ -92,7 +92,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Tuatha Dé Danann of the mounds",
     motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
     plan: [
-      "**The mound**: the Aos Sídhe fight from their mound. Like {armour} Armour it takes **2** off every Strike against a Sídhe fighter, until it has soaked **10** in all over the whole match. What ignores Shield ignores it too, so Fragarach-style blows are how to answer it.",
+      "**The mound**: the Aos Sídhe fight from their mound. Like {armour} Armour it takes **2** off every Strike against a Sídhe fighter, until it has soaked **10** in all over the whole match. Nothing pierces it, not even blows that ignore Shield and Armour.",
       "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
       "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
       "Lugh has the **highest Initiative** in the game (6), and every support counts as his Focus: everything he uses gets **+1**.",

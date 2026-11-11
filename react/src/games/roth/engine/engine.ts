@@ -1141,8 +1141,8 @@ export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
 export const HALF = { up: true };
-/** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (what ignores
- *  Shield ignores it too), until it has soaked MOUND_VALOUR in all, over the whole match. */
+/** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (even one that
+ *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
 export const MOUND_AC = 2;
 export const MOUND_VALOUR = 10;
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
@@ -1231,7 +1231,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); n = Math.max(0, n - arm); }
   // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
-  if (!pierce && n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
+  if (n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
     const t = Math.min(S.rules.moundAC ?? MOUND_AC, n, C.mound![b]);
     const m = C.mound!.slice(); m[b] -= t; C.mound = m;
     n -= t;
