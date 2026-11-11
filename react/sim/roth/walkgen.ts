@@ -36,16 +36,16 @@ for (let t = 1; t <= tries; t++) {
     applyDecision(S, d, i);
     const txt = NARRATE.lines.join(" ");
     NARRATE.lines = null;
-    for (const k of ["weakness", "the wheel", "Focus", "Shield soaks", "heals", "kinship", "first Strike against it", "blocks with", "Armour", "rests and braces", "rested"]) if (txt.includes(k)) seen.add(k);
+    for (const k of ["weakness", "the wheel", "Focus", "Shield soaks", "heals", "kinship", "first Strike against it", "blocks with", "Armour", "rests and braces", "rested", "is swift", "ripostes", "bleeds"]) if (txt.includes(k)) seen.add(k);
   }
   const r = S.result!;
   if (r.tiebreak || r.winner !== 0 || r.decidedBy !== "felled") continue;
   if (S.combat!.startV[2][0] || S.combat!.startV[2][1]) seen.add("final");
-  const want = ["bind0", "swear0", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "draw0", "draw1", "drawn-play", "drawn-discard", "duelCard0", "reuse", "final", "break", "blocks with", "Armour", "rests and braces", "rested"];
+  const want = ["bind0", "swear0", "omen0", "omen1", "supplant0", "supplant1", "weakness", "the wheel", "Focus", "Shield soaks", "heals", "draw0", "draw1", "drawn-play", "drawn-discard", "duelCard0", "reuse", "final", "break", "blocks with", "Armour", "rests and braces", "rested", "is swift", "ripostes", "bleeds"];
   const got = want.filter((k) => seen.has(k));
   // a whole game, but one a person can read through: not too long
   // the new defence is worth showing above all: a block, Armour, a braced rest
-  const score = got.length + 2 * got.filter((k) => ["blocks with", "Armour", "rests and braces", "rested"].includes(k)).length - Math.max(0, duelActs - 60) / 5;
+  const score = got.length + 2 * got.filter((k) => ["blocks with", "Armour", "rests and braces", "rested", "is swift", "ripostes"].includes(k)).length - Math.max(0, duelActs - 60) / 5;
   if (!best || score > best.score) best = { score, seed, picks, why: got };
 }
 if (!best) throw new Error("no game found");
