@@ -21,6 +21,7 @@ const name = (k: string) => {
   if (id === "people:mound") return "The mound (Sídhe)";
   if (id === "people:veil") return "The veil (Sídhe)";
   if (id === "people:giant-kin") return "Giant-kin (Fomóire)";
+  if (id.startsWith("people:resist-")) return "Resisting Spirit";
   if (id === "people:dreams") return "Dream-walking (Slúagh)";
   if (id === "people:aura") return "The dead-flesh aura (Slúagh)";
   if (id === "people:spirit") return "Spirit through Shield";
