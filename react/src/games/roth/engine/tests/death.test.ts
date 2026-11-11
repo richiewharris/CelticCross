@@ -225,6 +225,40 @@ describe("giant-kin: the Fomóire", () => {
   });
 });
 
+describe("Ulster: the Hound's cry", () => {
+  // Conall (P1, spot 1: Thunder feat, which ignores Shield; the Sling) against Indech (P2, spot 7: giant-kin, weak to Wind)
+  const duel = () => {
+    const S = combatState({ board: ["conall", "thunder", "sling", "emer", "salmon", "salmon", "indech", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
+    S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
+    return S;
+  };
+  const cries = (S: State) => opts(S).filter((o) => (o.t === "duel" || o.t === "drawn") && o.cry);
+  it("is offered for a blow that ignores Shield against giant-kin, not for one of its weakness", () => {
+    const S = duel();
+    expect(cries(S).map((o) => o.t === "duel" && o.spot)).toEqual([1]);
+  });
+  it("spends the top card of the Reserve and lands the blow in full, once a duel", () => {
+    const plain = duel(), v0 = plain.combat!.valour[1];
+    use(plain, 2);
+    const half = v0 - plain.combat!.valour[1];
+    const S = duel();
+    const top = S.players[0].reserve[0].uid;
+    act(S, { t: "duel", act: "use", at: 2, mode: "normal", guest: -1, cry: true });
+    expect(v0 - S.combat!.valour[1]).toBeGreaterThan(half);
+    expect(S.players[0].reserve.some((c) => c.uid === top)).toBe(false);
+    expect(S.players[0].discard.some((c) => c.uid === top)).toBe(true);
+    rest(S); // Indech
+    expect(actor(S)).toBe(0);
+    expect(cries(S)).toEqual([]);
+  });
+  it("is not offered against anyone but giant-kin", () => {
+    const S = combatState({ board: ["conall", "thunder", "sling", "emer", "salmon", "salmon", "fergus", "laeg@1", "laeg@1", "indech", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon"].map((id) => card(id, 0));
+    expect(cries(S)).toEqual([]);
+  });
+});
+
 describe("the mound of the Aos Sídhe", () => {
   // Conall (P1, spot 1: the Sling, Thunder feat) against the Dagda (P2, spot 7), whose side fights from a mound
   const duel = (pool: number) => {

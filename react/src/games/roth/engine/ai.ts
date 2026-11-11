@@ -477,7 +477,9 @@ function deathEval(S: State, me: Side): number {
   const rest = 0.6 * ((C.rested?.[me] ?? 0) - (C.rested?.[o] ?? 0));
   // what a mound can still soak is nearly Valour in hand
   const mound = (p: Side) => 2.4 * (C.mound?.[p] ?? 0);
-  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o);
+  // the Hound's cry spends a Reserve card: about a draw's worth
+  const cry = 1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0));
+  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o) - cry;
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */
 function topCards(S: State, p: Side): { uid: number; w: number }[] {

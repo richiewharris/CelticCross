@@ -24,6 +24,8 @@ export interface Rules {
   /** Sim levers: turn Connacht's bleed off; cap how far it stacks. */
   noBleed?: boolean;
   bleedCap?: number;
+  /** Switch off the Hound's cry (Ulster), for experiments. */
+  noCry?: boolean;
   /** Trial Ulster powers (duels to the death): "light" first Strike each duel +2; "fury" Strikes +1 at half Valour or
    *  less; "stand" a felled Ulster hero strikes once more (Strike 3). */
   ulster?: string;
@@ -126,6 +128,8 @@ export interface CombatState {
   bleed?: number[];
   /** Staggered by an Ulster blow: each blow that wounds +1, until it rests (trial power). */
   stagger?: number[];
+  /** The Hound's cry given this duel (Ulster: once a duel each). */
+  cried?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
   /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
@@ -236,11 +240,11 @@ export type Option =
   | { t: "champion"; uid: number }
   | { t: "sacrifice"; id: string }
   | { t: "summon"; id: string }
-  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element }
+  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element; cry?: boolean }
   /** Duels to the death: draw the top card of your Reserve. */
   | { t: "draw" }
   /** ...then play it (keep it, for a hero or champion: into your hand) or put it aside on the discard. */
-  | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element }
+  | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element; cry?: boolean }
   /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
   | { t: "duelCard"; uid: number; target?: number }
   /** A reaction: tap the Block card at `spot` against the blow coming (−1: take it). */
@@ -406,7 +410,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], cried: C.cried ? [C.cried[0], C.cried[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -732,7 +736,7 @@ function startCombat(S: State) {
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
   C.rested = [0, 0]; // a new duel: no rests yet
   C.armour = [0, 0];
-  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0]; C.stagger = [0, 0];
+  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0]; C.stagger = [0, 0]; C.cried = [0, 0];
   C.duel = d;
   // the backwards round fights the second pair of heroes first
   C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
@@ -944,6 +948,7 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
     const s = S.board[spot]!.def as SupportDef;
     if (toDeath(S) && s.use) continue; // passive cards work by being there; reactions wait for the enemy's blow
     if (unwilling(h.alignment, s.alignment)) { acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "normal" }); continue; }
+    const from = acts.length;
     // a host with hybrid monsters may strike with a Spirit support as Spirit, or as any of its hybrids
     const ways: (Element | undefined)[] = [undefined];
     if (h.type === "hero" && h.hybrids?.length && effSupport(S, a, s).element === "Spirit") ways.push(...h.hybrids);
@@ -956,6 +961,7 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
         if (C.cathbad[a] && bitCount(m) === 1) acts.push({ t: "duel", guest: -1, act: "use", spot, mode: "ignore", ...x });
       }
     }
+    for (const o of acts.slice(from)) if (o.t === "duel" && canCry(S, C, a, s, o.as)) acts.push({ ...o, cry: true });
   }
   const rm = restForbidMask(S, C, a);
   // DECISION: a geis cannot demand the impossible: with no support left, resting is allowed.
@@ -1011,6 +1017,7 @@ export function drawnOptions(S: State, C: CombatState, a: Side, c: Card): Option
   if (d.type === "support") {
     if (unwilling(h.alignment, d.alignment)) out.push({ t: "drawn", how: "play", mode: "normal" });
     else {
+      const from = out.length;
       const ways: (Element | undefined)[] = [undefined];
       if (h.type === "hero" && h.hybrids?.length && effSupport(S, a, d).element === "Spirit") ways.push(...h.hybrids);
       for (const as of ways) {
@@ -1022,6 +1029,7 @@ export function drawnOptions(S: State, C: CombatState, a: Side, c: Card): Option
           if (C.cathbad[a] && bitCount(m) === 1) out.push({ t: "drawn", how: "play", mode: "ignore", ...x });
         }
       }
+      for (const o of out.slice(from)) if (o.t === "drawn" && canCry(S, C, a, d, o.as)) out.push({ ...o, cry: true });
     }
   } else if (d.type === "hero") out.push({ t: "drawn", how: "keep" });
   else if (d.type === "champion") {
@@ -1166,6 +1174,25 @@ export const HALF = { up: true };
 const RIPOSTE = { on: false };
 /** The card or power whose effect is resolving now (for the ledger). */
 const SRC = { id: "other" };
+/** Set while a support used with the Hound's cry resolves. */
+const CRY = { on: false };
+/** The Hound's cry (Ulster, duels to the death): once a duel, when an Ulster hero uses a support that ignores Shield
+ *  against giant-kin, it may spend the top card of its Reserve (to the discard) so the blow lands in full. */
+export function canCry(S: State, C: CombatState, a: Side, s: SupportDef, as?: Element): boolean {
+  if (!toDeath(S) || S.rules.noCry || C.cried?.[a] || drawable(S, a) <= 0) return false;
+  const h = fighter(S, C, a), e = fighter(S, C, (1 - a) as Side);
+  if (h.alignment !== "Ulaid" || !giantKin(S, e)) return false;
+  const es = effSupport(S, a, s);
+  if (!es.pierce || !es.effects.some((x) => x.type === "strike")) return false;
+  return !effWeakness(S, (1 - a) as Side, e, C).includes((as ?? es.element) as Element); // its weakness lands in full anyway
+}
+/** Give the Hound's cry: spend the top card of the Reserve, once this duel. */
+function giveCry(S: State, C: CombatState, a: Side) {
+  const cr = [C.cried?.[0] ?? 0, C.cried?.[1] ?? 0]; cr[a] = 1; C.cried = cr;
+  if (C === S.combat) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
+  led(S, C, a, "n:cry", 1);
+  if (NARRATE.lines) say(`${fighter(S, C, a).name} gives the Hound's cry: the top card of the Reserve is spent.`);
+}
 /** Credit v to key for side p in the match's ledger (the real match only). */
 function led(S: State, C: CombatState, p: Side | number, key: string, v: number) {
   if (!v || !S.stats || C !== S.combat) return;
@@ -1286,15 +1313,13 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.shield[b] -= soak;
   let dmg = n - soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
-  let halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el))
-    && !(pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("hide"));
-  // the Hound's cry: an Ulster blow that ignores Shield may spend the top card of the Reserve to land in full on giant-kin
-  if (halved && dmg >= 2 && pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("cry") && drawable(S, a) > 0) {
+  let halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
+  // the Hound's cry: an Ulster blow that ignores Shield, given with the cry, goes through the giant's hide
+  if (halved && CRY.on && pierce && h.alignment === "Ulaid") {
     halved = false;
-    if (C === S.combat) { const c = takeTop(S, a); if (c) (S.rules.ulster!.includes("crylost") ? S.players[a].lost : S.players[a].discard).push(c); }
     const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2);
-    led(S, C, a, "deal:people:cry", dmg - h2); led(S, C, a, "deal:" + SRC.id, -(dmg - h2)); led(S, C, a, "n:cry", 1);
-    if (N) N.push(`the Hound's cry (a Reserve card spent): through the giant's hide`);
+    led(S, C, a, "deal:people:cry", dmg - h2); led(S, C, a, "deal:" + SRC.id, -(dmg - h2));
+    if (N) N.push(`through the giant's hide (the Hound's cry)`);
   }
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
   // staggered: every blow that wounds it lands 1 more
@@ -1566,7 +1591,9 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     }
     const d = c.def;
     if (d.type === "support") {
-      useSupport(S, C, a, d, o.mode ?? "normal", o.as, stats);
+      if (o.cry) giveCry(S, C, a);
+      CRY.on = !!o.cry;
+      try { useSupport(S, C, a, d, o.mode ?? "normal", o.as, stats); } finally { CRY.on = false; }
       P.discard.push(c);
     } else if (d.type === "champion") callChampion(S, C, a, c, stats);
     else if (d.type === "monster") {
@@ -1680,7 +1707,9 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       REUSING.on = C.uses[o.spot] > 0;
       C.uses[o.spot]++; C.lastUse[o.spot] = C.acts[a]; C.restsSince[o.spot] = 0;
     }
-    try { if (C.valour[a] > 0) useSupport(S, C, a, s, o.mode, o.as, stats); } finally { REUSING.on = false; }
+    if (o.cry && C.valour[a] > 0) giveCry(S, C, a);
+    CRY.on = !!o.cry;
+    try { if (C.valour[a] > 0) useSupport(S, C, a, s, o.mode, o.as, stats); } finally { REUSING.on = false; CRY.on = false; }
   } else {
     if (o.mode === "break") {
       const m = restForbidMask(S, C, a);
