@@ -264,8 +264,9 @@ export function vowLine(f: Forbid): string {
   return `Never use ${sup}${f.rest ? "; never **rest**" : ""}.`;
 }
 /** An oath's boon, from its data. */
-export function boonLine(b: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number }): string {
+export function boonLine(b: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number; followUp?: boolean }): string {
   const now: string[] = [];
+  if (b.followUp) now.push("a blow that wounds for **1 or less** strikes **again** at once");
   if (b.strike) now.push(`Strikes **+${b.strike}**`);
   if (b.init) now.push(`{init} **Initiative +${b.init}**`);
   if (b.heal) now.push(`Heals **+${b.heal}**`);
@@ -359,6 +360,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       }
       push("ability", f.ability); push("text", f.text ?? d.quality);
       if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**. **The mound**: every Strike against them **−1** (nothing pierces it), until it has soaked **5** in all over the match.");
+      if (d.alignment === "Connachta") push("text", "**Bleed**: every blow of theirs that wounds makes the enemy's Heals **−1** until the end of its next turn (it stacks).");
       if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike, except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
       break;
     case "host":

@@ -212,8 +212,10 @@ export interface OathDef {
   name: string;
   rarity: Rarity;
   forbids: Forbids;
-  boon: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number };
+  boon: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number; followUp?: boolean };
   text: string;
+  /** An oath only one people swears (it goes in that people's pool alone). */
+  people?: Alignment;
 }
 export interface OmenEffect {
   debility?: Alignment; // board: that alignment's (and Deorad) Strikes −1
@@ -522,6 +524,7 @@ export const OATHS: Record<string, OathDef> = {
   v_open_hand: oath("v_open_hand", "Oath of the open hand", C, { heal: 1, valour: 1 }, { kind: "Feat" }, "Heals +1 and Valour +1. Vow: no Feats"),
   v_swift: oath("v_swift", "Oath of the swift", R, { init: 2, strike: 1 }, { rest: true }, "Initiative +2 and Strikes +1. Vow: never rest"),
   v_watch: oath("v_watch", "Oath of the long watch", R, { shield: 3 }, { kind: "Feat", rest: true }, "Shield 3 at the start of each duel. Vow: no Feats, never rest"),
+  v_tain: { ...oath("v_tain", "Oath of the Táin", C, { followUp: true }, { rest: true }, "A blow that wounds for 1 or less strikes again at once. Vow: never rest"), people: "Connachta" },
   v_deep: oath("v_deep", "Oath of the deep", C, { valour: 2 }, { element: "Wind" }, "Valour +2. Vow: no Wind"),
   v_earth: oath("v_earth", "Oath on the earth", R, { valour: 1, strike: 1 }, { element: "Earth" }, "Valour +1 and Strikes +1. Vow: no Earth"),
   v_poet: oath("v_poet", "Poet's oath", C, { heal: 1, init: 2 }, { element: "Fire" }, "Heals +1 and Initiative +2. Vow: no Fire"),
@@ -724,7 +727,7 @@ export const DECK_IDS: Record<Faction, string[]> = {
     "loch", "nadcrantail",
     "cet_spear", "cet_spear", "host", "fraech", "medb_chariot", "fedelm", "finnbennach", "caladbolg", "barach",
     "g_hound", "g_hosting", "g_slow",
-    "v_shieldwall", "v_stone",
+    "v_shieldwall", "v_tain",
     "o_herolight", "o_truce", "o_cruachan", "o_rath",
   ],
   sidhe: [
@@ -778,7 +781,7 @@ export function peopleOf(d: CardDef): Alignment | null {
   if (d.type === "hero" || d.type === "champion") return d.alignment === "None" ? null : d.alignment;
   if (d.type === "host" || d.type === "monster") return "Sluagh";
   if (d.type === "support") return d.alignment === "Unaligned" ? null : d.alignment;
-  if (d.type === "omen" || d.type === "attendant") return d.people ?? null;
+  if (d.type === "omen" || d.type === "attendant" || d.type === "oath") return d.people ?? null;
   return null;
 }
 /** Whether a card belongs to faction f's pool. Exiles (Deorad) belong to both Ulster's and Connacht's. */

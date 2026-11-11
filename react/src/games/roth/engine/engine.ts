@@ -116,6 +116,8 @@ export interface CombatState {
   rested?: number[];
   /** What the Aos Sídhe's mound can still soak, per side, over the whole match (0: none, or spent). */
   mound?: number[];
+  /** Connacht's bleed on each side: that side's Heals −n until the end of its next turn. */
+  bleed?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
   /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
@@ -390,7 +392,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -716,7 +718,7 @@ function startCombat(S: State) {
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
   C.rested = [0, 0]; // a new duel: no rests yet
   C.armour = [0, 0];
-  C.pending = null; C.block = [0, 0];
+  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0];
   C.duel = d;
   // the backwards round fights the second pair of heroes first
   C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
@@ -1116,7 +1118,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   const e = fighter(S, C, 1 - p);
   const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
-    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0);
+    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0);
   const v0 = C.valour[p];
   const cap = capTo ?? C.cap[p];
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
@@ -1127,6 +1129,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
     for (const x of namedHeroFx(S, C, p)) if (x.fx.heal) bits.push(`${sgn(x.fx.heal)} ${x.name}`);
     for (const x of namedBoardFx(S)) if (x.fx.healMod) bits.push(`${sgn(x.fx.healMod)} ${x.name}`);
     if (e.ab.foeHealMalus) bits.push(`−${e.ab.foeHealMalus} ${e.name}'s quality`);
+    if (C.bleed?.[p]) bits.push(`−${C.bleed[p]} bleeding`);
     const capped = n > 0 && C.valour[p] - v0 < n;
     say(`${h.name} heals: ${n1}${bits.length ? " " + bits.join(" ") + ` = ${Math.max(0, n)}` : ""}${n <= 0 ? ", so nothing" : ""}${capped ? ` (capped: no more than ${Math.max(cap, v0)})` : ""}. Valour ${v0} → ${C.valour[p]}.`);
   }
@@ -1145,6 +1148,9 @@ export const HALF = { up: true };
  *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
 export const MOUND_AC = 1;
 export const MOUND_VALOUR = 5;
+/** Connacht's blows bleed (duels to the death): every one that wounds makes the enemy's Heals 1 less until the end of
+ *  its next turn, and it stacks. */
+export const bleeds = (S: State, h: FighterDef) => toDeath(S) && h.alignment === "Connachta";
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
 export function hasMound(S: State, p: Side): boolean {
   return toDeath(S) && S.players[p].deckList.some((d) => d.type === "hero" && d.alignment === "Sidhe");
@@ -1161,7 +1167,7 @@ function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
 /** `pierce`: ignores Shield, Armour and Blocks; `spirit`: a Spirit blow, which passes Shield but not Armour or Blocks. */
 /** The Fomóire are giant-kin: in a duel to the death, half the wounds of any blow but one of their weaknesses. */
 export const giantKin = (S: State, f: FighterDef) => toDeath(S) && f.alignment === "Fomoire";
-export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false, el: Element | null = null) {
+export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false, el: Element | null = null): number {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
@@ -1244,6 +1250,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); dmg = h2; }
   C.valour[b] -= dmg;
+  // Connacht's blows bleed: each that wounds makes the enemy's Heals 1 less until the end of its next turn
+  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b]++; C.bleed = bl; }
   // what a blow steals back: never more than 1 a Strike
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
@@ -1252,10 +1260,11 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
-    say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}`);
+    say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
   }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
+  return dmg;
 }
 
 /** The support's own base numbers (special cards). */
@@ -1381,7 +1390,15 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     }
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
-    if (eff.type === "strike") strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null);
+    if (eff.type === "strike") {
+      const hit = () => strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null);
+      const dmg = hit();
+      // the Oath of the Táin: a blow that wounds for 1 or less is followed at once by a second
+      if (i === 0 && dmg <= 1 && activeOath(S, C, a)?.boon.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
+        if (NARRATE.lines) say(`${h.name} strikes again (${activeOath(S, C, a)!.name}).`);
+        hit();
+      }
+    }
     else if (eff.type === "heal") {
       const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
       if (rb && NARRATE.lines) say(`+${rb} rested.`);
@@ -1641,6 +1658,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
   const a = actorOf(C);
   if (toDeath(S)) {
     C.acts[a]++; C.drew = false;
+    if (C.bleed?.[a]) { C.bleed = [C.bleed[0], C.bleed[1]]; C.bleed[a] = 0; } // the bleeding stops after its turn
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
     RESTED_NOW.on = false;
     // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)

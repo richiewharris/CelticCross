@@ -898,5 +898,6 @@ body.gm-roth .card.compact .c-chip.use.reaction { background: rgb(90 150 210 / .
 body.gm-roth .duel-def { display: flex; flex-wrap: wrap; gap: 4px; }
 body.gm-roth .tag.armour { background: rgb(150 170 195 / .2); color: #dfe9f5; }
 body.gm-roth .tag.rested { background: rgb(110 170 110 / .2); color: #cfe9c8; }
+body.gm-roth .tag.bleed { background: rgb(190 60 60 / .22); color: #f0c4c4; }
 body.gm-roth .legend .ink-armour { color: #b9c9db; } body.gm-roth .legend .ink-block { color: #8fb3e0; } body.gm-roth .legend .ink-rest { color: #a9d39a; }
 body.gm-roth .ink-armour { color: #5f7187; } body.gm-roth .ink-block { color: #3f6d9c; }

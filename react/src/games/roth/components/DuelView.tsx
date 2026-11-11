@@ -128,10 +128,11 @@ export function DuelView(props: {
                 <Icon name="mound" /> {moundUp(C, p) ? <>The mound: soaks <b>{Math.min(S.rules.moundAC ?? MOUND_AC, C.mound![p])}</b> a blow, <b>{C.mound![p]}</b> left{f.alignment === "Sidhe" ? "" : " (Aos Sídhe only)"}</> : <>The mound is spent</>}
               </p>
             ) : null}
-            {C.armour?.[p] || C.rested?.[p] || (C.block?.[p] ?? 0) > 0 ? (
+            {C.armour?.[p] || C.rested?.[p] || C.bleed?.[p] || (C.block?.[p] ?? 0) > 0 ? (
               <span className="duel-def">
                 {C.armour?.[p] ? <span className="tag armour" title={`Armour ${C.armour[p]}: every Strike against ${f.name} ${C.armour[p]} less`}><Icon name="armour" /> Armour {C.armour[p]}</span> : null}
                 {C.rested?.[p] ? <span className="tag rested" title={`Rested: the next Shield, Heal or Block +${C.rested[p]}`}><Icon name="rest" /> Rested +{C.rested[p]}</span> : null}
+                {C.bleed?.[p] ? <span className="tag bleed" title={`Bleeding: ${f.name}'s Heals −${C.bleed[p]} until the end of its next turn`}><Icon name="heal" /> Bleeding: Heals −{C.bleed[p]}</span> : null}
               </span>
             ) : null}
             {death ? <p className="duel-pile"><Icon name="omen" /> Reserve {S.players[p].reserve.length} · discards {S.players[p].discard.length}</p> : null}

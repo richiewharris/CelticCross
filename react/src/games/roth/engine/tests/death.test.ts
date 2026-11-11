@@ -253,3 +253,33 @@ describe("the mound of the Aos Sídhe", () => {
     expect(S.combat!.mound![1]).toBe(9);
   });
 });
+
+describe("Connacht: bleed and the Oath of the Táin", () => {
+  // Medb (P1, spot 1: Cet's spear, Strike 2) against the Dagda (P2, spot 7: Láeg, Heal 1), with Armour enough
+  // that the spear wounds for 1 or less
+  const duel = (oath: string | null) => {
+    const S = combatState({ board: ["medb", "cet_spear", "fedelm", "emer", "salmon", "salmon", "dagda", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"], oaths: [oath, null, null, null], rules: { duels: "death", initTie: "p1" } });
+    S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
+    S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
+    return S;
+  };
+  it("the Oath of the Táin: a blow that wounds for 1 or less strikes again", () => {
+    const hit = (oath: string | null, arm: number) => { const S = duel(oath); S.combat!.armour = [0, arm]; const v = S.combat!.valour[1]; NARRATE.lines = []; use(S, 2); const said = NARRATE.lines.join(" "); NARRATE.lines = null; return { d: v - S.combat!.valour[1], said }; };
+    const bare = hit(null, 0).d;
+    const arm = bare - 1; // the blow wounds for exactly 1
+    expect(hit(null, arm).d).toBe(1);
+    const sworn = hit("v_tain", arm);
+    expect(sworn.said).toContain("strikes again");
+    expect(sworn.d).toBeGreaterThan(1);
+    expect(hit("v_tain", 0).said).not.toContain("strikes again"); // a full blow doesn't
+  });
+  it("a blow that wounds makes the enemy bleed: Heals −1 a hit, until the end of its next turn", () => {
+    const S = duel(null);
+    use(S, 2);
+    expect(S.combat!.bleed![1]).toBe(1);
+    const v = S.combat!.valour[1];
+    use(S, 8); // Láeg: Heal 1, −1 bleeding: nothing
+    expect(S.combat!.valour[1]).toBe(v);
+    expect(S.combat!.bleed![1]).toBe(0); // it stops after the Dagda's turn
+  });
+});

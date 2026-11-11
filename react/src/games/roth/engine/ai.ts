@@ -548,6 +548,7 @@ export const DEATH = { budget: 2 };
 /** Replace the opponent's unknown cards with a sample consistent with what has been seen. */
 export function determinize(V: State, me: Side, rng: Rng): State {
   const D = cloneState(V);
+  D.shuffleSeed = rng.int(0x7fffffff); // future shuffles and chance rolls are unknown: guess them afresh
   const o = (1 - me) as Side;
   const O = D.players[o];
   const pool = O.deckList.slice();
