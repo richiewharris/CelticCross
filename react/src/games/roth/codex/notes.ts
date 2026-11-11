@@ -154,6 +154,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     motto: "Water, Shields and slippery defence. Merrow **outlasts** the enemy and strikes back with the tide.",
     plan: [
       "**Flowing water**: in a duel to the death every {Spirit} Spirit blow against a Merrow fighter is **−1**, and a Merrow's Shield holds against Spirit. The dead cannot cross running water.",
+      "**Water can't be pierced**: in a duel to the death, a blow that ignores Shield (Thunder feat, Gáe Bolga) still meets a Merrow's **Block**. Keep Sealskin up against Ulster.",
       "Manannán's first incoming Strike each duel **misses**. Lí Ban gains **Shield 2** when she rests. The Coomara is **Valour 6** and heals 1 when his Strike wounds.",
       "Fand is the glass cannon: **Valour 3**, Initiative 5, **Strikes +1**.",
       "Most supports are {Water} Water, Manannán's and Lí Ban's Focus, and the blessing of the ford gives **every Water support +1**. Water beats Fire, so Undertow and Clíodhna's wave punish Fire-Focus heroes (Cú Chulainn, Brigid, Balor).",

@@ -38,8 +38,9 @@ export interface Rules {
   noSpiritResist?: boolean;
   /** Override the Sídhe's resistance to Spirit, for experiments. */
   resistSidhe?: number;
-  /** Trial Merrow powers: "water" a blow that ignores Shield still meets a Merrow's Block; "ebb" the Merrow fighter
-   *  gains Shield 1 whenever its enemy heals. Combine with "+". */
+  /** Merrow powers: "water" (standing) a blow that ignores Shield still meets a Merrow's Block. Trials: "ebb" the Merrow
+   *  fighter gains Shield 1 whenever its enemy heals; "tide" / "tide2" / "tideh" a Water blow that wounds a Merrow
+   *  heals it 1 / 2 / half the wound back. Combine with "+"; "none" for no powers. */
   merrow?: string;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
@@ -933,7 +934,7 @@ function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
   const h = fighter(S, C, a);
   if (unwilling(h.alignment, s.alignment)) return false;
   // a blow that ignores Shield ignores Blocks too, unless (trial) it meets a Merrow: water can't be pierced
-  if (s.pierce && !(toDeath(S) && fighter(S, C, (1 - a) as Side).alignment === "Merrow" && (S.rules.merrow ?? "").includes("water"))) return false;
+  if (s.pierce && !(toDeath(S) && fighter(S, C, (1 - a) as Side).alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("water"))) return false;
   // trial: a Spirit blow can't be Blocked either (Armour still meets it)
   const asEl = o.t === "duel" || o.t === "drawn" ? o.as : undefined;
   if (toDeath(S) && (S.rules.spiritUnblock ?? true) && !asEl && effSupport(S, a, s).element === "Spirit") return false;
@@ -1172,7 +1173,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   led(S, C, p, "heal:" + SRC.id, C.valour[p] - v0);
   // trial: the ebb and flow: when the enemy of a Merrow heals, the Merrow rises with the tide (Shield 1)
-  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? "").includes("ebb") && C.valour[1 - p] > 0) {
+  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("ebb") && C.valour[1 - p] > 0) {
     C.shield[1 - p] += 1;
     led(S, C, 1 - p, "shield:people:ebb", 1);
     if (NARRATE.lines) say(`${e.name} rises with the tide: Shield +1.`);
@@ -1196,6 +1197,8 @@ export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
 /** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
 export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
+/** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block. */
+export const MERROW_DEFAULT = "water";
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
 export const DREAMS = 2;
 const NO_CAP = 1000;
@@ -1341,7 +1344,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     n = nw;
   }
   // a Block meets this blow (once)
-  const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? "").includes("water")) ? C.block?.[b] ?? 0 : 0;
+  const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("water")) ? C.block?.[b] ?? 0 : 0;
   if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
   if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
@@ -1391,6 +1394,16 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
   // the uninvited guest: wound it and pay for it
+  // where the wounds come from, by element, and how many land on a weakness (for the ledger only)
+  if (dmg > 0) { led(S, C, a, "el:" + (SPIRIT_BLOW.on ? "Spirit" : el ?? "none"), dmg); if (el && effWeakness(S, b, e, C).includes(el)) led(S, C, a, "weak:" + el, dmg); }
+  // trial: born of the tide: a Water blow that wounds a Merrow gives some of it back
+  const td = toDeath(S) && e.alignment === "Merrow" && el === "Water" && dmg > 0 && C.valour[b] > 0 ? /tide(\d|h)?/.exec(S.rules.merrow ?? MERROW_DEFAULT) : null;
+  if (td) {
+    const k = td[1] === "h" ? Math.ceil(dmg / 2) : Number(td[1] ?? 1);
+    if (NARRATE.lines) say(`${e.name} drinks the tide.`);
+    const src = SRC.id; SRC.id = "people:tide";
+    try { heal(S, C, b, Math.min(k, dmg)); } finally { SRC.id = src; }
+  }
   if (dmg > 0 && e.ab.reflect) { C.valour[a] -= e.ab.reflect; led(S, C, b, "deal:hero:" + e.id, e.ab.reflect); }
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
