@@ -1144,6 +1144,8 @@ export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
 export const HALF = { up: true };
+/** A riposte being struck (so it is not itself answered by one). */
+const RIPOSTE = { on: false };
 /** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (even one that
  *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
 export const MOUND_AC = 1;
@@ -1261,6 +1263,12 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
     say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
+  }
+  // a Connacht riposte: when its Shield takes a blow, a free Strike back (not answered by another riposte)
+  if (soak > 0 && toDeath(S) && e.ab.riposte && !RIPOSTE.on && C.valour[b] > 0 && C.valour[a] > 0) {
+    if (NARRATE.lines) say(`${e.name} ripostes off the Shield.`);
+    RIPOSTE.on = true;
+    try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; }
   }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
@@ -1393,9 +1401,9 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     if (eff.type === "strike") {
       const hit = () => strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null);
       const dmg = hit();
-      // the Oath of the Táin: a blow that wounds for 1 or less is followed at once by a second
-      if (i === 0 && dmg <= 1 && activeOath(S, C, a)?.boon.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
-        if (NARRATE.lines) say(`${h.name} strikes again (${activeOath(S, C, a)!.name}).`);
+      // a swift Connacht hero: a blow that wounds for 1 or less is followed at once by a second
+      if (i === 0 && dmg <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
+        if (NARRATE.lines) say(`${h.name} is swift: a second blow.`);
         hit();
       }
     }

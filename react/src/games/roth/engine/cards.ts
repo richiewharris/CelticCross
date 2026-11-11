@@ -50,6 +50,8 @@ export interface HeroAb {
   shapeShift?: boolean; // once per match, at the start of a duel, change Focus to any element
   sparedDebility?: boolean;
   reflect?: number; // when a Strike wounds it, the striker loses n Valour
+  followUp?: boolean; // Connacht (duels to the death): a blow of its that wounds for 1 or less strikes again at once
+  riposte?: number; // Connacht (duels to the death): when its Shield takes a blow, a free Strike n back
 }
 
 export interface HeroDef {
@@ -212,7 +214,7 @@ export interface OathDef {
   name: string;
   rarity: Rarity;
   forbids: Forbids;
-  boon: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number; followUp?: boolean };
+  boon: { strike?: number; shield?: number; valour?: number; init?: number; heal?: number };
   text: string;
   /** An oath only one people swears (it goes in that people's pool alone). */
   people?: Alignment;
@@ -300,10 +302,10 @@ export const HEROES: Record<string, HeroDef> = {
   conchobar: hero("conchobar", "Conchobar mac Nessa", "Ulaid", R, 6, 2, "Word", "Fire", "Druid's word", "King's due: once per duel, may use an unused support from your other hero's quadrant", { kingsDue: true }),
   emer: hero("emer", "Emer", "Ulaid", C, 4, 2, "Word", "Fire", "Hospitality", "Six gifts: when she rests, Heal 2", { restHeal: 2 }),
   // Connachta: Earth, weapons, attrition
-  medb: hero("medb", "Medb", "Connachta", L, 4, 4, "Earth", "Water", "Bounty", "Queen of Cruachan: kinship gives her +2, not +1", { kinBonus: 2 }),
-  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Armour 1 (every Strike against him 1 less)", { armour: 1 }),
+  medb: hero("medb", "Medb", "Connachta", L, 4, 4, "Earth", "Water", "Bounty", "Queen of Cruachan: kinship gives her +2, not +1", { kinBonus: 2, followUp: true }),
+  ferdiad: hero("ferdiad", "Ferdiad", "Connachta", R, 5, 2, "Weapon", "Water", "Satire", "Horn-skin: Armour 1 (every Strike against him 1 less)", { armour: 1, riposte: 1 }),
   fergus: hero("fergus", "Fergus mac Róich", "Deorad", R, 5, 3, "Weapon", "Wind", "Feast", "Old oath: Strikes vs Hound −1", { vsTag: { tag: "Hound", n: -1 } }),
-  ailill: hero("ailill", "Ailill mac Máta", "Connachta", C, 5, 3, "Word", "Fire", "Hoard", "Pillow-talk: his Heals +1", { healBonus: 1 }),
+  ailill: hero("ailill", "Ailill mac Máta", "Connachta", C, 5, 3, "Word", "Fire", "Hoard", "Pillow-talk: his Heals +1", { healBonus: 1, riposte: 1 }),
   // Sídhe (Tuatha Dé Danann): Wind and Word, many-skilled, healers
   lugh: hero("lugh", "Lugh Lámhfhada", "Sidhe", L, 4, 6, "Wind", "Fire", "Many skills", "Samildánach: every support counts as his Focus", { focusAny: true }),
   dagda: hero("dagda", "The Dagda", "Sidhe", R, 6, 1, "Earth", "Fire", "Plenty", "Cauldron: when he rests, Heal 2", { restHeal: 2 }),
@@ -329,8 +331,8 @@ const champ = (
 export const CHAMPIONS: Record<string, ChampionDef> = {
   loegaire: champ("loegaire", "Lóegaire Búadach", "Ulaid", C, 4, "Feat", "Water", "Victorious: his first Strike +1", { firstStrike: 1 }),
   fiacha: champ("fiacha", "Fiacha mac Fir Febe", "Ulaid", R, 5, "Weapon", "Earth", "Shield-bearer: Shield 1 when he steps in", { shieldStart: 1 }),
-  loch: champ("loch", "Lóch Mór mac Mo Febis", "Connachta", R, 4, "Weapon", "Water", "Lóch's fury: Strikes +1", { strikeAll: 1 }),
-  nadcrantail: champ("nadcrantail", "Nad Crantail", "Connachta", C, 4, "Earth", "Fire", "Holly spears: his first Strike +1", { firstStrike: 1 }),
+  loch: champ("loch", "Lóch Mór mac Mo Febis", "Connachta", R, 4, "Weapon", "Water", "Lóch's fury: Strikes +1", { strikeAll: 1, followUp: true }),
+  nadcrantail: champ("nadcrantail", "Nad Crantail", "Connachta", C, 4, "Earth", "Fire", "Holly spears: his first Strike +1", { firstStrike: 1, followUp: true }),
   nuada: champ("nuada", "Nuada Airgetlám", "Sidhe", R, 5, "Weapon", "Wind", "Silver hand: Shield 1 when he steps in", { shieldStart: 1 }),
   ogma: champ("ogma", "Ogma", "Sidhe", C, 4, "Word", "Earth", "Sun-face: his first Strike +1", { firstStrike: 1 }),
   elatha: champ("elatha", "Elatha mac Delbaíth", "Fomoire", C, 5, "Water", "Wind", "Golden king: no special quality; he is simply big", {}),
@@ -524,7 +526,6 @@ export const OATHS: Record<string, OathDef> = {
   v_open_hand: oath("v_open_hand", "Oath of the open hand", C, { heal: 1, valour: 1 }, { kind: "Feat" }, "Heals +1 and Valour +1. Vow: no Feats"),
   v_swift: oath("v_swift", "Oath of the swift", R, { init: 2, strike: 1 }, { rest: true }, "Initiative +2 and Strikes +1. Vow: never rest"),
   v_watch: oath("v_watch", "Oath of the long watch", R, { shield: 3 }, { kind: "Feat", rest: true }, "Shield 3 at the start of each duel. Vow: no Feats, never rest"),
-  v_tain: { ...oath("v_tain", "Oath of the Táin", C, { followUp: true }, { rest: true }, "A blow that wounds for 1 or less strikes again at once. Vow: never rest"), people: "Connachta" },
   v_deep: oath("v_deep", "Oath of the deep", C, { valour: 2 }, { element: "Wind" }, "Valour +2. Vow: no Wind"),
   v_earth: oath("v_earth", "Oath on the earth", R, { valour: 1, strike: 1 }, { element: "Earth" }, "Valour +1 and Strikes +1. Vow: no Earth"),
   v_poet: oath("v_poet", "Poet's oath", C, { heal: 1, init: 2 }, { element: "Fire" }, "Heals +1 and Initiative +2. Vow: no Fire"),
@@ -727,7 +728,7 @@ export const DECK_IDS: Record<Faction, string[]> = {
     "loch", "nadcrantail",
     "cet_spear", "cet_spear", "host", "fraech", "medb_chariot", "fedelm", "finnbennach", "caladbolg", "barach",
     "g_hound", "g_hosting", "g_slow",
-    "v_shieldwall", "v_tain",
+    "v_shieldwall", "v_stone",
     "o_herolight", "o_truce", "o_cruachan", "o_rath",
   ],
   sidhe: [

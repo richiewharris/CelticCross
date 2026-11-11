@@ -61,7 +61,7 @@ function geisScore(g: GeisDef, sups: SupportDef[]): number {
 }
 function oathScore(o: OathDef, sups: SupportDef[]): number {
   const b = o.boon;
-  const gain = (b.strike ?? 0) * 1.2 + (b.shield ?? 0) * 0.7 + (b.valour ?? 0) * 0.9 + (b.init ?? 0) * 0.2 + (b.heal ?? 0) * 0.5 + (b.followUp ? 1.4 : 0);
+  const gain = (b.strike ?? 0) * 1.2 + (b.shield ?? 0) * 0.7 + (b.valour ?? 0) * 0.9 + (b.init ?? 0) * 0.2 + (b.heal ?? 0) * 0.5;
   return gain - 4 * ownCost(o.forbids, sups);
 }
 function omenScore(o: OmenDef, sups: SupportDef[], heroes: FighterDef[]): number {

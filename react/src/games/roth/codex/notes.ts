@@ -68,7 +68,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     motto: "Earth weapons, healing and patience. Connacht **wears the enemy down** and keeps its own heroes standing.",
     plan: [
       "**Bleed**: in a duel to the death, every Connacht blow that wounds makes the enemy's Heals **−1** until the end of its next turn, and it stacks: two hits, −2. Many small blows beat a healer.",
-      "The **Oath of the Táin** (Connacht only): a blow that wounds for **1 or less** strikes **again** at once, and each hit bleeds. Vow: never rest.",
+      "Every Connacht hero is **Swift** or has a **Riposte**, never both. **Swift** (Medb, Lóch, Nad Crantail): a blow that wounds for **1 or less** strikes **again** at once. **Riposte** (Ferdiad, Ailill): when their {shield} Shield takes a blow, a free **Strike 1** back, without spending a turn. Each hit that wounds bleeds.",
       "Medb's kinship is **+2**, not +1, and her Focus is {Earth} Earth: a Spear of Cet in her hands is Strike 2 **+2 +1 = 5**.",
       "Ferdiad and Fergus have **Focus Weapon**, so the spears, Caladbolg and the horn-shield all get +1. Fergus is an exile (Deorad): **Ulster and Connacht supports are both kin to him**. Caladbolg is Deorad too, so it is kin to every Connacht hero.",
       "Ferdiad starts each duel with **Shield 2**. Add the Oath of the shield-wall (Shield 2) and the ráth of Cruachan (Shield 1) and he opens behind **Shield 5**.",

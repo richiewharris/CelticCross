@@ -5,7 +5,7 @@ import { DECKS, reuseOf, type SupportDef, ALL_DEFS } from "../cards";
 import { applyDecision, effWeakness, fighter, nextDecision, newMatch, observe, quadOf, NARRATE, type Option, type Policy, type State } from "../engine";
 import { NovicePolicy, CasualPolicy } from "../ai";
 import { Rng } from "../rng";
-import { act, card, combatState, rest, use } from "./helpers";
+import { act, actor, card, combatState, rest, use } from "./helpers";
 
 // Conall (P1, spot 1: Thunder feat, Sling of Emain) against the Dagda (P2, spot 7: Fedelm's prophecy, Láeg)
 const mk = () => {
@@ -254,27 +254,35 @@ describe("the mound of the Aos Sídhe", () => {
   });
 });
 
-describe("Connacht: bleed and the Oath of the Táin", () => {
-  // Medb (P1, spot 1: Cet's spear, Strike 2) against the Dagda (P2, spot 7: Láeg, Heal 1), with Armour enough
-  // that the spear wounds for 1 or less
-  const duel = (oath: string | null) => {
-    const S = combatState({ board: ["medb", "cet_spear", "fedelm", "emer", "salmon", "salmon", "dagda", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"], oaths: [oath, null, null, null], rules: { duels: "death", initTie: "p1" } });
+describe("Connacht: swift, riposte and bleed", () => {
+  // Medb (P1, spot 1: Cet's spear, Strike 2) against the Dagda (P2, spot 7: Láeg, Heal 1)
+  const duel = () => {
+    const S = combatState({ board: ["medb", "cet_spear", "fedelm", "emer", "salmon", "salmon", "dagda", "laeg@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
     S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
     S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
     return S;
   };
-  it("the Oath of the Táin: a blow that wounds for 1 or less strikes again", () => {
-    const hit = (oath: string | null, arm: number) => { const S = duel(oath); S.combat!.armour = [0, arm]; const v = S.combat!.valour[1]; NARRATE.lines = []; use(S, 2); const said = NARRATE.lines.join(" "); NARRATE.lines = null; return { d: v - S.combat!.valour[1], said }; };
-    const bare = hit(null, 0).d;
-    const arm = bare - 1; // the blow wounds for exactly 1
-    expect(hit(null, arm).d).toBe(1);
-    const sworn = hit("v_tain", arm);
-    expect(sworn.said).toContain("strikes again");
-    expect(sworn.d).toBeGreaterThan(1);
-    expect(hit("v_tain", 0).said).not.toContain("strikes again"); // a full blow doesn't
+  const said = (_S: State, f: () => void) => { NARRATE.lines = []; f(); const t = NARRATE.lines.join(" "); NARRATE.lines = null; return t; };
+  it("swift (Medb): a blow that wounds for 1 or less strikes again", () => {
+    const bare = duel(); const v = bare.combat!.valour[1]; use(bare, 2);
+    const S = duel(); S.combat!.armour = [0, v - bare.combat!.valour[1] - 1]; // the spear wounds for exactly 1
+    const t = said(S, () => use(S, 2));
+    expect(t).toContain("is swift");
+    expect(v - S.combat!.valour[1]).toBeGreaterThan(1);
+    expect(said(duel(), () => {}) ).toBe("");
+    const full = duel(); expect(said(full, () => use(full, 2))).not.toContain("is swift"); // a full blow doesn't
+  });
+  it("riposte (Ferdiad): when his Shield takes a blow, a free Strike back", () => {
+    const S = combatState({ board: ["conall", "sling", "thunder", "emer", "salmon", "salmon", "ferdiad", "sling@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+    S.combat!.shield = [0, 3];
+    const v = S.combat!.valour[0];
+    const t = said(S, () => use(S, 2)); // the Sling into Ferdiad's Shield
+    expect(t).toContain("ripostes");
+    expect(S.combat!.valour[0]).toBeLessThan(v);
+    expect(actor(S)).toBe(1); // it cost Ferdiad no turn: it is his turn now
   });
   it("a blow that wounds makes the enemy bleed: Heals −1 a hit, until the end of its next turn", () => {
-    const S = duel(null);
+    const S = duel();
     use(S, 2);
     expect(S.combat!.bleed![1]).toBe(1);
     const v = S.combat!.valour[1];
