@@ -1580,6 +1580,15 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     else if (eff.type === "heal") {
       const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
       if (rb && NARRATE.lines) say(`+${rb} rested.`);
+      // measurement only: what a heal is made of (printed, kinship, Focus, rested, the hero's own bonus, the rest)
+      if (S.stats && C === S.combat) {
+        const kb = i === 0 && kin(s.alignment, h.alignment) ? h.ab.kinBonus ?? 1 : 0;
+        const f0 = focusOf(C, a, h);
+        const fb = i === 0 && (h.ab.focusAny || (f0 && (f0 === s.element || f0 === s.kind))) ? 1 : 0;
+        led(S, C, a, "hb:printed", eff.n); led(S, C, a, "hb:kinship", kb); led(S, C, a, "hb:focus", fb); led(S, C, a, "hb:rested", rb);
+        led(S, C, a, "hb:hero", h.ab.healBonus ?? 0); led(S, C, a, "hb:other", n - eff.n - kb - fb);
+        led(S, C, a, "hb:bled", -(C.bleed?.[a] ?? 0)); led(S, C, a, "hb:count", 1);
+      }
       heal(S, C, a, n + rb);
     } else {
       const rb = toDeath(S) ? C.rested?.[a] ?? 0 : 0;
