@@ -14,12 +14,14 @@ export interface DeckNote {
 export const DECK_NOTES: Record<Faction, DeckNote> = {
   sluagh: {
     people: "The host of the unquiet dead, that rides the night wind from the west",
-    motto: "A monster deck. No heroes: **hosts** of two or three monsters fight as one, and their blows are **Spirit**, which no Shield stops and which feeds the host.",
+    motto: "A monster deck. No heroes: **hosts** of two or three monsters fight as one, and their blows are **Spirit**, which no Shield or Block stops and which feeds the host. They walk in the enemy's dreams: every rest the enemy takes heals them.",
     plan: [
       "Place a **host** on a hero spot and join **2 or 3 monsters** from your hand to it. The host fights as one: its Valour is the monsters' added together, less one (a host of the dead is a ragged thing), its Initiative the host's plus theirs, and it is weak to the **host's own** element, plus any **monster weakness that two of them share** (a lone monster's weakness is covered by the rest).",
       "Two monsters make a quick, lean host; three make a big one with more Valour and more weaknesses. The **Hunt** opens hard, the **Prey** turns the first blow, the **Taboo** is a curse that spoils the enemy's Heals.",
       "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
       "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too. But the dead cannot cross running water: a **Merrow** hero's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**.",
+      "In a duel to the death, {Spirit} Spirit blows can't be **Blocked** either: Block cards do nothing against them. Armour, the mound and giant-kin still do.",
+      "**Dream-walking**: in a duel to the death, whenever the enemy **rests**, the host fighting it **heals 2**. Every rest the enemy takes feeds you, so it rests less and braces less.",
       "**The dead do not sleep**: omens can't lower a host's Initiative (Druid's sleep does nothing to it). A geis still can.",
       "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
       "Some monsters carry **hybrid** damage, the element opposite their weakness. Each Spirit blow is a choice: as **Spirit** it passes Shield and steals 1 (never more than 1 a Strike); as the **hybrid** element it gets the element wheel and weakness bonuses, but Shield soaks it and nothing is stolen. The Dullahan burns as {Fire} Fire, the Fear Dearg blows as {Wind} Wind (and makes a striker pay 1 Valour for wounding his host), the Bean Nighe strikes as {Earth} Earth, the Dearg-due runs as {Water} Water.",

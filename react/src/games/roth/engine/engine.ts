@@ -30,9 +30,9 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: switch the aura on (off by default while it is tuned). */
   aura?: boolean;
-  /** Trial: the Slúagh heal this much when their enemy rests (they walk in its dreams). */
+  /** The Slúagh heal this much when their enemy rests: they walk in its dreams (default DREAMS; 0 switches it off). */
   dreams?: number;
-  /** Trial: Spirit blows can't be Blocked. */
+  /** Spirit blows can't be Blocked (default true in duels to the death; false switches it off). */
   spiritUnblock?: boolean;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
@@ -928,7 +928,7 @@ function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
   if (s.pierce) return false; // a Spirit blow passes Shield, but a Block or Armour still meets it
   // trial: a Spirit blow can't be Blocked either (Armour still meets it)
   const asEl = o.t === "duel" || o.t === "drawn" ? o.as : undefined;
-  if (S.rules.spiritUnblock && !asEl && effSupport(S, a, s).element === "Spirit") return false;
+  if (toDeath(S) && (S.rules.spiritUnblock ?? true) && !asEl && effSupport(S, a, s).element === "Spirit") return false;
   return true;
 }
 /** What a Block card takes off the blow: its Block, +1 kinship, +1 Focus, and +1 or +2 if its hero has rested. */
@@ -1179,6 +1179,8 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
 
 /** Duels to the death: extra Valour at the ford, no heal cap, and what a rest gives. */
 export const FORD_VALOUR = 3;
+/** Dream-walking: what the Slúagh heal when their enemy rests. */
+export const DREAMS = 2;
 const NO_CAP = 1000;
 export const REST_SHIELD = 1;
 /** Valour lost at the end of each turn of a long duel: 1 after the 20th turn, 2 after the 40th. */
@@ -1771,10 +1773,11 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         if (NARRATE.lines) say(`${fighter(S, C, a).name} rests and braces: Shield ${C.shield[a] - REST_SHIELD} → ${C.shield[a]}; the next Shield or Heal +${C.rested[a]}.`);
         // the Slúagh walk in dreams: when their enemy rests, they feed on its sleep
         const o = (1 - a) as Side;
-        if (toDeath(S) && S.rules.dreams && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
+        const dr = S.rules.dreams ?? DREAMS;
+        if (toDeath(S) && dr > 0 && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
           if (NARRATE.lines) say(`${fighter(S, C, o).name} walks in ${fighter(S, C, a).name}'s dreams.`);
           const src = SRC.id; SRC.id = "people:dreams";
-          try { heal(S, C, o, S.rules.dreams); } finally { SRC.id = src; }
+          try { heal(S, C, o, dr); } finally { SRC.id = src; }
         }
       }
       RESTED_NOW.on = true;
