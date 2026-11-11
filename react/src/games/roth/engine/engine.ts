@@ -24,6 +24,9 @@ export interface Rules {
   /** Sim levers: turn Connacht's bleed off; cap how far it stacks. */
   noBleed?: boolean;
   bleedCap?: number;
+  /** Trial Ulster powers (duels to the death): "light" first Strike each duel +2; "fury" Strikes +1 at half Valour or
+   *  less; "stand" a felled Ulster hero strikes once more (Strike 3). */
+  ulster?: string;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
   geisBreakCost: number;
@@ -1217,6 +1220,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (ab.rally && C.valour[a] <= ab.rally.at) n += ab.rally.n;
   if (ab.avenger && C.duel === 1 && C.felled[0][a]) n += ab.avenger;
   if (ab.firstStrike && !C.hit[a]) n += ab.firstStrike;
+  const ul = toDeath(S) && h.alignment === "Ulaid" ? S.rules.ulster ?? "" : "";
+  const lt = /light(\d)?/.exec(ul);
+  if (lt && !C.hit[a] && !RIPOSTE.on) { const k = Number(lt[1] ?? 2); n += k; if (N) N.push(`+${k} the hero's light (first Strike this duel)`); }
+  if (ul.includes("fury") && C.valour[a] * 2 <= (C.startV[C.duel]?.[a] ?? 0)) { n += 1; if (N) N.push(`+1 battle-fury (at half Valour)`); }
   // ...and the veil cuts both ways: their own first Strike each duel −1
   if (S.rules.veiled && h.alignment === "Sidhe" && !C.hit[a]) n -= 1;
   if (ab.vsBig && e.valour >= 5) n += ab.vsBig;
@@ -1275,8 +1282,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.shield[b] -= soak;
   let dmg = n - soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
-  const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
+  const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el))
+    && !(pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("hide"));
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
+  const wasUp = C.valour[b] > 0;
   C.valour[b] -= dmg;
   led(S, C, b, "save:shield", soak);
   led(S, C, a, "deal:" + SRC.id, dmg);
@@ -1291,6 +1300,13 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
     say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
+  }
+  // an Ulster hero's last stand: felled, it strikes once more
+  if (wasUp && C.valour[b] <= 0 && toDeath(S) && e.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("stand") && !RIPOSTE.on && C.valour[a] > 0) {
+    if (NARRATE.lines) say(`${e.name} makes a last stand.`);
+    RIPOSTE.on = true;
+    const src = SRC.id; SRC.id = "power:last-stand";
+    try { strike(S, C, b, Number(/stand(\d)?/.exec(S.rules.ulster ?? "")?.[1] ?? 3)); } finally { RIPOSTE.on = false; SRC.id = src; }
   }
   // a Connacht riposte: when its Shield takes a blow, a free Strike back (not answered by another riposte)
   if (soak > 0 && toDeath(S) && e.ab.riposte && !RIPOSTE.on && C.valour[b] > 0 && C.valour[a] > 0) {
