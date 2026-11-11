@@ -1201,9 +1201,9 @@ export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
 /** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
 export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
-/** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block; "tide",
- *  a Water blow that wounds a Merrow heals it 1. */
-export const MERROW_DEFAULT = "water+tide";
+/** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block.
+ *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
+export const MERROW_DEFAULT = "water";
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
 export const DREAMS = 2;
 const NO_CAP = 1000;
