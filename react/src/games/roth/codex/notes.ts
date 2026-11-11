@@ -97,6 +97,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Tuatha Dé Danann of the mounds",
     motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
     plan: [
+      "**Otherworldly**: in a duel to the death every {Spirit} Spirit blow against a Sídhe fighter is **−2**. The dead have no hold on those who never died.",
       "**The mound**: the Aos Sídhe fight from their mound. Like {armour} Armour it takes **1** off every Strike against a Sídhe fighter, until it has soaked **5** in all over the whole match. Nothing pierces it, not even blows that ignore Shield and Armour.",
       "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
       "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
@@ -152,6 +153,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The sea-folk under the waves",
     motto: "Water, Shields and slippery defence. Merrow **outlasts** the enemy and strikes back with the tide.",
     plan: [
+      "**Flowing water**: in a duel to the death every {Spirit} Spirit blow against a Merrow fighter is **−1**, and a Merrow's Shield holds against Spirit. The dead cannot cross running water.",
       "Manannán's first incoming Strike each duel **misses**. Lí Ban gains **Shield 2** when she rests. The Coomara is **Valour 6** and heals 1 when his Strike wounds.",
       "Fand is the glass cannon: **Valour 3**, Initiative 5, **Strikes +1**.",
       "Most supports are {Water} Water, Manannán's and Lí Ban's Focus, and the blessing of the ford gives **every Water support +1**. Water beats Fire, so Undertow and Clíodhna's wave punish Fire-Focus heroes (Cú Chulainn, Brigid, Balor).",

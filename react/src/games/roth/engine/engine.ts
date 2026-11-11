@@ -34,6 +34,10 @@ export interface Rules {
   dreams?: number;
   /** Spirit blows can't be Blocked (default true in duels to the death; false switches it off). */
   spiritUnblock?: boolean;
+  /** Switch off the Sídhe's and Merrow's resistance to Spirit, for experiments. */
+  noSpiritResist?: boolean;
+  /** Override the Sídhe's resistance to Spirit, for experiments. */
+  resistSidhe?: number;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
   auraFrac?: number;
@@ -1179,6 +1183,9 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
 
 /** Duels to the death: extra Valour at the ford, no heal cap, and what a rest gives. */
 export const FORD_VALOUR = 3;
+function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
+/** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
+export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
 export const DREAMS = 2;
 const NO_CAP = 1000;
@@ -1192,6 +1199,8 @@ export const HALF = { up: true };
 const RIPOSTE = { on: false };
 /** The card or power whose effect is resolving now (for the ledger). */
 const SRC = { id: "other" };
+/** Set while a Spirit support's blow lands (Spirit isn't one of the four elements, so strike()'s el can't say). */
+const SPIRIT_BLOW = { on: false };
 /** The dead-flesh aura (the Slúagh, duels to the death): no blow wounds them for more than half their full Valour
  *  (all the host's monsters together, as printed; rounded down). Hacking at dead flesh does them little harm. Infinity when it doesn't apply. */
 export function auraCap(S: State, C: CombatState, b: Side): number {
@@ -1327,6 +1336,9 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
+  // resistance to Spirit: the otherworldly (Aos Sídhe) take 2 off a Spirit blow, flowing water (Merrow) 1
+  const sr = SPIRIT_BLOW.on && toDeath(S) && !S.rules.noSpiritResist ? (e.alignment === "Sidhe" && S.rules.resistSidhe !== undefined ? S.rules.resistSidhe : spiritResist(e.alignment)) : 0;
+  if (sr && n > 0) { if (N) N.push(`−${Math.min(sr, n)} ${e.alignment === "Sidhe" ? "otherworldly" : "flowing water"} (Spirit)`); led(S, C, b, `save:people:resist-${e.alignment}`, Math.min(sr, n)); n = Math.max(0, n - sr); }
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); led(S, C, b, "save:" + (S.stats?.armourSrc?.[b] || "armour"), Math.min(arm, n)); n = Math.max(0, n - arm); }
   // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
   if (n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
@@ -1520,7 +1532,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     // Spirit (anam): ignores Shield and steals 1 when it wounds; but the dead cannot cross running water, so a
     // Merrow's Shield holds against it
     if (eff.type === "strike") {
-      const hit = () => strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null);
+      const hit = () => withSpirit(s.element === "Spirit", () => strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null));
       const dmg = hit();
       // a swift Connacht hero: a blow that wounds for 1 or less is followed at once by a second
       if (i === 0 && dmg <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
