@@ -1329,7 +1329,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (staggers) { const st = [C.stagger?.[0] ?? 0, C.stagger?.[1] ?? 0]; st[b] = 1; C.stagger = st; }
   C.valour[b] -= dmg;
   led(S, C, b, "save:shield", soak);
-  led(S, C, a, "deal:" + SRC.id, dmg);
+  // a Spirit blow passes Shield: what the Shield would have soaked is the Spirit's own worth
+  const passed = spirit && !pierce ? Math.min(C.shield[b], dmg) : 0;
+  led(S, C, a, "deal:people:spirit", passed);
+  led(S, C, a, "deal:" + SRC.id, dmg - passed);
   // Connacht's blows bleed: each that wounds makes the enemy's Heals 1 less until the end of its next turn
   if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(S.rules.bleedCap ?? 1, bl[b] + 1); C.bleed = bl; }
   // what a blow steals back: never more than 1 a Strike
@@ -1604,6 +1607,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
       setAdj(C, q, { add: [...cur.add, d], remove: cur.remove });
       const v = d.valour + host.host!.def.valourEach;
       C.valour[a] += v; C.cap[a] += v;
+      led(S, C, a, "heal:people:join", v);
       const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
     } else playCardMidDuel(S, C, a, c, o.target, stats);
     endTurn(S, C, stats);
@@ -1655,7 +1659,9 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       const cur = adjOf(C, q);
       setAdj(C, q, cur.add.some((x) => x.id === m.id) ? { add: cur.add.filter((x) => x.id !== m.id), remove: cur.remove } : { add: cur.add, remove: [...cur.remove, m.id] });
       const v = m.valour + host.host!.def.valourEach - (toDeath(S) ? 1 : 0); // in a long duel, a ragged return
+      const v0 = C.valour[a];
       C.valour[a] = Math.min(Math.max(C.cap[a], C.valour[a]), C.valour[a] + v);
+      led(S, C, a, "heal:people:sacrifice", C.valour[a] - v0);
       const sc = C.sacrificed.slice(); sc[a] = true; C.sacrificed = sc;
     } else {
       // a monster comes over from the other host: its Valour, weakness and quality join this one
@@ -1669,6 +1675,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       setAdj(C, q, { add: [...cur.add, m], remove: cur.remove });
       const v = m.valour + host.host!.def.valourEach;
       C.valour[a] += v; C.cap[a] += v;
+      led(S, C, a, "heal:people:summon", v);
       const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
       const sm = C.summoned.slice(); sm[a] = true; C.summoned = sm;
     }

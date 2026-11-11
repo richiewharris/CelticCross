@@ -21,6 +21,12 @@ const name = (k: string) => {
   if (id === "people:mound") return "The mound (Sídhe)";
   if (id === "people:veil") return "The veil (Sídhe)";
   if (id === "people:giant-kin") return "Giant-kin (Fomóire)";
+  if (id === "people:spirit") return "Spirit through Shield";
+  if (id === "people:sacrifice") return "Sacrifices (Valour back)";
+  if (id === "people:summon") return "Summons (Valour in)";
+  if (id === "people:join") return "Monsters joining off the Reserve";
+  if (id === "people:cry") return "The Hound's cry (Ulster)";
+  if (id === "people:host") return "The host's monster qualities";
   if (id === "power:swift") return "Swift blows";
   if (id === "power:riposte") return "Ripostes";
   if (id === "rest") return "Resting (Shield)";
@@ -39,7 +45,7 @@ type Cat = (typeof CATS)[number];
 function sideWorth(r: R, side: 0 | 1) {
   const L = r.ledger ?? {};
   const src = new Map<string, Record<Cat, number>>();
-  const add = (id: string, c: Cat, v: number) => { if (!v) return; const o = src.get(id) ?? { deal: 0, save: 0, heal: 0, deny: 0, cost: 0 }; o[c] += v; src.set(id, o); };
+  const add = (id0: string, c: Cat, v: number) => { if (!v) return; const id = /^(hero|ward):[a-z_]+:/.test(id0) ? "people:host" : id0; const o = src.get(id) ?? { deal: 0, save: 0, heal: 0, deny: 0, cost: 0 }; o[c] += v; src.set(id, o); };
   let raised = 0;
   for (const [k, v] of Object.entries(L)) if (k.startsWith("shield:")) raised += v[side];
   const soaked = L["save:shield"]?.[side] ?? 0;
