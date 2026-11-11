@@ -32,6 +32,8 @@ export interface Rules {
   aura?: boolean;
   /** Trial: the Slúagh heal this much when their enemy rests (they walk in its dreams). */
   dreams?: number;
+  /** Trial: Spirit blows can't be Blocked. */
+  spiritUnblock?: boolean;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
   auraFrac?: number;
@@ -924,6 +926,9 @@ function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
   const h = fighter(S, C, a);
   if (unwilling(h.alignment, s.alignment)) return false;
   if (s.pierce) return false; // a Spirit blow passes Shield, but a Block or Armour still meets it
+  // trial: a Spirit blow can't be Blocked either (Armour still meets it)
+  const asEl = o.t === "duel" || o.t === "drawn" ? o.as : undefined;
+  if (S.rules.spiritUnblock && !asEl && effSupport(S, a, s).element === "Spirit") return false;
   return true;
 }
 /** What a Block card takes off the blow: its Block, +1 kinship, +1 Focus, and +1 or +2 if its hero has rested. */
