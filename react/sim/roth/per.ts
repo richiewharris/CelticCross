@@ -21,6 +21,8 @@ const name = (k: string) => {
   if (id === "people:mound") return "The mound (Sídhe)";
   if (id === "people:veil") return "The veil (Sídhe)";
   if (id === "people:giant-kin") return "Giant-kin (Fomóire)";
+  if (id === "people:dreams") return "Dream-walking (Slúagh)";
+  if (id === "people:aura") return "The dead-flesh aura (Slúagh)";
   if (id === "people:spirit") return "Spirit through Shield";
   if (id === "people:sacrifice") return "Sacrifices (Valour back)";
   if (id === "people:summon") return "Summons (Valour in)";

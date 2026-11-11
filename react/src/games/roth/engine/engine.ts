@@ -30,6 +30,8 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: switch the aura on (off by default while it is tuned). */
   aura?: boolean;
+  /** Trial: the Slúagh heal this much when their enemy rests (they walk in its dreams). */
+  dreams?: number;
   auraUp?: boolean;
   /** The share of their full Valour that one blow can take (default 1/2). */
   auraFrac?: number;
@@ -1762,6 +1764,13 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         C.rested = [r[0], r[1]];
         C.rested[a] = Math.min(2, r[a] + 1);
         if (NARRATE.lines) say(`${fighter(S, C, a).name} rests and braces: Shield ${C.shield[a] - REST_SHIELD} → ${C.shield[a]}; the next Shield or Heal +${C.rested[a]}.`);
+        // the Slúagh walk in dreams: when their enemy rests, they feed on its sleep
+        const o = (1 - a) as Side;
+        if (toDeath(S) && S.rules.dreams && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
+          if (NARRATE.lines) say(`${fighter(S, C, o).name} walks in ${fighter(S, C, a).name}'s dreams.`);
+          const src = SRC.id; SRC.id = "people:dreams";
+          try { heal(S, C, o, S.rules.dreams); } finally { SRC.id = src; }
+        }
       }
       RESTED_NOW.on = true;
     }
