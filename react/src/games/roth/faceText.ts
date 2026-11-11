@@ -362,7 +362,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**. **The mound**: every Strike against them **−1** (nothing pierces it), until it has soaked **5** in all over the match.");
       if (d.ab.followUp) push("text", "**Swift**: a blow of theirs that wounds for **1 or less** strikes **again** at once.");
       if (d.ab.riposte) push("text", `**Riposte**: when their {shield} Shield takes a blow, a free **Strike ${d.ab.riposte}** back (no action).`);
-      if (d.alignment === "Connachta") push("text", "**Bleed**: every blow of theirs that wounds makes the enemy's Heals **−1** until the end of its next turn (it stacks).");
+      if (d.alignment === "Connachta") push("text", "**Bleed**: every blow of theirs that wounds makes the enemy's Heals **−1** until the end of its next turn (it doesn't stack: two hits are still −1).");
       if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike, except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
       break;
     case "host":

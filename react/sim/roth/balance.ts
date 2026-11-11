@@ -1,5 +1,5 @@
 // Five-deck balance: every deck against every other (and itself), seats swapped evenly.
-//   npx tsx sim/roth/balance.ts [--level skilled] [--n 400] [--workers 2] [--seed 1] [--cards] [--rules '{"capOver":1}']
+//   npx tsx sim/roth/balance.ts [--level skilled] [--n 400] [--workers 2] [--seed 1] [--cards] [--rules '{"capOver":1}'] [--dump recs.jsonl]
 import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -83,6 +83,13 @@ async function main() {
     }
   });
 
+  // ---- raw records for later analysis (the ledger of what every card and power was worth)
+  const dump = str("dump", "");
+  if (dump) {
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(dump, recs.map((r) => JSON.stringify({ a: r.a, b: r.b, aSide: r.aSide, w: r.w, felled: r.felled, ledger: r.st.ledger, placed: r.st.placed, used: r.st.used.map((u) => ({ side: u.side, id: u.id })), fx: r.st.fx })).join("\n") + "\n");
+    console.log(`(records written to ${dump})`);
+  }
   // ---- matrix
   console.log("\nScore of the row deck against the column deck (seats swapped evenly):");
   const vs = (a: string, b: string) => {

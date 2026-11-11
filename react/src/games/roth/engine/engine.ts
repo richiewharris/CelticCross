@@ -171,6 +171,12 @@ export interface MatchStats {
   p2First: number;
   /** Per side (the side that dealt it, or suffered it for startLoss/initLoss): where damage came from. */
   fx: Record<"strikes" | "dmg" | "soaked" | "blunted" | "weakHits" | "beatsHits" | "focusHits" | "kinHits" | "healed" | "startLoss" | "initLoss" | "first" | "broke" | "duels" | "bled" | "ripostes" | "swift", [number, number]>;
+  /** What each card or power was worth, side by side: "deal:<id>" wounds dealt, "save:<id>" wounds prevented,
+   *  "heal:<id>" Valour healed, "shield:<id>" Shield raised, "deny:<id>" enemy heals denied, "cost:<id>" Valour paid. */
+  ledger: Record<string, [number, number]>;
+  /** The card behind each side's standing Block and Armour (for the ledger). */
+  blockSrc: [string, string];
+  armourSrc: [string, string];
   bound: { side: Side; id: string }[];
   sworn: { side: Side; id: string; hero: string }[];
   omensTurned: { side: Side; id: string }[];
@@ -363,7 +369,7 @@ function emptyStats(): MatchStats {
     exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0, attend: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
     fx: Object.fromEntries(["strikes", "dmg", "soaked", "blunted", "weakHits", "beatsHits", "focusHits", "kinHits", "healed", "startLoss", "initLoss", "first", "broke", "duels", "bled", "ripostes", "swift"].map((k) => [k, [0, 0]])) as MatchStats["fx"],
-    placed: [], used: [], bound: [], sworn: [], omensTurned: [],
+    placed: [], used: [], bound: [], sworn: [], omensTurned: [], ledger: {}, blockSrc: ["", ""], armourSrc: ["", ""],
   };
 }
 
@@ -774,12 +780,13 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart);
     if (toDeath(S)) {
       // passive cards beside the hero: their Armour holds from the start (the highest counts)
-      let arm = h[p].ab.armour ?? 0;
+      let arm = h[p].ab.armour ?? 0, src = arm ? "hero:" + h[p].id : "";
       for (const sp of [C.hs[p] + 1, C.hs[p] + 2]) {
         const c = S.board[sp]?.def;
-        if (c?.type === "support" && c.use === "passive" && !unwilling(h[p].alignment, c.alignment)) arm = Math.max(arm, c.armour ?? 0);
+        if (c?.type === "support" && c.use === "passive" && !unwilling(h[p].alignment, c.alignment) && (c.armour ?? 0) > arm) { arm = c.armour ?? 0; src = c.id; }
       }
       C.armour![p] = arm;
+      if (stats) (stats.armourSrc ??= ["", ""])[p] = src;
     }
     if (h[p].ab.shapeShift) todo.push(p); // each hero fights one duel, so this is once per match
   }
@@ -914,7 +921,7 @@ function guestHeals(S: State, C: CombatState, a: Side, uid: number, stats: Match
   gs[a] = C.guests[a].filter((x) => x.uid !== uid);
   C.guests = gs;
   C.guestUsed[a] = true;
-  heal(S, C, a, 1);
+  { const src = SRC.id; SRC.id = "guest"; try { heal(S, C, a, 1); } finally { SRC.id = src; } }
   if (stats) stats.guests++;
   if (C === S.combat) { // real match: the guest leaves the hand
     const P = S.players[a];
@@ -1126,6 +1133,8 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   const cap = capTo ?? C.cap[p];
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
+  led(S, C, p, "heal:" + SRC.id, C.valour[p] - v0);
+  if (C.bleed?.[p]) led(S, C, 1 - p, "deny:people:bleed", Math.min(C.bleed[p], Math.max(0, n + C.bleed[p])));
   if (NARRATE.lines) {
     const bits: string[] = [];
     if (h.ab.healBonus) bits.push(`${sgn(h.ab.healBonus)} ${h.name}'s quality`);
@@ -1150,6 +1159,14 @@ const RESTED_NOW = { on: false };
 export const HALF = { up: true };
 /** A riposte being struck (so it is not itself answered by one). */
 const RIPOSTE = { on: false };
+/** The card or power whose effect is resolving now (for the ledger). */
+const SRC = { id: "other" };
+/** Credit v to key for side p in the match's ledger (the real match only). */
+function led(S: State, C: CombatState, p: Side | number, key: string, v: number) {
+  if (!v || !S.stats || C !== S.combat) return;
+  const L = (S.stats.ledger ??= {});
+  (L[key] ??= [0, 0])[p] += v;
+}
 /** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (even one that
  *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
 export const MOUND_AC = 1;
@@ -1233,20 +1250,25 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     // in a duel to the death no ward softens the first blow by more than 2 (a cloak that makes it miss outright
     // would be worth a whole hero in a long fight)
     const ward = (e.ab.firstHitSoak ?? 0) + veil + sumFx(heroFx(S, C, b), (x) => x.firstHitSoak);
-    n = Math.max(0, n - (toDeath(S) ? Math.min(2, ward) : ward));
+    const nw = Math.max(0, n - (toDeath(S) ? Math.min(2, ward) : ward));
+    const wv = Math.min(veil, n - nw);
+    led(S, C, b, "save:people:veil", wv);
+    led(S, C, b, "save:ward:" + e.id, n - nw - wv);
+    n = nw;
   }
   // a Block meets this blow (once)
   const blk = !pierce ? C.block?.[b] ?? 0 : 0;
   if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
-  if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); n = Math.max(0, n - blk); }
+  if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
-  if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); n = Math.max(0, n - arm); }
+  if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); led(S, C, b, "save:" + (S.stats?.armourSrc?.[b] || "armour"), Math.min(arm, n)); n = Math.max(0, n - arm); }
   // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
   if (n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
     const t = Math.min(S.rules.moundAC ?? MOUND_AC, n, C.mound![b]);
     const m = C.mound!.slice(); m[b] -= t; C.mound = m;
     n -= t;
+    led(S, C, b, "save:people:mound", t);
     if (N) N.push(`−${t} the mound (${m[b]} left to soak${m[b] === 0 ? ": spent" : ""})`);
   }
   const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
@@ -1254,15 +1276,17 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   let dmg = n - soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
   const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
-  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); dmg = h2; }
+  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
   C.valour[b] -= dmg;
+  led(S, C, b, "save:shield", soak);
+  led(S, C, a, "deal:" + SRC.id, dmg);
   // Connacht's blows bleed: each that wounds makes the enemy's Heals 1 less until the end of its next turn
-  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(S.rules.bleedCap ?? 99, bl[b] + 1); C.bleed = bl; }
+  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(S.rules.bleedCap ?? 1, bl[b] + 1); C.bleed = bl; }
   // what a blow steals back: never more than 1 a Strike
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
   // the uninvited guest: wound it and pay for it
-  if (dmg > 0 && e.ab.reflect) C.valour[a] -= e.ab.reflect;
+  if (dmg > 0 && e.ab.reflect) { C.valour[a] -= e.ab.reflect; led(S, C, b, "deal:hero:" + e.id, e.ab.reflect); }
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
@@ -1273,7 +1297,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     if (NARRATE.lines) say(`${e.name} ripostes off the Shield.`);
     if (S.stats && C === S.combat) S.stats.fx.ripostes[b]++;
     RIPOSTE.on = true;
-    try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; }
+    const src = SRC.id; SRC.id = "power:riposte";
+    try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; SRC.id = src; }
   }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
@@ -1410,7 +1435,8 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       if (i === 0 && dmg <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
         if (NARRATE.lines) say(`${h.name} is swift: a second blow.`);
         if (S.stats && C === S.combat) S.stats.fx.swift[a]++;
-        hit();
+        const src = SRC.id; SRC.id = "power:swift";
+        try { hit(); } finally { SRC.id = src; }
       }
     }
     else if (eff.type === "heal") {
@@ -1426,21 +1452,23 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
         say(`${h.name} raises Shield: ${n}${bits.length ? " " + bits.join(" ") + ` = ${add}` : ""}. Shield ${C.shield[a]} → ${C.shield[a] + add}.`);
       }
       C.shield[a] += add;
+      led(S, C, a, "shield:" + SRC.id, add);
     }
   }
   if (s.armour && toDeath(S)) {
     const cur = C.armour?.[a] ?? 0;
     if (s.armour > cur) {
       C.armour = [C.armour?.[0] ?? 0, C.armour?.[1] ?? 0]; C.armour[a] = s.armour;
+      if (S.stats && C === S.combat) S.stats.armourSrc[a] = s0.id;
       if (NARRATE.lines) say(`${h.name} puts on Armour ${s.armour}: every Strike against ${h.name} ${s.armour} less.`);
     }
   }
-  if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; }
+  if (s.invoke && s.invoke === e.tag) { C.valour[b] -= S.rules.invokeLoss; if (stats) stats.invokes++; led(S, C, a, "deal:" + SRC.id, S.rules.invokeLoss); }
   if (s.nextStrike) C.nextStrike[a] += s.nextStrike;
   // dulling doesn't stack: the enemy's next Strike is never cut by more than one card's worth
   if (s.foeNext) C.nextStrike[b] = Math.max(Math.min(C.nextStrike[b], -s.foeNext), C.nextStrike[b] - s.foeNext);
-  if (s.foeLoss) C.valour[b] -= s.foeLoss;
-  if (s.selfLoss) C.valour[a] -= s.selfLoss;
+  if (s.foeLoss) { C.valour[b] -= s.foeLoss; led(S, C, a, "deal:" + SRC.id, s.foeLoss); }
+  if (s.selfLoss) { C.valour[a] -= s.selfLoss; led(S, C, a, "cost:" + SRC.id, s.selfLoss); }
   if (s.cathbad) C.cathbad[a] = true;
 }
 
@@ -1450,6 +1478,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
     if (o.spot >= 0) {
       const v = blockValue(S, C, b, o.spot);
       C.block = [C.block?.[0] ?? 0, C.block?.[1] ?? 0]; C.block[b] = v;
+      if (S.stats && C === S.combat) S.stats.blockSrc[b] = S.board[o.spot]!.def.id;
       C.uses[o.spot]++; C.lastUse[o.spot] = C.acts[b];
       if (NARRATE.lines) say(`${fighter(S, C, b).name} blocks with ${S.board[o.spot]!.def.name}: the blow ${v} less.`);
     }
@@ -1611,7 +1640,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       // a support used again pays its price
       if (C.uses[o.spot]) {
         const r = reuseOf(s);
-        if (r.valour) C.valour[a] -= r.valour;
+        if (r.valour) { C.valour[a] -= r.valour; led(S, C, a, "cost:" + s.id, r.valour); }
         for (let k = 0; k < (r.draw ?? 0); k++) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
         if (NARRATE.lines && (r.valour || r.draw)) say(`Using ${s.name} again costs ${[r.valour ? `${r.valour} Valour` : "", r.draw ? `the top ${r.draw === 1 ? "card" : `${r.draw} cards`} of the Reserve` : ""].filter(Boolean).join(" and ")}.`);
       }
@@ -1625,16 +1654,19 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       C.broken |= m;
       C.valour[a] -= breakCost(S, m);
       if (stats) stats.fx.broke[a] += breakCost(S, m);
+      led(S, C, a, "cost:break", breakCost(S, m));
       if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
     } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
     const ab = fighter(S, C, a).ab;
-    if (C.valour[a] > 0 && ab.restHeal && !crowActive(S, C)) heal(S, C, a, ab.restHeal);
-    if (C.valour[a] > 0 && ab.restShield) C.shield[a] += ab.restShield;
+    const hid = "hero:" + fighter(S, C, a).id;
+    if (C.valour[a] > 0 && ab.restHeal && !crowActive(S, C)) { const src = SRC.id; SRC.id = hid; try { heal(S, C, a, ab.restHeal); } finally { SRC.id = src; } }
+    if (C.valour[a] > 0 && ab.restShield) { C.shield[a] += ab.restShield; led(S, C, a, "shield:" + hid, ab.restShield); }
     if (toDeath(S)) {
       for (const hs of heroSpotsOf(a)) for (const sp of [hs + 1, hs + 2]) C.restsSince[sp]++;
       // a rest braces the hero: Shield 1, and the next Shield or Heal is stronger for each rest in a row (up to 2)
       if (C.valour[a] > 0) {
         C.shield[a] += REST_SHIELD;
+        led(S, C, a, "shield:rest", REST_SHIELD);
         const r = C.rested ?? [0, 0];
         C.rested = [r[0], r[1]];
         C.rested[a] = Math.min(2, r[a] + 1);
@@ -1660,10 +1692,12 @@ function useSupport(S: State, C: CombatState, a: Side, s: SupportDef, mode: Duel
     C.valour[a] -= breakCost(S, m);
     if (NARRATE.lines) say(`${h.name} breaks a geis or oath first: −${breakCost(S, m)} Valour.`);
     if (stats) stats.fx.broke[a] += breakCost(S, m);
+    led(S, C, a, "cost:break", breakCost(S, m));
     if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
   } else if (mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
   if (C.valour[a] > 0) {
-    resolveSupport(S, C, a, s, first, stats, as);
+    const src = SRC.id; SRC.id = s.id;
+    try { resolveSupport(S, C, a, s, first, stats, as); } finally { SRC.id = src; }
     if (rec) rec.effect = s.effects.length > 0 || !!s.cathbad || (!!s.invoke && s.invoke === fighter(S, C, 1 - a).tag);
   }
 }

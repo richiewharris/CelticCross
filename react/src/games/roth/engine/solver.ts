@@ -2,7 +2,7 @@
 
 import { beats, isElement, reuseOf, unwillingPair, type CardDef, type FighterDef, type HeroDef, type SupportDef } from "./cards";
 import {
-  activeOath, baseEffects, effWeakness, giantKin, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
+  activeOath, baseEffects, blockValue, effWeakness, giantKin, combatApply, combatDecision, combatResult, cloneCombat, effSupport, fighter, forbidMask, heroFx, kin, newCombat, primaryBonus, startDuel, toDeath, unwilling,
   type CombatState, type Option, type Side, type State,
 } from "./engine";
 
@@ -179,6 +179,8 @@ export function quickSupportValue(s: SupportDef, h: HeroDef, e: HeroDef | null):
   if (s.nextStrike) v += 0.8 * s.nextStrike;
   if (s.cathbad) v += 0.6;
   if (s.armour) v += 2.2 * s.armour; // Armour holds for the rest of the duel
+  // a Block card meets a blow every enemy turn without costing an action: worth about a Strike of the same size
+  if (s.use === "reaction") v *= 1.25;
   return v;
 }
 
@@ -259,7 +261,7 @@ function duelChance(S: State, C: CombatState, me: Side): number {
     const opts: { v: number; rate: number }[] = [];
     for (const sp of [C.hs[a] + 1, C.hs[a] + 2]) {
       const c = S.board[sp];
-      if (!c || c.def.type !== "support") continue;
+      if (!c || c.def.type !== "support" || c.def.use) continue; // passive and reaction cards aren't actions
       const w = supWorth(S, C, a, c.def);
       const r = reuseRate(c.def);
       opts.push({ v: w - r.cost, rate: r.rate });
@@ -271,9 +273,21 @@ function duelChance(S: State, C: CombatState, me: Side): number {
     v += 0.4 * (h.ab.drain ?? 0) + 0.25 * (h.ab.restHeal ?? 0) + 0.25 * (h.ab.restShield ?? 0);
     return Math.max(0.5, v);
   };
+  // what side a takes off each enemy turn without spending an action: a Block card meets a blow every enemy turn
+  // (most blows can be blocked), and Armour takes its share off each blow
+  const guard = (a: Side) => {
+    const h = fighter(S, C, a);
+    let blk = 0;
+    for (const sp of [C.hs[a] + 1, C.hs[a] + 2]) {
+      const c = S.board[sp]?.def;
+      if (c?.type === "support" && c.use === "reaction" && !unwilling(h.alignment, c.alignment)) blk = Math.max(blk, blockValue(S, C, a, sp));
+    }
+    return 0.75 * blk + 0.8 * (C.armour?.[a] ?? 0);
+  };
+  const hits = (a: Side) => { const v = per(a); return Math.max(0.4 * v, v - guard((1 - a) as Side)); };
   const o = (1 - me) as Side;
   const tough = (a: Side) => { const h = fighter(S, C, a); return Math.max(0.5, C.valour[a] + C.shield[a] + Math.min(3, h.ab.firstHitSoak ?? 0)); };
-  let tMe = tough(o) / per(me), tO = tough(me) / per(o);
+  let tMe = tough(o) / hits(me), tO = tough(me) / hits(o);
   if (C.first === me) tMe -= 0.5; else tO -= 0.5;
   return 1 / (1 + Math.exp(-0.9 * (tO - tMe)));
 }
