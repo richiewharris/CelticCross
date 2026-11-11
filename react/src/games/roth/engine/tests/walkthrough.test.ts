@@ -7,15 +7,15 @@ import { COACH } from "../../walkthrough/notes";
 describe("the guided game", () => {
   it("replays to the game the notes describe", () => {
     const g = replayScript();
-    expect(g.end.result).toMatchObject({ winner: 0, decidedBy: "felled", felled: [1, 2] });
-    expect(g.steps.length).toBe(107);
+    expect(g.end.result).toMatchObject({ winner: 0, decidedBy: "felled", felled: [0, 2] });
+    expect(g.steps.length).toBe(114);
     expect(Math.max(...Object.keys(COACH).map(Number))).toBeLessThan(g.steps.length);
-    expect(g.steps[24].line).toContain("Cast out Finnbennach");
-    expect(g.steps[29].maths.join(" ")).toContain("blocks with Salmon leap");
-    expect(g.steps[37].maths.join(" ")).toContain("Armour 1");
-    expect(g.steps[41].maths.join(" ")).toContain("Fiacha mac Fir Febe 8 → 8");
-    expect(g.steps[58].maths.join(" ")).toContain("+1 rested");
-    expect(g.steps[94].maths.join(" ")).toContain("Lóegaire Búadach is weary");
-    expect(g.steps[106].maths.join(" ")).toContain("Lóch Mór mac Mo Febis 3 → 0");
+    expect(g.steps[29].maths.join(" ")).toContain("Fergus mac Róich 8 → 5");
+    expect(g.steps[33].maths.join(" ")).toContain("Armour 1");
+    expect(g.steps[73].maths.join(" ")).toContain("blocks with Salmon leap");
+    expect(g.steps[73].maths.join(" ")).toContain("bleeds");
+    expect(g.steps[81].maths.join(" ")).toContain("Valour 8 → 12");
+    expect(g.steps[99].maths.join(" ")).toContain("is swift");
+    expect(g.steps[113].maths.join(" ")).toContain("Lóch Mór mac Mo Febis 1 → 0");
   });
 });
