@@ -253,7 +253,6 @@ function casualDeathTurn(V: State, d: Decision, me: Side): number {
         const s = V.board[x.spot]!.def as SupportDef;
         const mends = s.effects.some((e) => e.type === "heal" || e.type === "shield");
         v = unwillingPair(h.alignment, s.alignment) ? 2.3 : looks(s, h) + (mends ? 0.8 * (C.rested?.[me] ?? 0) : 0) - (C.uses[x.spot] ? (reuseOf(s).valour ?? 0) + 0.5 * (reuseOf(s).draw ?? 0) : 0);
-        if (x.aim === "mound") v += moundAim(C, me, s.effects[0].n);
       }
       if (x.mode === "break") v -= C.valour[me] <= 2 ? 99 : 2;
     } else if (x.t === "duelCard") {
@@ -269,21 +268,12 @@ function casualDeathTurn(V: State, d: Decision, me: Side): number {
   if (C.valour[me] < C.cap[me]) {
     const b = o[best];
     if (b.t === "duel") {
-      const g = o.findIndex((x) => x.t === "duel" && x.guest >= 0 && x.act === b.act && x.spot === b.spot && x.mode === b.mode && x.aim === b.aim);
+      const g = o.findIndex((x) => x.t === "duel" && x.guest >= 0 && x.act === b.act && x.spot === b.spot && x.mode === b.mode);
       if (g >= 0) return g;
     }
   }
   return best;
 }
-/** Casual's liking for aiming a blow of about n at the enemy's mound rather than its hero: when it would throw it
- *  down, or early in the match while there are many turns of its Valour still to come. */
-function moundAim(C: NonNullable<State["combat"]>, me: Side, n: number): number {
-  const m = C.mound?.[1 - me] ?? 0;
-  if (m <= 0) return -99;
-  if (n >= m) return 1.5;
-  return C.duel === 0 && C.turn < 6 ? -0.2 : -1.5;
-}
-
 // ---------------------------------------------------------------- Skilled
 const PH_HERO: HeroDef = { type: "hero", id: "placeholder", name: "Unknown hero", alignment: "None", rarity: "common", valour: 4, init: 3, focus: null, weakness: null, quality: "", tag: null, ab: {} };
 const PH_SUP: SupportDef = { type: "support", id: "ph_sup", name: "Unknown support", element: null, kind: null, alignment: "Unaligned", rarity: "common", effects: [{ type: "strike", n: 2 }], text: "" };
@@ -485,9 +475,8 @@ function deathEval(S: State, me: Side): number {
   const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o));
   // a rested side's next Shield or Heal is stronger
   const rest = 0.6 * ((C.rested?.[me] ?? 0) - (C.rested?.[o] ?? 0));
-  // a standing mound is a Valour a turn for every Aos Sídhe fighter still to come: worth most early on
-  const left = Math.max(2, 3 - C.duel) * 6;
-  const mound = (p: Side) => ((C.mound?.[p] ?? 0) > 0 ? 1.2 * left + 1.5 * (C.mound![p]) : 0);
+  // what a mound can still soak is nearly Valour in hand
+  const mound = (p: Side) => 2.4 * (C.mound?.[p] ?? 0);
   return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o);
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */

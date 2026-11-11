@@ -18,7 +18,8 @@ export interface Rules {
   valourBonus: number;
   /** Duels to the death: every fighter enters the ford with this much more Valour (default 3). */
   fordValour?: number;
-  /** The Aos Sídhe's mound's Valour (duels to the death). */
+  /** The Aos Sídhe's mound (duels to the death): how much it soaks off each blow, and in all over the match. */
+  moundAC?: number;
   moundValour?: number;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
@@ -113,7 +114,7 @@ export interface CombatState {
   restsSince: number[];
   /** Duels to the death: rests in a row by each side (0–2), for the next Shield or Heal. */
   rested?: number[];
-  /** The Aos Sídhe's mound, per side, for the whole match (0: none, or thrown down). */
+  /** What the Aos Sídhe's mound can still soak, per side, over the whole match (0: none, or spent). */
   mound?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
@@ -219,11 +220,11 @@ export type Option =
   | { t: "champion"; uid: number }
   | { t: "sacrifice"; id: string }
   | { t: "summon"; id: string }
-  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element; aim?: "mound" }
+  | { t: "duel"; guest: number; act: "use" | "rest"; spot: number; mode: DuelMode; as?: Element }
   /** Duels to the death: draw the top card of your Reserve. */
   | { t: "draw" }
   /** ...then play it (keep it, for a hero or champion: into your hand) or put it aside on the discard. */
-  | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element; aim?: "mound" }
+  | { t: "drawn"; how: "play" | "keep" | "discard"; mode?: DuelMode; target?: number; as?: Element }
   /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
   | { t: "duelCard"; uid: number; target?: number }
   /** A reaction: tap the Block card at `spot` against the blow coming (−1: take it). */
@@ -939,12 +940,6 @@ export function duelActs(S: State, C: CombatState, a: Side): Option[] {
       }
     }
   }
-  // any blow may be aimed at the enemy's mound instead
-  if (moundUp(C, (1 - a) as Side)) for (const x of acts.slice()) {
-    if (x.t !== "duel" || x.act !== "use") continue;
-    const s = S.board[x.spot]!.def as SupportDef;
-    if (!unwilling(h.alignment, s.alignment) && s.effects[0]?.type === "strike") acts.push({ ...x, aim: "mound" });
-  }
   const rm = restForbidMask(S, C, a);
   // DECISION: a geis cannot demand the impossible: with no support left, resting is allowed.
   if (!rm || acts.length === 0) acts.push({ t: "duel", guest: -1, act: "rest", spot: -1, mode: "normal" });
@@ -1019,9 +1014,6 @@ export function drawnOptions(S: State, C: CombatState, a: Side, c: Card): Option
     if (!C.champ[a] && h.type === "hero" && h.host) out.push({ t: "drawn", how: "play" });
   } else if (d.type === "omen" || d.type === "geis" || d.type === "oath" || d.type === "attendant") {
     for (const target of cardTargets(S, C, a, d)) out.push(target === undefined ? { t: "drawn", how: "play" } : { t: "drawn", how: "play", target });
-  }
-  if (d.type === "support" && moundUp(C, (1 - a) as Side) && !unwilling(h.alignment, d.alignment) && d.effects[0]?.type === "strike") {
-    for (const x of out.slice()) if (x.t === "drawn" && x.how === "play") out.push({ ...x, aim: "mound" });
   }
   out.push({ t: "drawn", how: "discard" });
   return out;
@@ -1149,33 +1141,16 @@ export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
 export const HALF = { up: true };
-/** The Aos Sídhe's mound: its Valour at the start of the match. While it stands, a Sídhe fighter gains 1 Valour at
- *  the end of each of its turns; any Strike may be aimed at it instead of the hero. */
-export const MOUND_VALOUR = 6;
-/** A blow being aimed at the enemy's mound (set for the length of one action). */
-export const AT_MOUND = { on: false };
+/** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (what ignores
+ *  Shield ignores it too), until it has soaked MOUND_VALOUR in all, over the whole match. */
+export const MOUND_AC = 2;
+export const MOUND_VALOUR = 10;
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
 export function hasMound(S: State, p: Side): boolean {
   return toDeath(S) && S.players[p].deckList.some((d) => d.type === "hero" && d.alignment === "Sidhe");
 }
-/** A blow aimed at side a's enemy's mound. The mound takes plain damage: the card's Strike with the striker's
- *  kinship and Focus, and nothing else. No weakness, no element wheel; geasa, oaths, omens, attendants and curses
- *  neither touch it nor add to the blow; no Block, Armour or Shield meets it, and nothing is stolen. */
-function strikeMound(S: State, C: CombatState, a: Side, s: SupportDef, base: number) {
-  const b = (1 - a) as Side;
-  const h = fighter(S, C, a);
-  let n = base;
-  const bits: string[] = [];
-  if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; bits.push(`${sgn(h.ab.kinBonus ?? 1)} kinship`); }
-  const f = focusOf(C, a, h);
-  if (h.ab.focusAny || (f && (f === s.element || f === s.kind))) { n += 1; bits.push("+1 Focus"); }
-  n = Math.max(0, n);
-  C.hit[a] = true;
-  const m = C.mound!.slice(); const was = m[b]; m[b] = Math.max(0, was - n); C.mound = m;
-  if (NARRATE.lines) say(`${h.name} strikes the mound: ${bits.length ? `${base} ${bits.join(" ")} = ${n}` : n}. The mound ${was} → ${m[b]}${m[b] === 0 ? ": it is thrown down" : ""}.`);
-}
-/** Side p's mound still stands. */
-export const moundUp = (C: CombatState, p: Side) => (C.mound?.[p] ?? 0) > 0; // giant-kin halves round up (rounding down tested too strong)
+/** Side p's mound can still soak. */
+export const moundUp = (C: CombatState, p: Side) => (C.mound?.[p] ?? 0) > 0;
 /** Set while a placed support is being used again: a Spirit blow steals only the first time a card is used. */
 const REUSING = { on: false };
 /** The sea is no road for the dead: a Merrow's Water Strike against a Slúagh host is 1 more. */
@@ -1255,6 +1230,13 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   // Armour takes its share off every blow (what ignores Shield ignores it too)
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); n = Math.max(0, n - arm); }
+  // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
+  if (!pierce && n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
+    const t = Math.min(S.rules.moundAC ?? MOUND_AC, n, C.mound![b]);
+    const m = C.mound!.slice(); m[b] -= t; C.mound = m;
+    n -= t;
+    if (N) N.push(`−${t} the mound (${m[b]} left to soak${m[b] === 0 ? ": spent" : ""})`);
+  }
   const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
   let dmg = n - soak;
@@ -1296,7 +1278,7 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
   if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
-  if (isStrike && s.element && !AT_MOUND.on) {
+  if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) { n += 1; if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
     if (isElement(s.element) && effWeakness(S, b, e, C).includes(s.element)) {
@@ -1390,7 +1372,6 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       const raw = s.effects[0].n;
       say(`${s0.name}${s !== s0 && s.element !== s0.element ? ` (counting as ${s.element})` : ""}: ${eff.type === "strike" ? "Strike" : eff.type === "heal" ? "Heal" : "Shield"} ${raw}${eff.n !== raw ? `, ${eff.n} here` : ""}.`);
     }
-    if (eff.type === "strike" && AT_MOUND.on && moundUp(C, b)) { strikeMound(S, C, a, s, eff.n); continue; }
     const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
     if (NARRATE.lines && i === 0) {
       if (s.attuned) say(`+${s.attuned} attuned by an attendant`);
@@ -1433,11 +1414,6 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
 }
 
 export function combatApply(S: State, C: CombatState, o: Option, stats: MatchStats | null) {
-  if ((o.t === "duel" || o.t === "drawn") && o.aim === "mound" && !AT_MOUND.on) {
-    AT_MOUND.on = true;
-    try { combatApply(S, C, o, stats); } finally { AT_MOUND.on = false; }
-    return;
-  }
   if (o.t === "block") {
     const b = (1 - actorOf(C)) as Side;
     if (o.spot >= 0) {
@@ -1454,7 +1430,7 @@ export function combatApply(S: State, C: CombatState, o: Option, stats: MatchSta
   }
   // a blow the defender could block: wait for their answer first (a guest's heal happens now, so the paused blow
   // carries nothing from the attacker's hand)
-  if (!RESUMING.on && !AT_MOUND.on && toDeath(S) && C.stage === "turns" && blockable(S, C, actorOf(C), o) && blockSpots(S, C, (1 - actorOf(C)) as Side).length) {
+  if (!RESUMING.on && toDeath(S) && C.stage === "turns" && blockable(S, C, actorOf(C), o) && blockSpots(S, C, (1 - actorOf(C)) as Side).length) {
     if (o.t === "duel" && o.guest >= 0) { guestHeals(S, C, actorOf(C), o.guest, stats); o = { ...o, guest: -1 }; }
     C.pending = o;
     return;
@@ -1672,11 +1648,6 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     if (w && C.valour[a] > 0) {
       C.valour[a] -= w;
       if (NARRATE.lines) say(`${fighter(S, C, a).name} is weary: −${w} Valour.`);
-    }
-    // the mound: an Aos Sídhe fighter still standing draws 1 Valour from it each turn (not a Heal: nothing stops it)
-    if (moundUp(C, a) && C.valour[a] > 0 && fighter(S, C, a).alignment === "Sidhe") {
-      C.valour[a] += 1;
-      if (NARRATE.lines) say(`The mound gives ${fighter(S, C, a).name} 1 Valour (the mound: ${C.mound![a]}).`);
     }
   }
   C.turn++;

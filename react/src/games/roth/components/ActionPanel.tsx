@@ -18,8 +18,8 @@ const ORDER = ["Block", "Fight", "Drawn card", "Omens", "Geis & oath", "Supplant
 
 function keyOf(o: Option): string {
   switch (o.t) {
-    case "duel": return `duel:${o.act}:${o.spot}:${o.mode}:${o.as ?? ""}:${o.aim ?? ""}`;
-    case "drawn": return `drawn:${o.how}:${o.mode ?? ""}:${o.as ?? ""}:${o.aim ?? ""}`;
+    case "duel": return `duel:${o.act}:${o.spot}:${o.mode}:${o.as ?? ""}`;
+    case "drawn": return `drawn:${o.how}:${o.mode ?? ""}:${o.as ?? ""}`;
     case "focus": return `focus:${o.el ?? ""}`;
     case "sacrifice": case "summon": return `${o.t}:${o.id}`;
     case "draw": case "hold": case "lateDone": return o.t;

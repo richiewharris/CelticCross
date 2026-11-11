@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MoveEvent } from "../useMatch";
 import type { CardDef } from "../engine/cards";
-import { actorOf, effSupport, effWeakness, giantKin, hasMound, moundUp, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
+import { actorOf, effSupport, effWeakness, giantKin, hasMound, moundUp, MOUND_AC, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
 import { reuseOf, type SupportDef } from "../engine/cards";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
@@ -124,8 +124,8 @@ export function DuelView(props: {
             <p className="duel-name"><b>{f.name}</b> <small>{mine ? "you" : "the enemy"} · Initiative {C.init[p]}{felled ? " · felled" : ""}</small></p>
             <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
             {death && hasMound(S, p) ? (
-              <p className="duel-mound" title="While the mound stands, an Aos Sídhe fighter gains 1 Valour at the end of each of its turns. Any Strike may be aimed at it: it takes plain damage (kinship and Focus count; nothing else), and no geis, oath or curse touches it.">
-                <Icon name="mound" /> {moundUp(C, p) ? <>The mound: <b>{C.mound![p]}</b> Valour{f.alignment === "Sidhe" ? " · +1 Valour a turn" : ""}</> : <>The mound is thrown down</>}
+              <p className="duel-mound" title="The mound shelters the Aos Sídhe like Armour: every Strike against an Aos Sídhe fighter 2 less (what ignores Shield ignores it too), until it has soaked 10 in all over the match.">
+                <Icon name="mound" /> {moundUp(C, p) ? <>The mound: soaks <b>{Math.min(S.rules.moundAC ?? MOUND_AC, C.mound![p])}</b> a blow, <b>{C.mound![p]}</b> left{f.alignment === "Sidhe" ? "" : " (Aos Sídhe only)"}</> : <>The mound is spent</>}
               </p>
             ) : null}
             {C.armour?.[p] || C.rested?.[p] || (C.block?.[p] ?? 0) > 0 ? (

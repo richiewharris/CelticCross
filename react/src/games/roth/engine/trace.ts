@@ -39,14 +39,14 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "focus": return `${who}'s shape-shift: Focus -> ${o.el ?? "unchanged"}`;
     case "draw": return `${who} draws from the Reserve`;
     case "block": return `${who} ${o.spot < 0 ? "takes the blow" : `blocks with ${S.board[o.spot]?.def.name ?? "?"}`}`;
-    case "drawn": return `${who} ${o.how === "discard" ? "puts aside" : o.how === "keep" ? "keeps" : "plays"} ${S.combat?.drawn?.def.name ?? "?"}${o.mode === "break" ? " (breaks a geis/oath)" : ""}${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}${o.aim === "mound" ? " at the mound" : ""}`;
+    case "drawn": return `${who} ${o.how === "discard" ? "puts aside" : o.how === "keep" ? "keeps" : "plays"} ${S.combat?.drawn?.def.name ?? "?"}${o.mode === "break" ? " (breaks a geis/oath)" : ""}${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
     case "duelCard": return `${who} plays ${cardName(S, o.uid)} mid-duel${o.target !== undefined ? ` on spot ${o.target + 1}` : ""}`;
     case "duel": {
       const C = S.combat!;
       const h = heroAt(S, C.hs[d.player]);
       const g = o.guest >= 0 ? ` [guest ${cardName(S, o.guest)} heals 1]` : "";
       const m = o.mode === "break" ? " (breaks a geis/oath)" : o.mode === "ignore" ? " (Cathbad: ignores a geis/oath)" : "";
-      const act = o.act === "rest" ? "rests" : `uses ${(S.board[o.spot]!.def as SupportDef).name}${o.aim === "mound" ? " at the mound" : ""}`;
+      const act = o.act === "rest" ? "rests" : `uses ${(S.board[o.spot]!.def as SupportDef).name}`;
       return `${who} ${h.name} [V${C.valour[0]}/${C.valour[1]} Sh${C.shield[0]}/${C.shield[1]}]${g} ${act}${m}`;
     }
   }

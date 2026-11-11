@@ -120,7 +120,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const mode = o.mode === "break" ? `Break ${c?.type === "support" ? breaksWhat(S, d.player, c, o.as) : "the geis or oath"} (−2 each) and ` : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
       const t = o.target !== undefined ? ` on ${at(S, o.target)}` : "";
       const verb = c?.type === "champion" ? "call" : c?.type === "monster" ? "join" : c?.type === "geis" ? "lay" : c?.type === "oath" ? "swear" : c?.type === "omen" ? "turn" : "play";
-      const x = (mode + `${verb} ${n}${o.as ? ` as ${o.as}` : ""}${t}${o.aim === "mound" ? ", striking the enemy's mound" : ""}`);
+      const x = (mode + `${verb} ${n}${o.as ? ` as ${o.as}` : ""}${t}`);
       return x[0].toUpperCase() + x.slice(1);
     }
     case "duelCard": {
@@ -137,7 +137,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const twin = o.act === "use" && d.options.some((x) => x.t === "duel" && x.act === "use" && x.spot !== o.spot && S.board[x.spot]?.def.name === S.board[o.spot]?.def.name);
       const out = o.act === "use" && toDeath(S) && S.combat && S.board[o.spot]?.def.type === "support" && unwilling(fighter(S, S.combat, d.player).alignment, (S.board[o.spot]!.def as { alignment: string }).alignment);
       const act = o.act === "rest" ? "rest" : out ? `cast out ${at(S, o.spot)} (it won't serve this hero) and draw in its place` : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
-      const s = mode + act + (o.aim === "mound" ? ", striking the enemy's mound" : "");
+      const s = mode + act;
       return s[0].toUpperCase() + s.slice(1) + guest;
     }
   }

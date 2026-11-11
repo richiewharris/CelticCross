@@ -226,38 +226,30 @@ describe("giant-kin: the Fomóire", () => {
 });
 
 describe("the mound of the Aos Sídhe", () => {
-  // Conall (P1, spot 1: the Sling, Láeg) against the Dagda (P2, spot 7), whose side fights from a mound of 6
-  const duel = () => {
-    const S = combatState({ board: ["conall", "sling", "laeg", "emer", "salmon", "salmon", "dagda", "sling@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
+  // Conall (P1, spot 1: the Sling, Thunder feat) against the Dagda (P2, spot 7), whose side fights from a mound
+  const duel = (pool: number) => {
+    const S = combatState({ board: ["conall", "sling", "thunder", "emer", "salmon", "salmon", "dagda", "sling@1", "laeg@1", "fergus", "salmon", "salmon"], rules: { duels: "death", initTie: "p1" } });
     S.players[0].reserve = ["salmon", "sling"].map((id) => card(id, 0));
     S.players[1].reserve = ["salmon", "sling"].map((id) => card(id, 1));
-    S.combat!.mound = [0, 6];
+    S.combat!.mound = [0, pool];
     return S;
   };
-  const aims = (S: State) => opts(S).filter((o) => (o.t === "duel" || o.t === "drawn") && o.aim === "mound");
-  it("a Sídhe fighter gains 1 Valour at the end of each of its turns while the mound stands", () => {
-    const S = duel();
-    rest(S); // Conall
-    const v = S.combat!.valour[1];
-    use(S, 8); // the Dagda's Sling
-    expect(S.combat!.valour[1]).toBe(v + 1);
+  it("takes 2 off every Strike against an Aos Sídhe fighter, like Armour, and keeps count", () => {
+    const hit = (pool: number) => { const S = duel(pool); const v = S.combat!.valour[1]; use(S, 2); return { S, d: v - S.combat!.valour[1] }; };
+    const bare = hit(0).d, { S, d } = hit(10); // the Sling
+    expect(d).toBe(bare - 2);
+    expect(S.combat!.mound![1]).toBe(8);
   });
-  it("any Strike may be aimed at the mound instead: plain damage, the hero untouched", () => {
-    const S = duel();
-    expect(aims(S).map((o) => (o as { spot: number }).spot)).toEqual([1]); // the Sling, not Láeg's Heal
+  it("soaks no more than it has left, across the whole match", () => {
+    const S0 = duel(0), S = duel(1);
     const v = S.combat!.valour[1];
-    act(S, { t: "duel", act: "use", spot: 1, aim: "mound" } as never);
-    expect(S.combat!.valour[1]).toBe(v); // the hero is untouched
-    expect(S.combat!.mound![1]).toBeLessThan(6);
-    expect(S.combat!.mound![1]).toBe(1); // Strike 2 +1 (first support), +1 kinship, +1 Focus: 5
+    use(S0, 2); use(S, 2);
+    expect(v - S.combat!.valour[1]).toBe(v - S0.combat!.valour[1] - 1);
+    expect(S.combat!.mound![1]).toBe(0);
   });
-  it("once thrown down, it gives nothing and can't be aimed at", () => {
-    const S = duel();
-    S.combat!.mound = [0, 0];
-    expect(aims(S)).toEqual([]);
-    rest(S);
-    const v = S.combat!.valour[1];
-    use(S, 8);
-    expect(S.combat!.valour[1]).toBe(v);
+  it("what ignores Shield ignores the mound", () => {
+    const S = duel(10);
+    use(S, 3); // Thunder feat
+    expect(S.combat!.mound![1]).toBe(10);
   });
 });
