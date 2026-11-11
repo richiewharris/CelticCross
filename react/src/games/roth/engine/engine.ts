@@ -1143,8 +1143,8 @@ const RESTED_NOW = { on: false };
 export const HALF = { up: true };
 /** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (even one that
  *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
-export const MOUND_AC = 2;
-export const MOUND_VALOUR = 10;
+export const MOUND_AC = 1;
+export const MOUND_VALOUR = 5;
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
 export function hasMound(S: State, p: Side): boolean {
   return toDeath(S) && S.players[p].deckList.some((d) => d.type === "hero" && d.alignment === "Sidhe");

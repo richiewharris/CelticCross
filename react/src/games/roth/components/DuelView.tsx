@@ -124,7 +124,7 @@ export function DuelView(props: {
             <p className="duel-name"><b>{f.name}</b> <small>{mine ? "you" : "the enemy"} · Initiative {C.init[p]}{felled ? " · felled" : ""}</small></p>
             <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
             {death && hasMound(S, p) ? (
-              <p className="duel-mound" title="The mound shelters the Aos Sídhe like Armour: every Strike against an Aos Sídhe fighter 2 less (even one that ignores Shield and Armour), until it has soaked 10 in all over the match.">
+              <p className="duel-mound" title="The mound shelters the Aos Sídhe like Armour: every Strike against an Aos Sídhe fighter 1 less (even one that ignores Shield and Armour), until it has soaked 5 in all over the match.">
                 <Icon name="mound" /> {moundUp(C, p) ? <>The mound: soaks <b>{Math.min(S.rules.moundAC ?? MOUND_AC, C.mound![p])}</b> a blow, <b>{C.mound![p]}</b> left{f.alignment === "Sidhe" ? "" : " (Aos Sídhe only)"}</> : <>The mound is spent</>}
               </p>
             ) : null}

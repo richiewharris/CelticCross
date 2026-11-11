@@ -234,11 +234,11 @@ describe("the mound of the Aos Sídhe", () => {
     S.combat!.mound = [0, pool];
     return S;
   };
-  it("takes 2 off every Strike against an Aos Sídhe fighter, like Armour, and keeps count", () => {
+  it("takes 1 off every Strike against an Aos Sídhe fighter, like Armour, and keeps count", () => {
     const hit = (pool: number) => { const S = duel(pool); const v = S.combat!.valour[1]; use(S, 2); return { S, d: v - S.combat!.valour[1] }; };
     const bare = hit(0).d, { S, d } = hit(10); // the Sling
-    expect(d).toBe(bare - 2);
-    expect(S.combat!.mound![1]).toBe(8);
+    expect(d).toBe(bare - 1);
+    expect(S.combat!.mound![1]).toBe(9);
   });
   it("soaks no more than it has left, across the whole match", () => {
     const S0 = duel(0), S = duel(1);
@@ -250,6 +250,6 @@ describe("the mound of the Aos Sídhe", () => {
   it("nothing pierces it: even a blow that ignores Shield and Armour", () => {
     const S = duel(10);
     use(S, 3); // Thunder feat
-    expect(S.combat!.mound![1]).toBe(8);
+    expect(S.combat!.mound![1]).toBe(9);
   });
 });

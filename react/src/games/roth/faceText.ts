@@ -358,7 +358,7 @@ export function faceLines(d: CardDef): FaceLine[] {
         break;
       }
       push("ability", f.ability); push("text", f.text ?? d.quality);
-      if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**. **The mound**: every Strike against them **−2** (nothing pierces it), until it has soaked **10** in all over the match.");
+      if (d.alignment === "Sidhe") push("text", "**Veiled**: the first Strike against them each duel **−1**. **The mound**: every Strike against them **−1** (nothing pierces it), until it has soaked **5** in all over the match.");
       if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike, except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
       break;
     case "host":
