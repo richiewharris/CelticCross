@@ -124,6 +124,8 @@ export interface CombatState {
   mound?: number[];
   /** Connacht's bleed on each side: that side's Heals −n until the end of its next turn. */
   bleed?: number[];
+  /** Staggered by an Ulster blow: each blow that wounds +1, until it rests (trial power). */
+  stagger?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
   /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
@@ -404,7 +406,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -730,7 +732,7 @@ function startCombat(S: State) {
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
   C.rested = [0, 0]; // a new duel: no rests yet
   C.armour = [0, 0];
-  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0];
+  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0]; C.stagger = [0, 0];
   C.duel = d;
   // the backwards round fights the second pair of heroes first
   C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
@@ -1241,6 +1243,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   for (const fx of boardFx(S)) if (fx.truce !== undefined) n = Math.min(n, fx.truce);
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
   const n0 = n;
+  // an Ulster blow that, before anything takes off it, is more than half the enemy's starting Valour staggers it
+  const staggers = toDeath(S) && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("stagger") && n * 2 > (C.startV[C.duel]?.[b] ?? 99);
   if (N) {
     for (const x of namedBoardFx(S)) if (x.fx.truce !== undefined) N.push(`(${x.name}: no Strike above ${x.fx.truce})`);
     if (e.ab.capTaken !== undefined) N.push(`(${e.name}: no Strike against him above ${e.ab.capTaken})`);
@@ -1285,7 +1289,11 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el))
     && !(pierce && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("hide"));
   if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
+  // staggered: every blow that wounds it lands 1 more
+  if (dmg > 0 && C.stagger?.[b]) { dmg += 1; led(S, C, a, "deal:people:stagger", 1); }
   const wasUp = C.valour[b] > 0;
+  const newly = staggers && !C.stagger?.[b];
+  if (staggers) { const st = [C.stagger?.[0] ?? 0, C.stagger?.[1] ?? 0]; st[b] = 1; C.stagger = st; }
   C.valour[b] -= dmg;
   led(S, C, b, "save:shield", soak);
   led(S, C, a, "deal:" + SRC.id, dmg);
@@ -1299,6 +1307,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (N) {
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
+    if (newly) N.push(`(${e.name} is staggered: each blow that wounds +1 until it rests)`);
     say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
   }
   // an Ulster hero's last stand: felled, it strikes once more
@@ -1681,6 +1690,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       for (const hs of heroSpotsOf(a)) for (const sp of [hs + 1, hs + 2]) C.restsSince[sp]++;
       // a rest braces the hero: Shield 1, and the next Shield or Heal is stronger for each rest in a row (up to 2)
       if (C.valour[a] > 0) {
+        if (C.stagger?.[a]) { C.stagger = [C.stagger[0], C.stagger[1]]; C.stagger[a] = 0; if (NARRATE.lines) say(`${fighter(S, C, a).name} steadies: no longer staggered.`); }
         C.shield[a] += REST_SHIELD;
         led(S, C, a, "shield:rest", REST_SHIELD);
         const r = C.rested ?? [0, 0];
