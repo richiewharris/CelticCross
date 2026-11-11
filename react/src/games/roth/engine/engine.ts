@@ -52,6 +52,8 @@ export interface Rules {
   ulster?: string;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
+  /** Trial: in duels to the death, how far heals may go above the duel's starting Valour (unset: no limit). */
+  deathCapOver?: number;
   geisBreakCost: number;
   oathBreakCost: number;
   invokeLoss: number;
@@ -791,7 +793,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     const oath = activeOath(S, C, p);
     let v = h[p].valour + R.valourBonus + (toDeath(S) ? R.fordValour ?? FORD_VALOUR : 0) + (oath?.boon.valour ?? 0);
     for (const e of fx) if (e.startValour && e.startValour.duel === d) v += e.startValour.n;
-    C.cap[p] = v + (toDeath(S) ? NO_CAP : R.capOver);
+    C.cap[p] = v + (toDeath(S) ? R.deathCapOver ?? NO_CAP : R.capOver);
     // the dead do not sleep: nothing lowers a Slúagh host's Initiative below its own
     const sleepless = h[p].type === "hero" && !!h[p].host;
     const initFx = sumFx(fx, (e) => (sleepless ? Math.max(0, e.initMod ?? 0) : e.initMod ?? 0));
@@ -1174,6 +1176,11 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
   if (n > 0) C.valour[p] = Math.min(Math.max(cap, C.valour[p]), C.valour[p] + n);
   led(S, C, p, "heal:" + SRC.id, C.valour[p] - v0);
+  // measurement only: which hero the heal went to, and how much of it went above the duel's starting Valour
+  if (C.valour[p] > v0) {
+    led(S, C, p, "hh:" + h.id, C.valour[p] - v0);
+    led(S, C, p, "over:" + SRC.id, Math.max(0, C.valour[p] - Math.max(v0, C.startV[C.duel]?.[p] ?? Infinity)));
+  }
   // trial: the ebb and flow: when the enemy of a Merrow heals, the Merrow rises with the tide (Shield 1)
   const mr = S.rules.merrow ?? MERROW_DEFAULT;
   if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && mr.includes("ebb") && C.valour[1 - p] > 0 && !(mr.includes("ebb1") && C.ebbed?.[1 - p])) {
@@ -1709,7 +1716,7 @@ function callChampion(S: State, C: CombatState, a: Side, card: Card, stats: Matc
     sv[d][a] = Math.max(0, C.startV[d][a] - C.valour[a]) + cv;
     C.startV = sv;
     C.valour[a] = cv;
-    C.cap[a] = C.valour[a] + (toDeath(S) ? NO_CAP : S.rules.capOver);
+    C.cap[a] = C.valour[a] + (toDeath(S) ? S.rules.deathCapOver ?? NO_CAP : S.rules.capOver);
     C.shield[a] = def.ab.shieldStart ?? 0;
     if (toDeath(S)) { C.armour = [C.armour?.[0] ?? 0, C.armour?.[1] ?? 0]; C.armour[a] = def.ab.armour ?? 0; }
     C.nextStrike[a] = 0; C.struck[a] = false; C.hit[a] = false;
