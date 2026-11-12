@@ -897,10 +897,15 @@ export function restForbidMask(S: State, C: CombatState, a: Side): number {
   return m;
 }
 /** Valour cost of breaking the geasa/oaths in mask m. */
-export function breakCost(S: State, m: number): number {
+export function breakCost(S: State, m: number, al?: string): number {
   const oaths = bitCount((m >>> 5) & 15);
-  return S.rules.geisBreakCost * (bitCount(m) - oaths) + S.rules.oathBreakCost * oaths;
+  // the Aos Sídhe know geasa from the inside: in a duel to the death a break costs them 1
+  const g = al === "Sidhe" && toDeath(S) ? SIDHE_GEIS_COST : S.rules.geisBreakCost;
+  return g * (bitCount(m) - oaths) + S.rules.oathBreakCost * oaths;
 }
+export const SIDHE_GEIS_COST = 1;
+/** The dead-flesh aura never holds a blow below this. */
+export const AURA_MIN = 5;
 const bitCount = (m: number) => { let n = 0; while (m) { n += m & 1; m >>>= 1; } return n; };
 
 /** Support spots side a's hero may use now: own quadrant, plus King's due. */
@@ -1229,8 +1234,9 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
 /** Duels to the death: extra Valour at the ford, no heal cap, and what a rest gives. */
 export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
-/** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
-export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
+/** Resistance to Spirit blows, by people: the otherworldly take 2 off. (Merrow's −1 was dropped: running water and
+ *  its Shield holding against Spirit are enough.) */
+export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : 0);
 /** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block.
  *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
 export const MERROW_DEFAULT = "water";
@@ -1252,11 +1258,11 @@ const SPIRIT_BLOW = { on: false };
 /** The dead-flesh aura (the Slúagh, duels to the death): no blow wounds them for more than half their full Valour
  *  (all the host's monsters together, as printed; rounded down). Hacking at dead flesh does them little harm. Infinity when it doesn't apply. */
 export function auraCap(S: State, C: CombatState, b: Side): number {
-  if (!toDeath(S) || !S.rules.aura || S.rules.noAura || fighter(S, C, b).alignment !== "Sluagh") return Infinity;
+  if (!toDeath(S) || !(S.rules.aura ?? true) || S.rules.noAura || fighter(S, C, b).alignment !== "Sluagh") return Infinity;
   // the host's full Valour in a duel: all its monsters together, as printed, and the ford's Valour
   const full = fighter(S, C, b).valour + S.rules.valourBonus + (S.rules.fordValour ?? FORD_VALOUR);
   const half = full * (S.rules.auraFrac ?? 0.5);
-  return Math.max(S.rules.auraMin ?? 1, S.rules.auraUp ? Math.ceil(half) : Math.floor(half));
+  return Math.max(S.rules.auraMin ?? AURA_MIN, S.rules.auraUp ? Math.ceil(half) : Math.floor(half));
 }
 /** Set while a support used with the Hound's cry resolves. */
 const CRY = { on: false };
@@ -1830,9 +1836,10 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
     if (o.mode === "break") {
       const m = restForbidMask(S, C, a);
       C.broken |= keptBroken(S, m);
-      C.valour[a] -= breakCost(S, m);
-      if (stats) stats.fx.broke[a] += breakCost(S, m);
-      led(S, C, a, "cost:break", breakCost(S, m));
+      const bc = breakCost(S, m, fighter(S, C, a).alignment);
+      C.valour[a] -= bc;
+      if (stats) stats.fx.broke[a] += bc;
+      led(S, C, a, "cost:break", bc);
       if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
     } else if (o.mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
     const ab = fighter(S, C, a).ab;
@@ -1878,10 +1885,11 @@ function useSupport(S: State, C: CombatState, a: Side, s: SupportDef, mode: Duel
   if (mode === "break") {
     const m = forbidMask(S, C, a, s, as);
     C.broken |= keptBroken(S, m);
-    C.valour[a] -= breakCost(S, m);
-    if (NARRATE.lines) say(`${h.name} breaks a geis or oath first: −${breakCost(S, m)} Valour.`);
-    if (stats) stats.fx.broke[a] += breakCost(S, m);
-    led(S, C, a, "cost:break", breakCost(S, m));
+    const bc = breakCost(S, m, h.alignment);
+    C.valour[a] -= bc;
+    if (NARRATE.lines) say(`${h.name} breaks a geis or oath first: −${bc} Valour.`);
+    if (stats) stats.fx.broke[a] += bc;
+    led(S, C, a, "cost:break", bc);
     if (stats) { stats.oathBroken += bitCount((m >>> 5) & 15); stats.geisBroken += bitCount(m & 31) + bitCount(m >>> 9); }
   } else if (mode === "ignore") { C.cathbad[a] = false; if (stats) stats.cathbadIgnores++; }
   if (C.valour[a] > 0) {
@@ -1897,6 +1905,15 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     C.acts[a]++; C.drew = false;
     if (C.bleed?.[a]) { C.bleed = [C.bleed[0], C.bleed[1]]; C.bleed[a] = 0; } // the bleeding stops after its turn
     if (C.ebbed?.[0] || C.ebbed?.[1]) C.ebbed = [0, 0]; // the tide turns with the turn
+    // the western crossing: the dead drain the living; a fighter that rested this turn is spared
+    const dr = settingDef(S.rules.setting)?.drain ?? 0;
+    if (dr && !RESTED_NOW.on && C.valour[a] > 0 && fighter(S, C, a).alignment !== "Sluagh") {
+      C.valour[a] -= dr;
+      const o = (1 - a) as Side;
+      led(S, C, o, "deal:setting:drain", dr);
+      if (NARRATE.lines) say(`The dead of the western crossing drain ${fighter(S, C, a).name}: −${dr} Valour.`);
+      if (fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
+    }
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
     RESTED_NOW.on = false;
     // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)

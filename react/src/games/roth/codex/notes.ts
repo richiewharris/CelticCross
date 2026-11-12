@@ -21,6 +21,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
       "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too. But the dead cannot cross running water: a **Merrow** hero's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**.",
       "In a duel to the death, {Spirit} Spirit blows can't be **Blocked** either: Block cards do nothing against them. Armour, the mound and giant-kin still do.",
+      "**The dead-flesh aura**: in a duel to the death no blow wounds a host for more than **half its full Valour** (its monsters together, plus the setting's Valour), but never less than **5**. Hacking at dead flesh does them little harm: it blunts the great blows of Ulster and the Fomóire.",
       "**Dream-walking**: in a duel to the death, whenever the enemy **rests**, the host fighting it **heals 2**. Every rest the enemy takes feeds you, so it rests less and braces less.",
       "**The dead do not sleep**: omens can't lower a host's Initiative (Druid's sleep does nothing to it). A geis still can.",
       "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
@@ -98,6 +99,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
     plan: [
       "**Otherworldly**: in a duel to the death every {Spirit} Spirit blow against a Sídhe fighter is **−2**. The dead have no hold on those who never died.",
+      "**Masters of geasa**: in a duel to the death a Sídhe hero pays only **1 Valour** to break a geis, each time, instead of 2.",
       "**The mound**: the Aos Sídhe fight from their mound. Like {armour} Armour it takes **1** off every Strike against a Sídhe fighter, until it has soaked **5** in all over the whole match. Nothing pierces it, not even blows that ignore Shield and Armour.",
       "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
       "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
@@ -153,7 +155,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The sea-folk under the waves",
     motto: "Water, Shields and slippery defence. Merrow **outlasts** the enemy and strikes back with the tide.",
     plan: [
-      "**Flowing water**: in a duel to the death every {Spirit} Spirit blow against a Merrow fighter is **−1**, and a Merrow's Shield holds against Spirit. The dead cannot cross running water.",
+      "**Flowing water**: a Merrow's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**. The dead cannot cross running water.",
       "**Water can't be pierced**: in a duel to the death, a blow that ignores Shield (Thunder feat, Gáe Bolga) still meets a Merrow's **Block**. Keep Sealskin up against Ulster.",
       "Manannán's first incoming Strike each duel **misses**. Lí Ban gains **Shield 2** when she rests. The Coomara is **Valour 6** and heals 1 when his Strike wounds.",
       "Fand is the glass cannon: **Valour 3**, Initiative 5, **Strikes +1**.",
