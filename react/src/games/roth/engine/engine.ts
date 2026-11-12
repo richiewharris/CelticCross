@@ -52,6 +52,8 @@ export interface Rules {
   ulster?: string;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
+  /** Trial: geasa cost their break each time instead of breaking once. */
+  geisEachTime?: boolean;
   /** Trial: in duels to the death, how far heals may go above the duel's starting Valour (unset: no limit). */
   deathCapOver?: number;
   geisBreakCost: number;
@@ -173,6 +175,9 @@ export interface CombatState {
 export interface HostAdj { add: MonsterDef[]; remove: string[] }
 export const CROW_BIT = 1 << 4;
 export const OATH_BIT = 1 << 5; // shifted by the quadrant: OATH_BIT << q
+/** Trial (rules.geisEachTime): a geis is never broken for good; every forbidden act pays its cost again. Oaths and
+ *  the crow still break once. This is the part of a break mask that stays broken. */
+const keptBroken = (S: State, m: number) => (S.rules.geisEachTime ? m & (CROW_BIT | (15 * OATH_BIT)) : m);
 /** Global geis i broken by the hero of quadrant q. */
 export const globalBit = (i: number, q: number) => 1 << (9 + 4 * i + q);
 export const MAX_GLOBAL_GEASA = 4;
@@ -1806,7 +1811,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
   } else {
     if (o.mode === "break") {
       const m = restForbidMask(S, C, a);
-      C.broken |= m;
+      C.broken |= keptBroken(S, m);
       C.valour[a] -= breakCost(S, m);
       if (stats) stats.fx.broke[a] += breakCost(S, m);
       led(S, C, a, "cost:break", breakCost(S, m));
@@ -1852,7 +1857,7 @@ function useSupport(S: State, C: CombatState, a: Side, s: SupportDef, mode: Duel
   if (unw) { if (stats) stats.unwilling++; if (NARRATE.lines) say(`${s.name} will not serve ${h.name}: it does nothing.`); return; }
   if (mode === "break") {
     const m = forbidMask(S, C, a, s, as);
-    C.broken |= m;
+    C.broken |= keptBroken(S, m);
     C.valour[a] -= breakCost(S, m);
     if (NARRATE.lines) say(`${h.name} breaks a geis or oath first: −${breakCost(S, m)} Valour.`);
     if (stats) stats.fx.broke[a] += breakCost(S, m);
