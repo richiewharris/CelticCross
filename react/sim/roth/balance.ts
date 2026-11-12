@@ -1,5 +1,11 @@
 // Five-deck balance: every deck against every other (and itself), seats swapped evenly.
 //   npx tsx sim/roth/balance.ts [--level skilled] [--n 400] [--workers 2] [--seed 1] [--cards] [--rules '{"capOver":1}'] [--dump recs.jsonl]
+//     [--cube sim/roth/cube/data] [--no-cube] [--base <run id> --touch setting=crossing,deck=sluagh]
+// Every run is written to the cube (sim/roth/cube): one row per match, with the setting, seats, seed and ledger, tagged
+// with the rules and a hash of the engine. With --base and --touch, only the matches a change can reach are played
+// (those whose setting, or whose decks, match a --touch term); the rest are taken from the base run, so a narrow change
+// costs a fraction of a full run. Match seeds don't depend on the rules, so an untouched match replays the same anyway.
+// Read the cube with: python3 sim/roth/cube/cube.py table <run id> (or sql / worth / seats; see cube.py).
 import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -7,22 +13,42 @@ import { ALL_DEFS, DECKS, DECK_IDS, FACTIONS, type CardDef } from "../../src/gam
 import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
 import { makePolicy } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
+import { chooseSetting } from "../../src/games/roth/engine/settings";
 
-interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules> }
+interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules>; touch?: Touch }
 interface Rec {
   a: string; b: string; aSide: Side; w: -1 | 0 | 1; by: string; felled: [number, number]; wounds: [number, number];
-  st: MatchStats;
+  st: MatchStats; i: number; seed: number; setting: string | null;
+}
+/** Which matches a change can reach: any whose setting is one of these, or that has one of these decks in it. */
+interface Touch { setting?: string[]; deck?: string[] }
+/** The setting a match will be fought at, as the second player would choose it (or as the rules fix it). */
+function predictedSetting(j: Job, i: number): string | null {
+  if (j.rules.setting) return j.rules.setting;
+  if (j.rules.duels && j.rules.duels !== "death") return null;
+  if (j.rules.settingBy === "none") return null;
+  const aSide = i % 2;
+  const [p1, p2] = aSide === 0 ? [j.a, j.b] : [j.b, j.a];
+  return chooseSetting(DECKS[p2], DECKS[p1]);
+}
+function touched(j: Job, i: number): boolean {
+  const t = j.touch;
+  if (!t) return true;
+  if (t.deck?.some((d) => d === j.a || d === j.b)) return true;
+  const set = t.setting?.length ? predictedSetting(j, i) : null;
+  return !!set && !!t.setting?.includes(set);
 }
 
 function runOne(j: Job, i: number): Rec {
   const aSide = (i % 2) as Side;
   const decks = aSide === 0 ? [j.a, j.b] : [j.b, j.a];
-  const seed = hashSeed(j.seed, `${j.a}-${j.b}-${j.level}-${j.levelB}-${JSON.stringify(j.rules)}`, i);
+  // the seed doesn't depend on the rules: a match a change doesn't reach plays out exactly as before
+  const seed = hashSeed(j.seed, `${j.a}-${j.b}-${j.level}-${j.levelB}`, i);
   const S = newMatch([DECKS[decks[0]], DECKS[decks[1]]], j.rules, seed);
   const lv = aSide === 0 ? [j.level, j.levelB] : [j.levelB, j.level];
   const pols = lv.map((l) => makePolicy(l, { N: 8, K: 2 })) as [Policy, Policy];
   const r = playOut(S, pols, [new Rng(hashSeed(seed, "p1")), new Rng(hashSeed(seed, "p2"))], false);
-  return { a: j.a, b: j.b, aSide, w: r.winner, by: r.decidedBy, felled: r.felled, wounds: r.valour, st: S.stats! };
+  return { a: j.a, b: j.b, aSide, w: r.winner, by: r.decidedBy, felled: r.felled, wounds: r.valour, st: S.stats!, i, seed, setting: S.rules.setting ?? null };
 }
 
 const pct = (x: number) => (Number.isNaN(x) ? "" : (100 * x).toFixed(1) + "%");
@@ -51,12 +77,20 @@ async function main() {
   const rules = JSON.parse(str("rules", "{}")) as Partial<Rules>;
   const decks = str("decks", FACTIONS.join(",")).split(",");
   const W = Math.max(1, num("workers", Math.min(cpus().length, 8)));
+  const base = str("base", "");
+  const touchArg = str("touch", "");
+  let touch: Touch | undefined;
+  if (touchArg) {
+    touch = {};
+    for (const term of touchArg.split(",")) { const [k, v] = term.split("="); if (k === "setting" || k === "deck") (touch[k] ??= []).push(v); else throw new Error(`--touch: unknown term ${term}`); }
+  }
+  if (touch && !base) throw new Error("--touch needs --base (the run to take the untouched matches from)");
 
   const jobs: Job[] = [];
   const chunk = level === "expert" ? 2 : 50;
   // With two levels, run every ordered pair so each level plays each deck equally.
   for (let x = 0; x < decks.length; x++) for (let y = levelB !== level ? 0 : x; y < decks.length; y++) {
-    for (let i = 0; i < n; i += chunk) jobs.push({ a: decks[x], b: decks[y], from: i, to: Math.min(n, i + chunk), level, levelB, seed, rules });
+    for (let i = 0; i < n; i += chunk) jobs.push({ a: decks[x], b: decks[y], from: i, to: Math.min(n, i + chunk), level, levelB, seed, rules, touch });
   }
   console.log(`Roth Catha balance: ${decks.length} decks, ${level} vs ${levelB}, ${n} matches per pairing, rules ${JSON.stringify(rules)}, ${W} workers`);
   const recs: Rec[] = [];
@@ -83,6 +117,20 @@ async function main() {
     }
   });
 
+  // ---- the cube: one row per match, tagged with the rules and the engine it was played under
+  if (!args.includes("--no-cube")) {
+    const { writeCubeRun } = await import("./cube/write");
+    const id = writeCubeRun(str("cube", "sim/roth/cube/data"), { rules, seed, n, level, levelB, decks, base: base || null, touch: touch ?? null }, recs.map((r) => ({
+      i: r.i, a: r.a, b: r.b, aSide: r.aSide, p1: r.aSide === 0 ? r.a : r.b, p2: r.aSide === 0 ? r.b : r.a, setting: r.setting, w: r.w, by: r.by,
+      felled: r.felled, seed: r.seed, ledger: r.st.ledger, exchanges: r.st.exchanges,
+      placed: r.st.placed.map((p) => ({ side: p.side, id: p.id, how: p.how })), used: r.st.used.map((u) => ({ side: u.side, id: u.id })),
+      bound: r.st.bound, sworn: r.st.sworn,
+    })));
+    console.log(`(cube run ${id}${base ? `, on top of ${base} for the matches it didn't touch` : ""}: python3 sim/roth/cube/cube.py table ${id})`);
+    if (base) {
+      console.log(`Only the ${recs.length} matches the change reaches were played; the table below covers just those. For the whole table: python3 sim/roth/cube/cube.py table ${id}`);
+    }
+  }
   // ---- raw records for later analysis (the ledger of what every card and power was worth)
   const dump = str("dump", "");
   if (dump) {
@@ -172,6 +220,7 @@ if (process.argv.includes("--worker")) {
   process.on("message", (j: Job) => {
     const out: Rec[] = [];
     for (let i = j.from; i < j.to; i++) {
+      if (!touched(j, i)) continue;
       const r = runOne(j, i);
       r.st = { ...r.st, used: r.st.used.filter((u) => u.effect || u.unwilling) };
       out.push(r);
