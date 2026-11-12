@@ -1,0 +1,143 @@
+{
+ "id": "2026-11-12-deb36acd",
+ "created": "2026-11-12T23:10:58.798Z",
+ "engine": "70b89be9762a",
+ "matches": 360,
+ "rules": {
+  "params": {
+   "setting.choose": 0
+  }
+ },
+ "seed": 2,
+ "n": 60,
+ "level": "skilled",
+ "levelB": "skilled",
+ "decks": [
+  "ulster",
+  "connacht",
+  "sidhe",
+  "fomoire",
+  "merrow",
+  "sluagh",
+  "dummy_spar"
+ ],
+ "base": null,
+ "touch": null,
+ "params": {
+  "duel.fordValour": 3,
+  "geis.eachTime": 1,
+  "setting.choose": 0,
+  "setting.heals": 1,
+  "setting.drainFeeds": 1,
+  "setting.drainVsSluaghOnly": 0,
+  "people.sidhe.veil": 1,
+  "people.sidhe.moundAC": 1,
+  "people.sidhe.moundValour": 5,
+  "people.sidhe.spiritResist": 2,
+  "people.sidhe.geisCost": 1,
+  "people.merrow.spiritResist": 1,
+  "people.merrow.waterUnpierced": 1,
+  "people.merrow.tide": 0,
+  "people.merrow.tideHalf": 0,
+  "people.merrow.ebb": 0,
+  "people.merrow.ebbOnce": 0,
+  "people.sluagh.aura": 1,
+  "people.sluagh.auraFrac": 0.5,
+  "people.sluagh.auraMin": 5,
+  "people.sluagh.auraRoundUp": 0,
+  "people.sluagh.dreams": 1,
+  "people.sluagh.spiritUnblock": 1,
+  "people.sluagh.summonCost": 1,
+  "people.ulster.cry": 1,
+  "people.ulster.samhainWatch": 1,
+  "people.ulster.light": 0,
+  "people.ulster.fury": 0,
+  "people.ulster.stand": 0,
+  "people.ulster.stagger": 0,
+  "people.connacht.bleed": 1,
+  "people.connacht.bleedCap": 1,
+  "people.fomoire.giantKin": 1,
+  "layer.champion": 1,
+  "layer.geis": 1,
+  "layer.oath": 1,
+  "layer.omen": 1,
+  "layer.attendant": 1
+ },
+ "blowCols": [
+  "side",
+  "duel",
+  "src",
+  "el",
+  "spirit",
+  "pierce",
+  "printed",
+  "base",
+  "kin",
+  "focus",
+  "watch",
+  "wheel",
+  "weak",
+  "fx",
+  "setting",
+  "extra",
+  "atk",
+  "floor",
+  "cap",
+  "ward",
+  "block",
+  "resist",
+  "armour",
+  "mound",
+  "shield",
+  "halved",
+  "aura",
+  "stagger",
+  "final"
+ ],
+ "decisionCols": [
+  "kind",
+  "side",
+  "eval",
+  "options",
+  "best",
+  "second",
+  "chose"
+ ],
+ "dummy": {
+  "valour": [
+   5,
+   5,
+   4,
+   4
+  ],
+  "init": 3,
+  "spar": [
+   [
+    "strike",
+    2,
+    4
+   ],
+   [
+    "strike",
+    1,
+    2
+   ],
+   [
+    "heal",
+    2,
+    1
+   ],
+   [
+    "heal",
+    1,
+    1
+   ],
+   [
+    "block",
+    2,
+    1
+   ]
+  ],
+  "postSupports": 9
+ }
+}
