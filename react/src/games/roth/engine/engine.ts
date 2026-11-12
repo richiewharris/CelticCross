@@ -35,6 +35,8 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
   drainNoFeed?: boolean;
+  /** Trial: the western crossing drains only a fighter whose foe is Slúagh. */
+  drainVsSluagh?: boolean;
   /** Trial: settings don't change Heals (the crossing's −1, Cruachan's +1). */
   noSettingHeal?: boolean;
   /** Trial: switch the aura on (off by default while it is tuned). */
@@ -1916,7 +1918,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     // the western crossing: the dead drain the living; a fighter that rested this turn is spared
     // ...only while it is above half its starting Valour: the dead wear the living down but can't finish them
     const dr0 = settingDef(S.rules.setting)?.drain ?? 0;
-    const dr = dr0 && C.valour[a] * 2 > (C.startV[C.duel]?.[a] ?? 0) ? dr0 : 0;
+    const dr = dr0 && C.valour[a] * 2 > (C.startV[C.duel]?.[a] ?? 0) && (!S.rules.drainVsSluagh || fighter(S, C, (1 - a) as Side).alignment === "Sluagh") ? dr0 : 0;
     if (dr && RESTED_NOW.on && fighter(S, C, a).alignment !== "Sluagh") { const dd = [C.dodged?.[0] ?? 0, C.dodged?.[1] ?? 0]; dd[a] += dr; C.dodged = dd; }
     if (dr && !RESTED_NOW.on && C.valour[a] > 0 && fighter(S, C, a).alignment !== "Sluagh") {
       C.valour[a] -= dr;
