@@ -35,6 +35,8 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
   drainNoFeed?: boolean;
+  /** Trial: an Ulaid hero's Strike +n against a fighter whose Focus is Spirit (the dead). */
+  ulaidVsSpirit?: number;
   /** A Slúagh host's summon spends the top card of the Reserve (and needs one to spend). Default: on in a duel to the death. */
   summonCost?: boolean;
   /** Trial: the western crossing drains only a fighter whose foe is Slúagh. */
@@ -1505,6 +1507,9 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
   if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
+  if (isStrike && toDeath(S) && S.rules.ulaidVsSpirit && h.alignment === "Ulaid" && focusOf(C, b, e) === "Spirit") {
+    n += S.rules.ulaidVsSpirit; if (N) N.push(`${sgn(S.rules.ulaidVsSpirit)} the Ulaid against the dead (${e.name}'s Focus is Spirit)`);
+  }
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
     if (isElement(ef) && beats(s.element, ef)) { n += 1; if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
