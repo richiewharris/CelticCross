@@ -17,9 +17,12 @@ import { CHAPTERS, COACH, ENDING } from "./notes";
 interface Step { line: string; mine: boolean; maths: string[]; others: string[]; S: State; next: Decision | null }
 
 
+/** The guided game was recorded at the ford, with geasa that break once; it keeps those rules so the notes still fit. */
+export const GUIDED_RULES = { setting: "ford", geisEachTime: false };
+
 /** Play the scripted match once, keeping a copy of the board after every move. */
 export function replayScript(): { start: State; first: Decision | null; steps: Step[]; end: State } {
-  const S = newMatch([DECKS[script.you as "ulster"], DECKS[script.them as "connacht"]], {}, script.seed, false);
+  const S = newMatch([DECKS[script.you as "ulster"], DECKS[script.them as "connacht"]], GUIDED_RULES, script.seed, false);
   // the Muster: both sides keep what they draw, as the computer does (the moves below start at the drafting)
   const keeper = new CasualPolicy(), rng = new Rng(1);
   for (let d = nextDecision(S); d && S.phase === "muster"; d = nextDecision(S)) applyDecision(S, d, keeper.choose(S, d, rng));

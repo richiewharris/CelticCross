@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
+import { settingDef } from "../engine/settings";
 import { CardFace } from "./Card";
 import { DuelView, MoveTicker } from "./DuelView";
 import type { MoveEvent } from "../useMatch";
@@ -46,7 +47,7 @@ function phaseText(S: State): string {
     case "draft": return `Drafting · step ${S.step}`;
     case "play": return `${S.reversed ? "Backwards round" : "Playing turn"} · step ${Math.min(S.step, 6)}`;
     case "late": return "Omens before combat";
-    case "combat": return S.combat ? `The Ford · ${S.combat.duel === 2 ? "the final duel" : `duel ${S.combat.duel + 1}`}${S.combat.stage === "done" ? "" : ` · turn ${S.combat.turn + 1}`}` : "The Ford";
+    case "combat": return S.combat ? `${settingDef(S.rules.setting)?.name ?? "The Ford"} · ${S.combat.duel === 2 ? "the final duel" : `duel ${S.combat.duel + 1}`}${S.combat.stage === "done" ? "" : ` · turn ${S.combat.turn + 1}`}` : "The Ford";
     default: return "Match over";
   }
 }

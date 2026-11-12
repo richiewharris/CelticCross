@@ -1,14 +1,26 @@
 // The Muster, from your seat: the four cards you drew, the one you're deciding on, and where it can go. Counters show
 // what your hand still needs (the Muster won't let you finish short of it).
 import type { CardDef } from "../engine/cards";
-import { musterNeeds, type Decision, type Option, type Side, type State } from "../engine/engine";
+import { musterNeeds, needsSetting, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { cardName } from "../text";
+import { SETTINGS } from "../engine/settings";
 import { CardFace } from "./Card";
 
 type MusterOpt = Extract<Option, { t: "muster" }>;
 
 export function MusterView(props: { S: State; me: Side; d: Decision | null; onPick?: (i: number) => void; onFocusCard?: (d: CardDef) => void }) {
   const { S, me, d } = props;
+  if (needsSetting(S)) {
+    const mine = !!d && d.kind === "setting" && d.player === me;
+    return (
+      <section className="muster" aria-label="The setting">
+        <p className="muster-help">{mine ? "You are the second player, so you choose where the duels are fought. Pick a setting below; it holds for the whole match." : "The second player is choosing where the duels are fought."}</p>
+        <ul className="settings-list">
+          {SETTINGS.map((x) => <li key={x.id}><b>{x.name}</b>: {x.text}</li>)}
+        </ul>
+      </section>
+    );
+  }
   const P = S.players[me];
   const mine = !!d && d.kind === "muster" && d.player === me && !!props.onPick;
   const count = (t: string) => P.hand.filter((c) => c.def.type === t || (t === "hero" && c.def.type === "host")).length;

@@ -13,7 +13,7 @@ const tries = Number(process.argv[process.argv.indexOf("--tries") + 1]) || 200;
 let best: { score: number; seed: number; picks: number[]; why: string[] } | null = null;
 for (let t = 1; t <= tries; t++) {
   const seed = hashSeed(777, t);
-  const S = newMatch([DECKS.ulster, DECKS.connacht], {}, seed, false);
+  const S = newMatch([DECKS.ulster, DECKS.connacht], { setting: "ford", geisEachTime: false }, seed, false);
   const pols = [makePolicy("skilled"), makePolicy("skilled")];
   const rngs = [new Rng(hashSeed(seed, 1)), new Rng(hashSeed(seed, 2))];
   // the Muster as the guided game replays it: both sides keep what they draw

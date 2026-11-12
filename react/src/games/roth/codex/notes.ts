@@ -217,7 +217,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
     what: "Taboos. A geis forbids supports of an element or kind, Heals, or resting.",
     when: "**Playing turn**: bind the enemy hero you face (targeted), or lay a global geis that binds **every** hero on the field, your own too.",
     how: [
-      "A hero may still **break** a geis: pay **2 Valour**, then act. Cathbad the druid lets one break go free; Emain's ward ignores geasa entirely.",
+      "A hero may still **break** a geis: pay **2 Valour**, then act. In a duel to the death a geis is never broken for good: **every** forbidden use costs 2 Valour again, so a well-laid geis taxes the enemy all duel. Cathbad the druid lets one break go free; Emain's ward ignores geasa entirely.",
       "Some geasa also bite at the start of the duel: they invoke a **tag** (−2 Valour), punish big heroes (−2 Valour), or take **3 Initiative**.",
       "Global geasa are best laid when the forbidden thing matters more to the enemy, as the king's peace does for the weapon-less Merrow.",
     ],

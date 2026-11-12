@@ -2,6 +2,7 @@
 import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
 import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
 import type { Element, SupportDef } from "./engine/cards";
+import { settingDef } from "./engine/settings";
 
 /** The geasa and oaths a move would break, by name: "the Geis of the hosting and the Blood-oath". */
 export function breaksWhat(S: State, p: Side, what: "rest" | SupportDef, as?: Element): string {
@@ -96,6 +97,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       : o.swap !== undefined ? `Put ${cardName(S, o.uid)} in place of ${cardName(S, o.swap)} (to the Reserve)` : `Put ${cardName(S, o.uid)} in an Omen spot`;
     case "musterOmen": return `Send ${cardName(S, o.uid)} to the Reserve`;
     case "musterReturn": return `Return ${cardName(S, o.uid)} to the Reserve`;
+    case "setting": { const x = settingDef(o.id); return `Fight at ${x?.name ?? o.id}: ${x?.text ?? ""}`; }
     case "place": return o.join ? `Place ${cardName(S, o.uid)} with ${o.join.length ? o.join.map((u) => cardName(S, u).replace(/^The /, "")).join(", ") : "no monsters"}` : `Place ${cardName(S, o.uid)}`;
     case "omen": case "late": return o.target !== undefined ? `Turn ${cardName(S, o.uid)} on ${atSpot(S, o.target)}` : `Turn ${cardName(S, o.uid)}`;
     case "lateDone": return "Done turning omens";
@@ -154,6 +156,7 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
       : `${who} put ${hidden(cardName(S, o.uid))} in an Omen spot${o.swap !== undefined ? ` in place of ${hidden(cardName(S, o.swap))}` : ""}.`;
     case "musterOmen": return `${who} sent ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
+    case "setting": return `${who} chose to fight at ${settingDef(o.id)?.name ?? o.id}.`;
     case "place": return `${who} placed ${o.join ? optionLabel(S, d, o).replace(/^Place /, "") : cardName(S, o.uid)} at spot ${d.spot! + 1}.`;
     case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${at(S, o.target)}` : ""}.`;
     case "lateDone": return `${who} turned no more omens.`;

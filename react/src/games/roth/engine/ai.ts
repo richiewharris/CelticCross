@@ -6,6 +6,7 @@ import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
+import { chooseSetting } from "./settings";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
 
@@ -75,6 +76,12 @@ function musterPick(V: State, d: Decision, omenValue: (c: Card) => number): numb
   return Math.max(0, best);
 }
 
+/** The second player's setting: the one that suits its deck best against the first player's. */
+function pickSetting(V: State, d: Decision): number {
+  const id = chooseSetting(V.players[d.player].deckList, V.players[1 - d.player].deckList);
+  return Math.max(0, d.options.findIndex((o) => o.t === "setting" && o.id === id));
+}
+
 // ---------------------------------------------------------------- Casual
 export class CasualPolicy implements Policy {
   name = "Casual";
@@ -82,6 +89,7 @@ export class CasualPolicy implements Policy {
     const me = d.player;
     const o = d.options;
     switch (d.kind) {
+      case "setting": return pickSetting(V, d);
       case "muster": return musterPick(V, d, (c) => (c.def.type === "omen" ? casualOmen(c.def.fx) : 0));
       case "musterOmen": {
         const rank = (uid: number) => {
@@ -367,6 +375,7 @@ export class SkilledPolicy implements Policy {
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
     switch (d.kind) {
+      case "setting": return pickSetting(V, d);
       case "muster": return musterPick(V, d, (c) => omenStatic(c.def, V, d.player));
       case "musterOmen": {
         const me = d.player;

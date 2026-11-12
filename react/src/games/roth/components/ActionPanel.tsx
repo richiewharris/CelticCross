@@ -24,6 +24,7 @@ function keyOf(o: Option): string {
     case "sacrifice": case "summon": return `${o.t}:${o.id}`;
     case "draw": case "hold": case "lateDone": return o.t;
     case "block": return `block:${o.spot}`;
+    case "setting": return `setting:${o.id}`;
     default: return `${o.t}:${(o as { uid: number }).uid}`;
   }
 }

@@ -8,7 +8,7 @@ import {
   type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { hashSeed, Rng } from "./rng";
-import { chooseSetting, settingDef, settingMod } from "./settings";
+import { SETTINGS, settingDef, settingMod } from "./settings";
 
 export type Side = 0 | 1;
 
@@ -19,9 +19,10 @@ export interface Rules {
   valourBonus: number;
   /** Duels to the death: every fighter enters the ford with this much more Valour (default 3). */
   fordValour?: number;
-  /** Where the duels are fought (engine/settings.ts); settingBy "p2": the second player chooses it after the decks. */
+  /** Where the duels are fought (engine/settings.ts). Unset in a duel to the death: the second player chooses it
+   *  after the decks, before the Muster (settingBy "p2", the default; "none" to fight at the ford's flat +3). */
   setting?: string;
-  settingBy?: "p2";
+  settingBy?: "p2" | "none";
   /** The Aos Sídhe's mound (duels to the death): how much it soaks off each blow, and in all over the match. */
   moundAC?: number;
   moundValour?: number;
@@ -56,7 +57,7 @@ export interface Rules {
   ulster?: string;
   /** Heals can raise a hero this far above its starting Valour (printed + boons). Duels to the death have no cap. */
   capOver: number;
-  /** Trial: geasa cost their break each time instead of breaking once. */
+  /** Geasa cost their break each time instead of breaking once (default: on in duels to the death). */
   geisEachTime?: boolean;
   /** Trial: in duels to the death, how far heals may go above the duel's starting Valour (unset: no limit). */
   deathCapOver?: number;
@@ -179,9 +180,10 @@ export interface CombatState {
 export interface HostAdj { add: MonsterDef[]; remove: string[] }
 export const CROW_BIT = 1 << 4;
 export const OATH_BIT = 1 << 5; // shifted by the quadrant: OATH_BIT << q
-/** Trial (rules.geisEachTime): a geis is never broken for good; every forbidden act pays its cost again. Oaths and
- *  the crow still break once. This is the part of a break mask that stays broken. */
-const keptBroken = (S: State, m: number) => (S.rules.geisEachTime ? m & (CROW_BIT | (15 * OATH_BIT)) : m);
+/** In a duel to the death (rules.geisEachTime, default on there) a geis is never broken for good: every forbidden act
+ *  pays its cost again, and a geis that lays a weakness keeps it. Oaths and the crow still break once. This is the
+ *  part of a break mask that stays broken. */
+const keptBroken = (S: State, m: number) => ((S.rules.geisEachTime ?? toDeath(S)) ? m & (CROW_BIT | (15 * OATH_BIT)) : m);
 /** Global geis i broken by the hero of quadrant q. */
 export const globalBit = (i: number, q: number) => 1 << (9 + 4 * i + q);
 export const MAX_GLOBAL_GEASA = 4;
@@ -282,8 +284,10 @@ export type Option =
   /** Duels to the death: turn a face-down omen, lay a geis, swear an oath or call an attendant, from hand. */
   | { t: "duelCard"; uid: number; target?: number }
   /** A reaction: tap the Block card at `spot` against the blow coming (−1: take it). */
-  | { t: "block"; spot: number };
-export type DecisionKind = "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn" | "block";
+  | { t: "block"; spot: number }
+  /** Duels to the death: the second player chooses where the duels are fought, before the Muster. */
+  | { t: "setting"; id: string };
+export type DecisionKind = "setting" | "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn" | "block";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
 // ---------------------------------------------------------------- helpers
@@ -419,10 +423,8 @@ function emptyStats(): MatchStats {
 // ---------------------------------------------------------------- setup
 export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = {}, seed = 1, trackStats = true): State {
   const R = { ...DEFAULT_RULES, ...rules };
-  // the setting: chosen by the second player after the decks, before the Muster
-  if (R.settingBy === "p2" && !R.setting) R.setting = chooseSetting(decks[1], decks[0]);
-  const SET = settingDef(R.setting);
-  if (SET) { R.fordValour ??= SET.valour; if (SET.mound !== undefined) R.moundValour ??= SET.mound; }
+  // a setting given up front (otherwise the second player chooses it before the Muster)
+  if (R.setting) Object.assign(R, withSetting(R, R.setting));
   const rng = new Rng(seed);
   let uid = 1;
   const players = decks.map((list, p) => {
@@ -577,7 +579,15 @@ function musterReturnLegal(P: PlayerState, c: Card): boolean {
   const m = countType(P.hand, "monster") - (c.def.type === "monster" ? 1 : 0);
   return h >= 2 && s >= 4 && (!hostDeck(P) || m >= 4);
 }
+/** The rules with a setting in force: its Valour in place of the ford's, its mound. */
+function withSetting(R: Rules, id: string): Rules {
+  const SET = settingDef(id);
+  return { ...R, setting: id, fordValour: R.fordValour ?? SET?.valour, moundValour: SET?.mound !== undefined ? R.moundValour ?? SET.mound : R.moundValour };
+}
+/** Duels to the death: the setting is still to be chosen (by the second player, before the Muster). */
+export const needsSetting = (S: State) => toDeath(S) && !S.rules.setting && (S.rules.settingBy ?? "p2") === "p2";
 function musterStep(S: State): Decision | null {
+  if (needsSetting(S)) return { kind: "setting", player: 1, options: SETTINGS.map((x) => ({ t: "setting" as const, id: x.id })) };
   while (S.phase === "muster") {
     const p = S.musterP;
     const P = S.players[p];
@@ -1965,6 +1975,9 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
   const P = S.players[p];
   const inHand = (uid: number) => P.hand.find((c) => c.uid === uid);
   switch (o.t) {
+    case "setting":
+      if (!needsSetting(S) || p !== 1) return "no setting to choose";
+      return settingDef(o.id) ? null : "no such setting";
     case "muster":
       if (S.phase !== "muster" || S.musterP !== p || S.musterStage !== "draw" || S.pendingOmen) return "no Muster choice pending";
       if (P.musterQ[0]?.uid !== o.uid) return "not the card drawn";
@@ -2136,6 +2149,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
   const P = S.players[p];
   const st = S.stats;
   switch (o.t) {
+    case "setting": S.rules = withSetting(S.rules, o.id); return;
     case "muster": applyMuster(S, p, o); return;
     case "musterOmen": {
       const pend = S.pendingOmen!;

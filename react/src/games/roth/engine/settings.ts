@@ -25,7 +25,7 @@ export const SETTINGS: SettingDef[] = [
   { id: "ford", name: "The ford", valour: 3, text: "Valour +3." },
   { id: "tower", name: "Conand's tower", valour: 2, shield: 1, text: "Valour +2; every fighter starts each duel with Shield 1." },
   { id: "bog", name: "The Bog of Allen", valour: 3, el: { Earth: 1, Wind: -1 }, restHeal: 1, text: "Valour +3; Earth +1, Wind −1; a fighter that rests heals 1." },
-  { id: "crossing", name: "The western crossing", valour: 2, el: { Spirit: 1 }, heal: -1, text: "Valour +2; Spirit +1; Heals −1." },
+  { id: "crossing", name: "The western crossing", valour: 3, el: { Spirit: 1 }, heal: -1, text: "Valour +3; Spirit +1; Heals −1." },
   { id: "brugh", name: "Brú na Bóinne", valour: 3, kind: { Word: 1 }, mound: 7, text: "Valour +3; Words +1; the mound soaks 7 in all." },
   { id: "loughs", name: "The loughs", valour: 3, el: { Water: 1, Fire: -1 }, text: "Valour +3; Water +1, Fire −1." },
   { id: "emain", name: "Emain Macha", valour: 3, kind: { Feat: 1 }, text: "Valour +3; Feats +1." },

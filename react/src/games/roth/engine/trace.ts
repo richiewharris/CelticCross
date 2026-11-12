@@ -23,6 +23,7 @@ export function describe(S: State, d: Decision, o: Option): string {
   switch (o.t) {
     case "muster": return `${who} muster: ${cardName(S, o.uid)} ${o.how === "keep" ? "to hand" : o.how === "aside" ? "to Reserve" : o.swap !== undefined ? `to an Omen spot for ${cardName(S, o.swap)}` : "to an Omen spot"}`;
     case "musterOmen": return `${who} muster: ${cardName(S, o.uid)} to Reserve`;
+    case "setting": return `${who} chooses the setting: ${o.id}`;
     case "musterReturn": return `${who} muster check: ${cardName(S, o.uid)} to Reserve`;
     case "place": return `${who} places ${cardName(S, o.uid)} at spot ${d.spot! + 1}`;
     case "omen": return `${who} (facing ${d.spot! + 1}) turns omen ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${S.board[o.target]?.def.name ?? "?"}` : ""}`;

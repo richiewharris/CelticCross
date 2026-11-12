@@ -9,6 +9,7 @@ export function prompt(S: State, d: Decision): string {
       const P = S.players[d.player];
       return `The Muster: you drew ${P.musterQ.map((c) => c.def.name).join(", ")}. Keep ${P.musterQ[0]?.def.name ?? "it"} in hand, or set it aside for the Reserve? (Hand ${P.hand.length} of ${S.rules.handSize}, omens ${P.omens.length} of ${S.rules.omenSpots}.)`;
     }
+    case "setting": return "You are the second player: choose where the duels are fought. Your choice holds for the whole match.";
     case "musterOmen": return "Your Omen spots are full. Choose one omen to send to the Reserve.";
     case "musterReturn": return "Muster check: you took cards to make up 2 heroes and 4 supports. Return a card to the Reserve.";
     case "place": return `Drafting, step ${S.step}: place a ${d.spot! % 3 === 0 ? (d.options.some((o) => o.t === "place" && o.join) ? "host with its monsters" : "hero") : "support"} at spot ${d.spot! + 1}.`;

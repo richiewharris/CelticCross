@@ -51,7 +51,7 @@ describe("deck building", () => {
 describe("muster", () => {
   it("every seed: hand 12 with ≥2 heroes and ≥4 supports, 4 omens in the Omen spots, no card lost", () => {
     for (let seed = 1; seed <= 300; seed++) {
-      const S = newMatch(seed % 2 ? [ULSTER, CONNACHT] : [CONNACHT, CONNACHT], {}, seed);
+      const S = newMatch(seed % 2 ? [ULSTER, CONNACHT] : [CONNACHT, CONNACHT], { setting: "ford" }, seed);
       runUntil(S, (s) => s.phase !== "muster", seed);
       for (const P of S.players) {
         expect(P.hand.length).toBe(12);
@@ -66,14 +66,14 @@ describe("muster", () => {
     }
   });
   it("3 Omen spots lever", () => {
-    const S = newMatch([ULSTER, CONNACHT], { omenSpots: 3 }, 5);
+    const S = newMatch([ULSTER, CONNACHT], { omenSpots: 3, setting: "ford" }, 5);
     runUntil(S, (s) => s.phase !== "muster");
     expect(S.players.map((P) => P.omens.length)).toEqual([3, 3]);
   });
   it("a fifth Omen: swap it for one in the Omen spots, or set it aside", () => {
     const deck = defsFromIds([...ULSTER_IDS.filter((x) => !x.startsWith("o_")), "o_boyhood", "o_lugh", "o_emain", "o_crow", "o_mist", "o_truce"]).slice(2);
     expect(deck.length).toBe(24);
-    const S = newMatch([deck, CONNACHT], {}, 1);
+    const S = newMatch([deck, CONNACHT], { setting: "ford" }, 1);
     const omens = deck.filter((d) => d.type === "omen").map((def) => card(def.id, 0));
     const rest = S.players[0].deck.filter((c) => c.def.type !== "omen");
     S.players[0].deck = [...omens.slice(0, 4), omens[4], ...rest.slice(0, 3), omens[5], ...rest.slice(3)];
@@ -87,7 +87,7 @@ describe("muster", () => {
   });
   it("each card of the four: keep or set aside; random choices still leave 2 heroes and 4 supports, and lose nothing", () => {
     for (let seed = 1; seed <= 200; seed++) {
-      const S = newMatch(seed % 2 ? [ULSTER, CONNACHT] : [DECKS.sluagh, DECKS.merrow], {}, seed);
+      const S = newMatch(seed % 2 ? [ULSTER, CONNACHT] : [DECKS.sluagh, DECKS.merrow], { setting: "ford" }, seed);
       const rng = new Rng(seed);
       for (let d = nextDecision(S); d && S.phase === "muster"; d = nextDecision(S)) {
         expect(d.kind).toBe("muster");
@@ -104,7 +104,7 @@ describe("muster", () => {
     }
   });
   it("you can't finish short: no setting aside a hero you'd need, no keeping a card that leaves no room for one", () => {
-    const S = newMatch([ULSTER, CONNACHT], {}, 1);
+    const S = newMatch([ULSTER, CONNACHT], { setting: "ford" }, 1);
     const P = S.players[0];
     const nonHero = P.deck.filter((c) => c.def.type !== "hero" && c.def.type !== "omen");
     const heroes = P.deck.filter((c) => c.def.type === "hero");
@@ -123,6 +123,23 @@ describe("muster", () => {
       applyDecision(S, d, Math.max(0, k));
     }
     expect(P.hand.filter((c) => c.def.type === "hero").length).toBe(2);
+  });
+});
+
+describe("the setting", () => {
+  it("in a duel to the death the second player chooses it first, before the Muster; it sets the ford's Valour", () => {
+    const S = newMatch([ULSTER, CONNACHT], {}, 1);
+    const d = nextDecision(S)!;
+    expect(d.kind).toBe("setting");
+    expect(d.player).toBe(1);
+    expect(legalityError(S, 0, d.options[0])).not.toBeNull(); // not the first player's to choose
+    applyDecision(S, d, d.options.findIndex((o) => o.t === "setting" && o.id === "tower"));
+    expect(S.rules.setting).toBe("tower");
+    expect(S.rules.fordValour).toBe(2);
+    expect(nextDecision(S)!.kind).toBe("muster");
+  });
+  it("is skipped when the rules give one", () => {
+    expect(nextDecision(newMatch([ULSTER, CONNACHT], { setting: "loughs" }, 1))!.kind).toBe("muster");
   });
 });
 
