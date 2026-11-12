@@ -393,8 +393,9 @@ function omenStatic(def: CardDef, V: State, me: Side): number {
 
 export class SkilledPolicy implements Policy {
   name = "Skilled";
-  /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel. */
-  constructor(public fast = false) {}
+  /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
+   *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
+  constructor(public fast = false, public depth?: number) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -428,7 +429,13 @@ export class SkilledPolicy implements Policy {
       case "focus":
       case "block":
       case "duel": {
-        if (toDeath(V)) return this.fast ? new CasualPolicy().choose(V, d, rng) : deathChoice(V, d, rng);
+        if (toDeath(V)) {
+          if (this.fast) return new CasualPolicy().choose(V, d, rng);
+          if (this.depth === undefined) return deathChoice(V, d, rng);
+          const was = DEATH.budget;
+          DEATH.budget = this.depth;
+          try { return deathChoice(V, d, rng); } finally { DEATH.budget = was; }
+        }
         const C2 = cloneCombat(V.combat!);
         stripGuests(C2, d.player);
         return solveChoice(V, C2, d.player, !this.fast).best;
@@ -721,7 +728,15 @@ export class ExpertPolicy implements Policy {
   }
 }
 
-export function makePolicy(level: string, opts: { N?: number; K?: number } = {}): Policy {
+export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}): Policy {
+  // "skilled@3": Skilled with a look-ahead of 3 turns in duels to the death (the depth ladder)
+  const [level, at] = level0.split("@");
+  if (at !== undefined) {
+    if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
+    const p = new SkilledPolicy(false, Number(at));
+    p.name = `Skilled@${at}`;
+    return p;
+  }
   switch (level.toLowerCase()) {
     case "novice": return new NovicePolicy();
     case "casual": return new CasualPolicy();
