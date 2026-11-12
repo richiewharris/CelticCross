@@ -1,0 +1,19 @@
+{
+ "id": "2026-11-12-7aefb049",
+ "created": "2026-11-12T19:51:30.207Z",
+ "engine": "227e2fc6ea90",
+ "matches": 180,
+ "rules": {
+  "ulaidVsSpirit": 1
+ },
+ "seed": 2,
+ "n": 60,
+ "level": "skilled",
+ "levelB": "skilled",
+ "decks": [
+  "ulster",
+  "sluagh"
+ ],
+ "base": null,
+ "touch": null
+}
