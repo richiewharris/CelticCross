@@ -33,6 +33,10 @@ export interface Rules {
   noCry?: boolean;
   /** The Slúagh's dead-flesh aura: switch it off, or round the half up, for experiments. */
   noAura?: boolean;
+  /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
+  drainNoFeed?: boolean;
+  /** Trial: settings don't change Heals (the crossing's −1, Cruachan's +1). */
+  noSettingHeal?: boolean;
   /** Trial: switch the aura on (off by default while it is tuned). */
   aura?: boolean;
   /** The Slúagh heal this much when their enemy rests: they walk in its dreams (default DREAMS; 0 switches it off). */
@@ -1202,7 +1206,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   const e = fighter(S, C, 1 - p);
   const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
-    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0) + (toDeath(S) ? settingDef(S.rules.setting)?.heal ?? 0 : 0);
+    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0) + (toDeath(S) && !S.rules.noSettingHeal ? settingDef(S.rules.setting)?.heal ?? 0 : 0);
   const v0 = C.valour[p];
   const cap = capTo ?? C.cap[p];
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
@@ -1919,7 +1923,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
       const o = (1 - a) as Side;
       led(S, C, o, "deal:setting:drain", dr);
       if (NARRATE.lines) say(`The dead of the western crossing drain ${fighter(S, C, a).name}: −${dr} Valour.`);
-      if (fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
+      if (!S.rules.drainNoFeed && fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
     }
     { const rr = [C.restRun?.[0] ?? 0, C.restRun?.[1] ?? 0]; rr[a] = RESTED_NOW.on ? rr[a] + 1 : 0; C.restRun = rr; }
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
