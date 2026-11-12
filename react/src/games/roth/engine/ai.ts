@@ -395,7 +395,7 @@ export class SkilledPolicy implements Policy {
   name = "Skilled";
   /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
    *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
-  constructor(public fast = false, public depth?: number) {}
+  constructor(public fast = false, public depth?: number, public nodes?: number) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -432,9 +432,10 @@ export class SkilledPolicy implements Policy {
         if (toDeath(V)) {
           if (this.fast) return new CasualPolicy().choose(V, d, rng);
           if (this.depth === undefined) return deathChoice(V, d, rng);
-          const was = DEATH.budget;
+          const was = DEATH.budget, wasN = DEATH.nodes;
           DEATH.budget = this.depth;
-          try { return deathChoice(V, d, rng); } finally { DEATH.budget = was; }
+          if (this.nodes) DEATH.nodes = this.nodes;
+          try { return deathChoice(V, d, rng); } finally { DEATH.budget = was; DEATH.nodes = wasN; }
         }
         const C2 = cloneCombat(V.combat!);
         stripGuests(C2, d.player);
@@ -563,7 +564,7 @@ const turnKey = (S: State) => (S.combat ? S.combat.duel * 1000 + S.combat.turn :
 function deathNode(S: State, me: Side, budget: number, stats: { n: number }): number {
   stats.n++;
   const d = S.phase === "combat" ? nextDecision(S) : null;
-  if (!d || budget <= 0 || stats.n > 20000) return deathEval(S, me);
+  if (!d || budget <= 0 || stats.n > DEATH.nodes) { if (budget > 0 && d) DEATH.capped++; return deathEval(S, me); }
   return deathPick(S, d, me, budget, stats).v;
 }
 function deathPick(S: State, d: Decision, me: Side, budget: number, stats: { n: number }, vals?: number[]): { v: number; i: number } {
@@ -617,7 +618,7 @@ function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "
   DECISIONS.log.push({ kind: d.kind, side: d.player, eval: ev, options: v.length, best: v[0], second: v[1], chose });
 }
 /** Look-ahead depth in whole turns for long duels (a lever for experiments; 0 = Casual's eye). */
-export const DEATH = { budget: 2 };
+export const DEATH = { budget: 2, /** the search's node limit per decision */ nodes: 20000, /** leaves cut short by it (a sim counter) */ capped: 0 };
 
 // ---------------------------------------------------------------- Expert
 /** Replace the opponent's unknown cards with a sample consistent with what has been seen. */
@@ -729,12 +730,14 @@ export class ExpertPolicy implements Policy {
 }
 
 export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}): Policy {
-  // "skilled@3": Skilled with a look-ahead of 3 turns in duels to the death (the depth ladder)
-  const [level, at] = level0.split("@");
-  if (at !== undefined) {
+  // "skilled@3": Skilled with a look-ahead of 3 turns in duels to the death (the depth ladder); "skilled@3:200000"
+  // also sets the search's node limit per decision (default 20000, which depth 3 runs into)
+  const [level, at0] = level0.split("@");
+  if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
-    const p = new SkilledPolicy(false, Number(at));
-    p.name = `Skilled@${at}`;
+    const [at, nodes] = at0.split(":");
+    const p = new SkilledPolicy(false, Number(at), nodes ? Number(nodes) : undefined);
+    p.name = `Skilled@${at0}`;
     return p;
   }
   switch (level.toLowerCase()) {
