@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone, the whole wheel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.t{position:absolute;width:62px;height:42px;transform:translate(-50%,-50%);box-sizing:border-box;border-radius:7px;background:#221c16;border:2px solid #3d3328;padding:3px 5px;display:flex;flex-direction:column;justify-content:center;font-size:10.5px;line-height:1.15;color:#efe6d2;font-family:inherit;text-align:left}
+.t.h{width:68px;height:46px;background:#2a231c}
+.t.m{border-color:#c94a3d}
+.t.o{border-color:#8a77c0}
+.t span{color:#a99c84;font-size:9.5px}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;background:#0b0a09;color:#efe6d2;font-family:Spectral, Georgia, serif">
+  <!-- the dial dimmed behind -->
+  <div aria-hidden="true" style="position:absolute;left:-387px;top:-462px;width:1164px;height:1164px;border-radius:50%;border:2px solid #4a3c28;opacity:.4"></div>
+
+  <section role="dialog" aria-label="The whole wheel" style="position:absolute;left:0;top:64px;width:390px;height:780px;box-sizing:border-box;border-radius:18px 18px 0 0;background:#1c1814;border-top:1px solid #5a4b3a;padding:10px 16px 16px;display:flex;flex-direction:column;gap:10px">
+    <span aria-hidden="true" style="align-self:center;width:44px;height:5px;border-radius:3px;background:#5a4b3a"></span>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:19px;color:#dcbb80">The whole wheel</h2>
+      <button type="button" style="height:44px;padding:0 12px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Close</button>
+    </div>
+    <span style="font-size:11.5px;color:#b4a6e0;letter-spacing:.08em;text-transform:uppercase;align-self:center">The computer's seat</span>
+
+    <div style="position:relative;width:358px;height:358px">
+      <svg width="358" height="358" viewBox="0 0 358 358" aria-hidden="true" style="position:absolute;inset:0">
+        <circle cx="179" cy="179" r="140" fill="none" stroke="#2a231c" stroke-width="80"></circle>
+        <circle cx="179" cy="179" r="178" fill="none" stroke="#b08d55" stroke-width="1.5"></circle>
+        <line x1="82.4" y1="153.1" x2="7" y2="132.9" stroke="#5a4b3a"></line>
+        <line x1="153.1" y1="275.6" x2="132.9" y2="351" stroke="#5a4b3a"></line>
+        <line x1="275.6" y1="204.9" x2="351" y2="225.1" stroke="#5a4b3a"></line>
+        <line x1="204.9" y1="82.4" x2="225.1" y2="7" stroke="#5a4b3a"></line>
+        <line x1="179" y1="64" x2="179" y2="294" stroke="#6fa5b3" stroke-width="1.5" stroke-dasharray="4 4"></line>
+        <line x1="64" y1="179" x2="294" y2="179" stroke="#6fa5b3" stroke-width="1" stroke-dasharray="2 5"></line>
+      </svg>
+      <span style="position:absolute;left:113px;top:112px;width:70px;text-align:center;font-size:10.5px;line-height:1.2;color:#e8877b">your first band</span><span style="position:absolute;left:90px;top:200px;width:70px;text-align:center;font-size:10.5px;line-height:1.2;color:#e8877b">your second band</span><span style="position:absolute;left:175px;top:222px;width:70px;text-align:center;font-size:10.5px;line-height:1.2;color:#b4a6e0">their first band</span><span style="position:absolute;left:198px;top:134px;width:70px;text-align:center;font-size:10.5px;line-height:1.2;color:#b4a6e0">their second band</span>
+      <button type="button" class="t h m" style="left:179px;top:39px"><b>Emer</b><span>V4 · I2</span></button>
+      <button type="button" class="t m" style="left:109px;top:57.8px"><b>Gáe Bolga</b><span>Strike 2</span></button>
+      <button type="button" class="t m" style="left:57.8px;top:109px"><b>Sling</b><span>Strike 2</span></button>
+      <button type="button" class="t h m" style="left:39px;top:179px"><b>Conchobar</b><span>V6 · I2</span></button>
+      <button type="button" class="t m" style="left:57.8px;top:249px"><b>Láeg</b><span>Heal 1</span></button>
+      <button type="button" class="t m" style="left:109px;top:300.2px"><b>Bull</b><span>Heal 2</span></button>
+      <button type="button" class="t h o" style="left:179px;top:319px"><b>Balor</b><span>V5 · I1</span></button>
+      <button type="button" class="t o" style="left:249px;top:300.2px"><b>Galley</b><span>Strike 2</span></button>
+      <button type="button" class="t o" style="left:300.2px;top:249px"><b>Galley</b><span>Strike 2</span></button>
+      <button type="button" class="t h o" aria-pressed="true" style="left:319px;top:179px;box-shadow:0 0 0 2px #1c1814, 0 0 0 4px #dcbb80"><b>Indech</b><span>V4 · I2</span></button>
+      <button type="button" class="t o" style="left:300.2px;top:109px"><b>Lochlann</b><span>Strike 3</span></button>
+      <button type="button" class="t o" style="left:249px;top:57.8px"><b>Well</b><span>Strike 2</span></button>
+    </div>
+    <span style="font-size:11.5px;color:#e8877b;letter-spacing:.08em;text-transform:uppercase;align-self:center">Your seat · Balor in front of you</span>
+
+    <!-- the selected card, readable -->
+    <article style="border-radius:12px;border:2px solid #8a77c0;background:#221c16;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px">Indech mac Dé Domnann</b><span style="font-size:12px;color:#a99c84">hero · their second band</span></div>
+      <span style="font-size:13px;color:#a99c84">Hero of the Fomóire · Valour 4 · Init 2 · Focus Earth · weak to Wind</span>
+      <span style="font-size:14px;line-height:1.4"><b>Sea-giant:</b> no Strike against him above 4. Giant-kin: takes half the wounds of every Strike, except Wind.</span>
+      <span style="font-size:13px;color:#dcbb80">Meets your Conchobar in the second duel · comes before you at the 4th turn of the Winnow</span>
+    </article>
+    <div style="display:flex;gap:8px">
+      <button type="button" style="flex:1;height:46px;border-radius:10px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14.5px">Full card</button>
+      <button type="button" style="flex:1;height:46px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:14.5px;font-weight:700">Turn the dial to it</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone, the duel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid #3d3328;font-size:11.5px;color:#efe6d2;background:#1c1814}
+.pip{width:12px;height:12px;border-radius:3px;box-sizing:border-box}
+.on{background:#d0584a}
+.off{border:1.5px solid #6b3a33}
+.chip{flex:1;border-radius:8px;border:1px solid #3d3328;padding:6px 8px;font-size:12px;display:flex;flex-direction:column;gap:1px}
+.chip span{color:#a99c84;font-size:11px}
+.row{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;text-align:left}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column">
+  <header style="height:52px;flex-shrink:0;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:17px;color:#dcbb80">Second duel</span>
+    <span style="font-size:12.5px;color:#b9d0c4;flex-grow:1">turn 12 · the western crossing</span>
+    <span class="pill" style="color:#8fc48a;border-color:#3b5a38">1–0 to you</span>
+  </header>
+  <p style="margin:0;padding:8px 16px 0;font-size:13.5px;line-height:1.4">Fell The Hunt to win. If Lóegaire falls, Conchobar falls with him: 1–1 and a final duel.</p>
+
+  <!-- them -->
+  <div style="padding:10px 16px 0;display:flex;flex-direction:column;gap:6px">
+    <article style="border-radius:12px;border:2px solid #7f9a8c;background:#1f2522;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:3px 3px 0 -1px #12100e, 3px 3px 0 1px #7f9a8c">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px">The Hunt</b><span style="font-size:11.5px;color:#a99c84">Dullahan · Púca</span></div>
+      <div role="img" aria-label="Valour 3 of 9" style="display:flex;gap:3px;align-items:center"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><b style="margin-left:6px">3</b></div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px"><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">Spirit: no Blocks</span><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">heals 2 if you rest</span><span class="pill" style="color:#e8877b;border-color:#6b3a33">weak Fire · Water · Earth</span></div>
+    </article>
+    <div style="display:flex;gap:6px"><div class="chip" style="opacity:.6"><b>Dullahan's whip</b><span>used · after a turn</span></div><div class="chip"><b>Cóiste bodhar</b><span>ready</span></div></div>
+  </div>
+
+  <div style="padding:8px 16px;display:flex;align-items:center;gap:8px;color:#6fa5b3;font-size:12px"><span style="flex-grow:1;border-top:2px dashed #2d5f6b"></span>the ford<span style="flex-grow:1;border-top:2px dashed #2d5f6b"></span></div>
+
+  <!-- you: champion standing in over the hero -->
+  <div style="padding:0 16px;display:flex;flex-direction:column;gap:6px">
+    <div style="position:relative;padding-bottom:26px">
+      <div aria-label="Conchobar, standing back at Valour 5" style="position:absolute;left:10px;right:10px;bottom:0;height:40px;box-sizing:border-box;border-radius:10px;border:1px solid #6b3a33;background:#1a1511;padding:0 12px;display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:5px;font-size:12px;color:#a99c84"><span>Conchobar stands back</span><span>Valour 5</span></div>
+      <article style="position:relative;border-radius:12px;border:2px solid #c94a3d;background:#221c16;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 0 0 3px #12100e,0 0 0 5px #dcbb80">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px">Lóegaire Búadach</b><span style="font-size:11.5px;color:#dcbb80">champion</span></div>
+        <div role="img" aria-label="Valour 1 of 4" style="display:flex;gap:3px;align-items:center"><span class="pip on"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><b style="margin-left:6px">1</b></div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px"><span class="pill">first Strike +1</span><span class="pill">no geis binds him</span><span class="pill" style="color:#e8877b;border-color:#6b3a33">if he falls, Conchobar falls</span></div>
+      </article>
+    </div>
+    <div style="display:flex;gap:6px"><div class="chip" style="border-color:#3b5a38"><b>Láeg</b><span style="color:#8fc48a">ready · Heal 1</span></div><div class="chip" style="opacity:.6"><b>The Brown Bull</b><span>used · after a rest</span></div></div>
+  </div>
+
+  <div style="margin:10px 16px 0;padding:6px 10px;border-radius:8px;background:#1c2420;border:1px solid #4b5e55;font-size:12.5px">Turn 11 · The Hunt: Dullahan's whip, Strike 2 +1 Spirit +1 the crossing → Lóegaire 4 → 1 <span style="color:#a99c84">· tap for the sum</span></div>
+
+  <!-- action sheet -->
+  <section aria-label="Your actions" style="margin-top:auto;padding:10px 16px 14px;border-radius:16px 16px 0 0;background:#1c1814;border-top:1px solid #5a4b3a;display:flex;flex-direction:column;gap:6px;box-shadow:0 -10px 30px rgba(0,0,0,.5)">
+    <button type="button" class="row" style="border:2px solid #dcbb80;background:#2a231c;flex-direction:column;align-items:flex-start;gap:2px"><b style="font-size:14px">Draw from the Reserve · 6 left</b><span style="font-size:12px;color:#a99c84">His quadrant holds only Heals: a drawn Strike is the way to fell it</span></button>
+    <button type="button" class="row"><b style="font-size:14px;flex-grow:1">Use Láeg</b><span class="pill" style="color:#e8877b;border-color:#6b3a33">Heals −1 here: no Heal · next +1</span></button>
+    <button type="button" class="row"><b style="font-size:14px;flex-grow:1">Rest</b><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">Shield 1 · Hunt heals 3 → 5</span></button>
+    <button type="button" style="height:46px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:15.5px;font-weight:700">Draw the top card</button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

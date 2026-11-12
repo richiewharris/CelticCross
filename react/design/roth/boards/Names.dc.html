@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Names on the wheel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.seat{position:absolute;width:92px;height:30px;transform:translate(-50%,-50%);box-sizing:border-box;border-radius:7px;background:#221c16;border:2px solid #3d3328;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:#efe6d2}
+.seat.h{width:72px;height:38px;font-weight:700;font-size:13.5px;background:#2a231c}
+.seat.m{border-color:#c94a3d}
+.seat.t{border-color:#8a77c0}
+.band{position:absolute;width:100px;transform:translate(-50%,-50%);text-align:center;font-size:12px;line-height:1.25;letter-spacing:.05em;text-transform:uppercase}
+.term{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;padding:12px 0;border-bottom:1px solid #2a231c}
+.term b{font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px;color:#dcbb80}
+.term p{margin:0;font-size:14.5px;line-height:1.45}
+.term span{display:block;font-size:13px;color:#a99c84;margin-top:3px}
+</style>
+</helmet>
+<div style="width:1440px;height:1040px;box-sizing:border-box;padding:48px 56px;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1000px">
+    <h1 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:40px;color:#dcbb80">Names on the wheel</h1>
+    <p style="margin:0;font-size:17px;line-height:1.45">Players never see a spot number. Every place on the wheel is named by whose band it is, which band, and which flank. Duels pair opposite slices.</p>
+  </div>
+
+  <div style="display:flex;gap:56px;align-items:flex-start">
+    <!-- the diagram -->
+    <figure style="margin:0;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <span style="font-size:12px;color:#b4a6e0;letter-spacing:.08em;text-transform:uppercase">The computer's seat</span>
+      <div role="img" aria-label="The wheel as four pie slices: your first and second bands, their first and second bands. Opposite slices duel." style="position:relative;width:520px;height:520px">
+        <svg width="520" height="520" viewBox="0 0 520 520" aria-hidden="true" style="position:absolute;inset:0">
+          <path d="M195.3 501.5 A250 250 0 0 0 501.5 324.7 L346.9 283.3 A90 90 0 0 1 236.7 346.9 Z" fill="rgba(201,74,61,.22)" stroke="#5a4b3a" stroke-width="2"></path>
+          <path d="M501.5 324.7 A250 250 0 0 0 324.7 18.5 L283.3 173.1 A90 90 0 0 1 346.9 283.3 Z" fill="rgba(201,74,61,.10)" stroke="#5a4b3a" stroke-width="2"></path>
+          <path d="M324.7 18.5 A250 250 0 0 0 18.5 195.3 L173.1 236.7 A90 90 0 0 1 283.3 173.1 Z" fill="rgba(138,119,192,.22)" stroke="#5a4b3a" stroke-width="2"></path>
+          <path d="M18.5 195.3 A250 250 0 0 0 195.3 501.5 L236.7 346.9 A90 90 0 0 1 173.1 236.7 Z" fill="rgba(138,119,192,.10)" stroke="#5a4b3a" stroke-width="2"></path>
+          <circle cx="260" cy="260" r="88" fill="#1a1511" stroke="#3d3328"></circle>
+          <line x1="260" y1="88" x2="260" y2="432" stroke="#dcbb80" stroke-width="2.5"></line>
+          <line x1="88" y1="260" x2="432" y2="260" stroke="#dcbb80" stroke-width="1.5" stroke-dasharray="6 5"></line>
+          <path d="M470 470 A300 300 0 0 0 520 380" fill="none" stroke="#6fa5b3" stroke-width="2"></path>
+        </svg>
+        <span style="position:absolute;left:268px;top:200px;font-size:12px;color:#dcbb80">first duel</span>
+        <span style="position:absolute;left:150px;top:266px;font-size:12px;color:#dcbb80">second duel</span>
+        <span class="band" style="left:327px;top:377px;color:#e8877b">Your first band</span>
+        <span class="band" style="left:377px;top:192px;color:#e8877b">Your second band</span>
+        <span class="band" style="left:192px;top:143px;color:#b4a6e0">Their first band</span>
+        <span class="band" style="left:143px;top:327px;color:#b4a6e0">Their second band</span>
+        <span class="seat h m" style="left:260px;top:450px">Hero</span><span class="seat m" style="left:355px;top:424px">West flank</span><span class="seat m" style="left:424px;top:355px">East flank</span>
+        <span class="seat h m" style="left:450px;top:260px">Hero</span><span class="seat m" style="left:424px;top:165px">West flank</span><span class="seat m" style="left:355px;top:96px">East flank</span>
+        <span class="seat h t" style="left:260px;top:70px">Hero</span><span class="seat t" style="left:165px;top:96px">West flank</span><span class="seat t" style="left:96px;top:165px">East flank</span>
+        <span class="seat h t" style="left:70px;top:260px">Hero</span><span class="seat t" style="left:96px;top:355px">West flank</span><span class="seat t" style="left:165px;top:424px">East flank</span>
+      </div>
+      <span style="font-size:12px;color:#e8877b;letter-spacing:.08em;text-transform:uppercase">Your seat · the wheel turns clockwise</span>
+      <figcaption style="font-size:13px;color:#a99c84;max-width:520px;text-align:center;line-height:1.45">Each band is a hero, then its west flank and east flank clockwise after it. The cards on the wheel stay upright; only their places turn.</figcaption>
+    </figure>
+
+    <!-- the glossary -->
+    <section aria-label="The names" style="flex-grow:1;display:flex;flex-direction:column">
+      <div class="term"><b>Band</b><p>A pie slice: a hero and the two who fight beside it. Each player raises two, the <i>first band</i> and the <i>second band</i>. Once a hero is placed it can also be called by name: Emer's band.<span>Instead of: quadrant 1–4</span></p></div>
+      <div class="term"><b>Hero · West flank · East flank</b><p>The three seats in a band, in the order they come round: the hero, then its two flanks. For now a flank only says where a support stands; rules for flanks can come later.<span>Instead of: spot 1, spot 2, spot 3</span></p></div>
+      <div class="term"><b>Before you</b><p>The seat at your front edge of the wheel: the only one you can fill or act on this turn.<span>Instead of: the faced spot</span></p></div>
+      <div class="term"><b>First duel · Second duel</b><p>Opposite slices fight: first band against first band, then second against second. The <i>final duel</i> only if each side fells one.<span>Instead of: spots 1 v 7, 4 v 10</span></p></div>
+      <div class="term"><b>Marshalling</b><p>The first half turn: six turns, each player filling the seat before them.<span>Instead of: the drafting turn</span></p></div>
+      <div class="term"><b>The Winnow</b><p>The second half turn: the enemy's bands come round to you, one seat at a time, to bind, supplant or curse.<span>Instead of: the playing turn</span></p></div>
+      <div class="term" style="border-bottom:none"><b>Setting · Muster · Last omens</b><p>Kept as they are: they already say what they are.</p></div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

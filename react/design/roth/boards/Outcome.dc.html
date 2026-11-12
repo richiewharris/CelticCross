@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Previews and outcomes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.c{width:120px;height:150px;box-sizing:border-box;border-radius:10px;background:#221c16;border:2px solid #3d3328;padding:8px 10px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.25;position:relative}
+.c b{font-size:13.5px}
+.c.t{border-color:#8a77c0}
+.c.m{border-color:#c94a3d}
+.st{color:#a99c84;font-size:12px}
+.stamp{position:absolute;left:6px;right:6px;bottom:8px;border-radius:6px;padding:4px 6px;font-size:11.5px;font-weight:600;text-align:center}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid #3d3328;font-size:12.5px;background:#1c1814}
+.h2{margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:21px;color:#dcbb80}
+.p{margin:0;font-size:14px;line-height:1.5;color:#a99c84}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;box-sizing:border-box;padding:44px 56px;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1000px">
+    <h1 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:38px;color:#dcbb80">See it before you commit; see what it did after</h1>
+    <p style="margin:0;font-size:17px;line-height:1.45">The engine already simulates a move for duel previews (<code style="font-size:14px;color:#dcbb80">previewOf</code> in Choices.tsx). Run the same thing for every Playing-turn action and draw the result on the board, not in a list.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:28px;flex-grow:1;min-height:0">
+
+    <!-- 1: preview -->
+    <section style="border:1px solid #3d3328;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;background:#17130f">
+      <span style="font-size:12px;color:#a99c84;letter-spacing:.08em;text-transform:uppercase">1 · Picked, not yet committed</span>
+      <h2 class="h2">Geis of the giant's portion on Balor</h2>
+      <div style="display:flex;gap:10px">
+        <div class="c t" style="box-shadow:0 0 0 2px #12100e,0 0 0 4px #dcbb80"><b>Balor</b><span class="st">hero · their first band</span><span>Valour <s style="color:#a99c84">5</s> <b style="color:#8fc48a">3</b> at the start</span><span class="stamp" style="background:#3a1f1c;color:#e8877b">Bound: giant's portion</span></div>
+        <div class="c t" style="opacity:.6"><b>Fomorian galley</b><span class="st">west flank · Ally</span><span>Strike 2 + Shield 1</span><span class="stamp" style="background:#2a231c;color:#efe6d2;border:1px solid #5a4b3a">Forbidden · 2 Valour each use</span></div>
+        <div class="c t" style="opacity:.6"><b>Fomorian galley</b><span class="st">east flank · Ally</span><span>Strike 2 + Shield 1</span><span class="stamp" style="background:#2a231c;color:#efe6d2;border:1px solid #5a4b3a">Forbidden · 2 Valour each use</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;color:#a99c84">Duel 1 lean</span>
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#2a231c"><span style="width:42%;background:#c94a3d"></span><span style="width:58%;background:#8a77c0"></span></div>
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#2a231c"><span style="width:63%;background:#c94a3d"></span><span style="width:37%;background:#8a77c0"></span></div>
+        <span style="font-size:12.5px;color:#8fc48a">Now → with this geis: moves towards you [ENGINE]</span>
+      </div>
+      <p class="p">The ghost state is drawn on the real wheel. Tap another action and the ghost changes; nothing is spent until the button.</p>
+    </section>
+
+    <!-- 2: the computer's reply -->
+    <section style="border:1px solid #3d3328;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;background:#17130f">
+      <span style="font-size:12px;color:#a99c84;letter-spacing:.08em;text-transform:uppercase">2 · The computer's reply, shown on the board</span>
+      <div role="status" style="border-radius:10px;background:#2a1f2e;border:1px solid #8a77c0;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+        <b style="font-size:15px">The computer laid Geis of the spear on your Emer</b>
+        <span style="font-size:13.5px;color:#d6cdee">Forbids Weapons. Two of her supports are now forbidden.</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="c m" style="box-shadow:0 0 0 2px #12100e,0 0 0 4px #8a77c0"><b>Emer</b><span class="st">hero · your first band</span><span>Valour 4 · Init 2</span><span class="stamp" style="background:#2a1f2e;color:#d6cdee">Bound: the spear</span></div>
+        <div class="c m" style="opacity:.6"><b>Gáe Bolga</b><span class="st">west flank · Weapon</span><span>Strike 2, pierce</span><span class="stamp" style="background:#2a231c;color:#efe6d2;border:1px solid #5a4b3a">Forbidden · 2 each use</span></div>
+        <div class="c m" style="opacity:.6"><b>Sling of Emain</b><span class="st">east flank · Weapon</span><span>Strike 2</span><span class="stamp" style="background:#2a231c;color:#efe6d2;border:1px solid #5a4b3a">Forbidden · 2 each use</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" style="height:40px;padding:0 14px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Replay it</button>
+        <button type="button" style="height:40px;padding:0 14px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Read the geis</button>
+      </div>
+      <p class="p"><b style="color:#efe6d2">Answer:</b> your face-down Emain's ward makes your heroes ignore geasa. A one-line hint names a card you already hold that answers the move.</p>
+    </section>
+
+    <!-- 3: step summary + log -->
+    <section style="border:1px solid #3d3328;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px;background:#17130f">
+      <span style="font-size:12px;color:#a99c84;letter-spacing:.08em;text-transform:uppercase">3 · The wheel turns: a step summary</span>
+      <div style="border-radius:10px;border:1px solid #dcbb80;padding:14px;display:flex;flex-direction:column;gap:8px">
+        <b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px;color:#dcbb80">The Winnow: 1 of 6 done</b>
+        <span style="font-size:14px">Balor: −2 at the start, galleys forbidden.</span>
+        <span style="font-size:14px">Emer: Weapons forbidden.</span>
+        <span style="font-size:14px;color:#6fa5b3">Next: Balor's west flank, a galley, comes round to you.</span>
+      </div>
+      <h3 style="margin:6px 0 0;font-size:13px;color:#a99c84;letter-spacing:.08em;text-transform:uppercase;font-weight:400">Moves, grouped by step</h3>
+      <ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px">
+        <li style="display:flex;gap:10px;align-items:baseline"><span class="pill" style="color:#e8877b;border-color:#6b3a33">You</span><span>Geis of the giant's portion on <a href="#balor">Balor</a></span></li>
+        <li style="display:flex;gap:10px;align-items:baseline"><span class="pill" style="color:#b4a6e0;border-color:#4b4270">Computer</span><span>Geis of the spear on <a href="#emer">Emer</a></span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;color:#a99c84"><span class="pill">Wheel</span><span>turned to step 2</span></li>
+      </ol>
+      <p class="p">Every name in the log lights its card on the wheel when you point at it.</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

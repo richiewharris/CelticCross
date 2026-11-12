@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choosing where the duels are fought</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;border:1px solid #3d3328;font-size:13px;color:#efe6d2;background:#1c1814}
+.lbl{font-size:12px;color:#a99c84;letter-spacing:.07em;text-transform:uppercase}
+.opt{flex:1;border-radius:16px;border:2px solid #3d3328;background:#17130f;padding:0;font-family:inherit;color:#efe6d2;text-align:left;display:flex;flex-direction:column;overflow:hidden}
+.band{height:110px;display:flex;align-items:flex-end;padding:14px 18px;box-sizing:border-box}
+.body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px}
+.fx{display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.4}
+.home{border-radius:10px;border:1px solid #3d3328;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:13px;background:#17130f}
+.home b{font-size:14px}
+.home span{color:#a99c84;font-size:12.5px;line-height:1.35}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column">
+  <header style="height:60px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:22px;color:#dcbb80">Roth Catha</span>
+    <nav aria-label="Match progress" style="display:flex;align-items:center;gap:6px;font-size:13px">
+      <span class="pill" style="color:#8fc48a;border-color:#3b5a38">Decks ✓ Slúagh v Ulster</span><span style="color:#5a4b3a">—</span>
+      <span class="pill" style="background:#dcbb80;color:#22180f;border-color:#dcbb80;font-weight:600">Setting</span><span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">Muster</span><span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">Marshalling</span><span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">Winnow</span><span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">Duels</span>
+    </nav>
+  </header>
+  <div style="display:flex;align-items:center;gap:20px;padding:14px 28px;background:#1a1511;border-bottom:1px solid #2a231c">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:18px;color:#dcbb80;white-space:nowrap">Your choice</span>
+    <p style="margin:0;font-size:16px;line-height:1.4">You play second, so you choose where the duels are fought: neutral ground at the ford, or your own home. You both see the choice before the Muster, so each of you sorts your deck knowing the ground.</p>
+  </div>
+
+  <div style="display:flex;gap:24px;padding:22px 28px 0">
+    <!-- the two choices -->
+    <div role="radiogroup" aria-label="Where the duels are fought" style="display:flex;gap:20px;flex-grow:1">
+      <button type="button" role="radio" aria-checked="false" class="opt">
+        <div class="band" style="background:#1d3a42"><span style="font-family:'Uncial Antiqua', serif;font-size:26px">The ford</span></div>
+        <div class="body">
+          <span class="lbl">Neutral ground</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">Valour +3</span></div>
+          <div class="fx"><b>Your Slúagh deck</b><span style="color:#a99c84">No change.</span></div>
+          <div class="fx"><b>Their Ulster deck</b><span style="color:#a99c84">No change.</span></div>
+          <span style="font-size:13px;color:#a99c84;margin-top:4px">Every fighter enters each duel with Valour +3.</span>
+        </div>
+      </button>
+      <button type="button" role="radio" aria-checked="true" class="opt" style="border-color:#dcbb80;box-shadow:0 0 0 3px #12100e,0 0 0 5px #dcbb80">
+        <div class="band" style="background:#26302b;justify-content:space-between"><span style="font-family:'Uncial Antiqua', serif;font-size:26px">The western crossing</span><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">Your home</span></div>
+        <div class="body">
+          <span class="lbl">Home of the Slúagh</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">Valour +3</span><span class="pill" style="color:#8fc48a;border-color:#3b5a38">Spirit +1</span><span class="pill" style="color:#e8877b;border-color:#6b3a33">Heals −1</span></div>
+          <div class="fx"><b>Your Slúagh deck</b><span style="color:#8fc48a">4 supports +1: the cold touch ×2, the keening dead, the Dullahan's whip</span><span style="color:#a99c84">No Heals to lose.</span></div>
+          <div class="fx"><b>Their Ulster deck</b><span style="color:#e8877b">2 Heal supports −1: Láeg, the Brown Bull</span></div>
+          <span style="font-size:13px;color:#a99c84;margin-top:4px">Every fighter enters with Valour +3, as at the ford.</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- if you play first instead -->
+    <aside style="width:340px;display:flex;flex-direction:column;gap:12px">
+      <span class="lbl">If you play first, you see this instead</span>
+      <div role="status" style="border-radius:14px;border:1px solid #c94a3d;background:#1f1714;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:19px;color:#dcbb80">The computer takes you to Emain Macha</b>
+        <span style="font-size:14px;line-height:1.45">Playing Ulster second, it picked its home over the ford.</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">Valour +3</span><span class="pill">Feats +1</span></div>
+        <span style="font-size:13.5px;line-height:1.45;color:#a99c84">Its 4 Feat supports gain 1, and so do your two cold touches (Feats too). Their Láeg and Brown Bull heal at full strength here.</span>
+        <button type="button" style="height:44px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:15px;font-weight:700">On to the Muster</button>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.45;color:#a99c84">The deck lists are public, so the effects on both sides can always be counted and shown.</p>
+    </aside>
+  </div>
+
+  <div style="padding:0 28px 0;display:flex;justify-content:flex-start;margin-top:18px">
+    <button type="button" style="height:50px;padding:0 32px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:16px;font-weight:700">Fight at the western crossing</button>
+  </div>
+
+  <!-- every deck's home -->
+  <section aria-label="Every deck's home ground" style="padding:22px 28px 24px;display:flex;flex-direction:column;gap:10px;margin-top:auto">
+    <span class="lbl">Every deck's home ground (the ford is always the other option)</span>
+    <div style="display:grid;grid-template-columns:repeat(6, minmax(0, 1fr));gap:12px">
+      <div class="home"><b>Ulster · Emain Macha</b><span>Valour +3 · Feats +1</span><span style="color:#8fc48a">helps 4 of its supports</span></div>
+      <div class="home" style="border-color:#7a5a24"><b>Connacht · Cruachan</b><span>Valour +3 · Heals +1</span><span style="color:#8fc48a">helps 3</span><span style="color:#dcbb80">The Bog of Allen fits it better: 5 helped, 2 hurt</span></div>
+      <div class="home"><b>Sídhe · Brú na Bóinne</b><span>Valour +3 · Words +1 · the mound soaks 7</span><span style="color:#8fc48a">helps 4</span></div>
+      <div class="home" style="border-color:#7a5a24"><b>Fomóire · Conand's tower</b><span>Valour +2 · Shield 1 to all</span><span style="color:#dcbb80">helps none of its supports</span></div>
+      <div class="home"><b>Merrow · The loughs</b><span>Valour +3 · Water +1 · Fire −1</span><span style="color:#8fc48a">helps 5, hurts none</span></div>
+      <div class="home" style="border-color:#4b5e55"><b>Slúagh · The western crossing</b><span>Valour +3 · Spirit +1 · Heals −1</span><span style="color:#8fc48a">helps 4, no Heals to lose</span></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

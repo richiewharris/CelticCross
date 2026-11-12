@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone, drafting a Slúagh host</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif">
+  <header style="position:absolute;left:0;top:0;width:390px;height:52px;box-sizing:border-box;padding:0 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:17px;color:#dcbb80">Marshalling</span>
+    <div role="img" aria-label="Marshalling, 4 of 6" style="display:flex;gap:4px;flex-grow:1">
+      <span style="width:9px;height:9px;border-radius:50%;background:#8fc48a"></span><span style="width:9px;height:9px;border-radius:50%;background:#8fc48a"></span><span style="width:9px;height:9px;border-radius:50%;background:#8fc48a"></span><span style="width:9px;height:9px;border-radius:50%;background:#dcbb80"></span><span style="width:9px;height:9px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span><span style="width:9px;height:9px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+    </div>
+    <span style="font-size:12px;color:#a99c84">4 of 6</span>
+  </header>
+  <p style="position:absolute;left:16px;top:60px;width:358px;margin:0;font-size:14.5px;line-height:1.4">Your <b>second band</b> needs its hero. Whoever you place meets their second band, the opposite slice, in the second duel.</p>
+  <div style="position:absolute;left:16px;top:106px;width:358px;height:44px;box-sizing:border-box;border-radius:10px;border:1px dashed #c94a3d;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+    <span style="color:#a99c84">Across · their second band's hero</span><span>The computer places after you</span>
+  </div>
+
+  <!-- the dial, turned so your second band's hero seat is at the front -->
+  <div aria-hidden="true" style="position:absolute;left:-175px;top:-295px;width:740px;height:740px;border-radius:50%;box-sizing:border-box;border:2px solid #b08d55;box-shadow:inset 0 0 0 140px rgba(42,35,28,.55);pointer-events:none"></div>
+  <div role="group" aria-label="The dial" style="position:absolute;left:0;top:0;width:390px;height:844px;pointer-events:none">
+    <sc-for list="{{spots}}" as="s" hint-placeholder-count="12">
+      <div style="position:absolute;left:{{s.x}}px;top:{{s.y}}px;display:{{s.show}};width:140px;height:190px;box-sizing:border-box;border-radius:12px;background:{{s.bg}};border:2px {{s.line}} {{s.edge}};box-shadow:{{s.ring}};padding:10px;flex-direction:column;gap:5px">
+        <span style="font-size:10.5px;line-height:1.25;color:{{s.bandC}};letter-spacing:.05em;text-transform:uppercase">{{s.role}} · {{s.band}}</span>
+        <b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:16px;line-height:1.15">{{s.name}}</b>
+        <span style="font-size:13px;line-height:1.3">{{s.l1}}</span>
+        <span style="font-size:12px;line-height:1.35;color:#a99c84">{{s.l2}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- placement sheet -->
+  <section aria-label="Place your second band's hero" style="position:absolute;left:0;top:478px;width:390px;height:366px;box-sizing:border-box;padding:12px 16px 14px;border-radius:16px 16px 0 0;background:#1c1814;border-top:1px solid #5a4b3a;display:flex;flex-direction:column;gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:15px">A hero or host for your second band</b><span style="font-size:12px;color:#a99c84">2 in hand</span></div>
+    <div role="radiogroup" aria-label="Hosts in hand" style="display:flex;gap:8px">
+      <sc-for list="{{hosts}}" as="h" hint-placeholder-count="2">
+        <button type="button" role="radio" aria-checked="{{h.on}}" onClick="{{h.pick}}" style="flex:1;min-height:56px;text-align:left;padding:8px 10px;border-radius:10px;border:2px solid {{h.edge}};background:#221c16;color:#efe6d2;font-family:inherit;display:flex;flex-direction:column;gap:2px">
+          <b style="font-size:14px">{{h.name}}</b><span style="font-size:11.5px;color:#a99c84">{{h.note}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px">Who rides with it? <span style="color:#a99c84">Choose 2 or 3</span></span><span style="font-size:12.5px;color:{{countColor}}">{{count}} chosen</span></div>
+    <div role="group" aria-label="Monsters in hand" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px">
+      <sc-for list="{{mons}}" as="m" hint-placeholder-count="4">
+        <button type="button" aria-pressed="{{m.on}}" onClick="{{m.toggle}}" style="min-height:44px;text-align:left;padding:6px 10px;border-radius:8px;border:1px solid {{m.edge}};background:{{m.bg}};color:#efe6d2;font-family:inherit;display:flex;flex-direction:column">
+          <b style="font-size:13px">{{m.name}}</b><span style="font-size:11px;color:#a99c84">V{{m.v}} · Init {{m.i}} · weak {{m.w}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <p style="margin:0;font-size:12.5px;line-height:1.4;color:#a99c84">They fight as one: <b style="color:#efe6d2">{{sum}}</b></p>
+    <button type="button" style="height:46px;border-radius:10px;border:none;background:{{goBg}};color:#22180f;font-family:inherit;font-size:15.5px;font-weight:700">{{go}}</button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { host: "hunt", picked: ["dullahan", "puca"] }; }
+  renderVals() {
+    const HOSTS = {
+      hunt: { name: "The Hunt", init: 0, each: 0, weak: "Fire", q: "first Strike each duel +1", note: "Rides: first Strike +1" },
+      taboo: { name: "The Taboo", init: 1, each: 0, weak: "Water", q: "the enemy's Heals −1", note: "A curse: their Heals −1" },
+    };
+    const MONS = [
+      { id: "dullahan", name: "The Dullahan", v: 4, i: 0, w: "Water", hy: "Fire" },
+      { id: "puca", name: "The Púca", v: 2, i: 1, w: "Earth" },
+      { id: "fear_dearg", name: "The Fear Dearg", v: 2, i: 1, w: "Earth", hy: "Wind" },
+      { id: "marbh", name: "The restless dead", v: 3, i: -1, w: "Fire" },
+    ];
+    const host = HOSTS[this.state.host], picked = this.state.picked;
+    const ms = MONS.filter((m) => picked.includes(m.id));
+    const V = ms.reduce((a, m) => a + m.v, 0) + host.each * ms.length;
+    const I = host.init + ms.reduce((a, m) => a + m.i, 0);
+    const weak = [...new Set([host.weak, ...ms.map((m) => m.w)])].join(", ");
+    const hy = ms.filter((m) => m.hy).map((m) => m.hy);
+    const ok = ms.length >= 2 && ms.length <= 3;
+    const sum = `Valour ${V} · Init ${I} · weak to ${weak}${hy.length ? ` · Spirit blows also ${hy.join(" and ")}` : ""}`;
+    const SP = [
+      { n: 1, name: "The Prey", mine: 1, l1: "Host: Valour 4 · Init 2", l2: "Bean Nighe, Each-uisce ride with it" },
+      { n: 2, name: "The cold touch", mine: 1, l1: "Strike 1 (Spirit)", l2: "Spirit Feat" },
+      { n: 3, name: "The keening dead", mine: 1, l1: "Strike 1 (Spirit)", l2: "The enemy's next Strike −1" },
+      { n: 4, ghost: 1 }, { n: 5, empty: 1 }, { n: 6, empty: 1 },
+      { n: 7, name: "Cú Chulainn", mine: 0, l1: "Valour 5 · Init 5", l2: "Ríastrad: Strikes +1" },
+      { n: 8, name: "Thunder feat", mine: 0, l1: "Strike 3, ignores Shield", l2: "Fire Feat" },
+      { n: 9, name: "Gáe Bolga", mine: 0, l1: "Strike 2, ignores Shield", l2: "Water Weapon" },
+      { n: 10, empty: 1 }, { n: 11, empty: 1 }, { n: 12, empty: 1 },
+    ];
+    const R = 300, CX = 195, CY = 75;
+    const ROLE = ["Hero", "West flank", "East flank"], BAND = ["your first band", "your second band", "their first band", "their second band"];
+    const spots = SP.map((s, i) => {
+      const a = ((180 - 30 * i) % 360 + 360) % 360, rad = a * Math.PI / 180;
+      // the cards stay upright: only their place on the wheel turns
+      const pos = { x: (CX + R * Math.cos(rad) - 70).toFixed(1), y: (CY + R * Math.sin(rad) - 95).toFixed(1), n: s.n,
+        show: a > 20 && a < 160 ? "flex" : "none", role: ROLE[i % 3], band: BAND[Math.floor(i / 3)], bandC: i < 6 ? "#a9c2b6" : "#e8877b" };
+      if (s.ghost) return { ...pos, name: host.name, side: "placing", l1: `Valour ${V} · Init ${I}`, l2: ms.length ? ms.map((m) => m.name.replace(/^The /, "")).join(", ") + " ride with it" : "Choose its monsters", bg: "#1f2522", edge: "#dcbb80", line: "dashed", ring: "0 0 0 3px #12100e, 0 0 0 5px #dcbb80" };
+      if (s.empty) return { ...pos, name: "", side: s.n < 7 ? "yours, empty" : "theirs, empty", l1: "", l2: "", bg: "transparent", edge: "#3d3328", line: "dashed", ring: "none" };
+      return { ...pos, name: s.name, side: s.mine ? "yours" : "theirs", l1: s.l1, l2: s.l2, bg: s.mine ? "#1f2522" : "#221c16", edge: s.mine ? "#7f9a8c" : "#c94a3d", line: "solid", ring: "none" };
+    });
+    return {
+      spots, sum, count: ms.length, countColor: ok ? "#8fc48a" : "#e8877b",
+      go: ok ? `Place ${host.name} with ${ms.length} monsters` : "Choose 2 or 3 monsters", goBg: ok ? "#dcbb80" : "#6b5a48",
+      hosts: Object.entries(HOSTS).map(([id, h]) => ({ name: h.name, note: h.note, on: id === this.state.host ? "true" : "false", edge: id === this.state.host ? "#dcbb80" : "#3d3328", pick: () => this.setState({ host: id }) })),
+      mons: MONS.map((m) => {
+        const on = picked.includes(m.id);
+        return { ...m, on: on ? "true" : "false", edge: on ? "#7f9a8c" : "#3d3328", bg: on ? "#26302b" : "transparent",
+          toggle: () => this.setState({ picked: on ? picked.filter((x) => x !== m.id) : picked.length >= 3 ? picked : [...picked, m.id] }) };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

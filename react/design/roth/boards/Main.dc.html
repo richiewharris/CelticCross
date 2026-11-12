@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roth Catha table, playing turn</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.tok{position:absolute;width:92px;height:62px;transform:translate(-50%,-50%);box-sizing:border-box;border-radius:8px;background:#221c16;border:2px solid #3d3328;padding:5px 7px;display:flex;flex-direction:column;gap:3px;font-size:11px;line-height:1.15;color:#efe6d2}
+.tok b{font-weight:600;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tok.mine{border-color:#c94a3d}
+.tok.theirs{border-color:#8a77c0}
+.tok.hero{width:100px;height:68px;background:#2a231c}
+.tok .st{color:#a99c84;font-size:10.5px}
+.tok .no{position:absolute;top:-9px;left:-9px;width:20px;height:20px;border-radius:50%;background:#12100e;border:1px solid #3d3328;color:#a99c84;font-size:10px;display:flex;align-items:center;justify-content:center}
+.tok.faced{box-shadow:0 0 0 3px #12100e,0 0 0 5px #dcbb80,0 0 22px rgba(220,187,128,.45)}
+.tok.next{outline:2px dashed #6fa5b3;outline-offset:4px}
+.tok.dead{opacity:.45}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #3d3328;font-size:12px;color:#efe6d2;background:#1c1814}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:4px;border:1px solid #5a4b3a;font-size:11px;color:#a99c84;box-sizing:border-box}
+</style>
+</helmet>
+<div style="width:1440px;height:1040px;box-sizing:border-box;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column">
+
+  <!-- slim match bar replaces the page header -->
+  <header style="height:60px;display:flex;align-items:center;gap:24px;padding:0 28px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:22px;color:#dcbb80">Roth Catha</span>
+    <nav aria-label="Match progress" style="display:flex;align-items:center;gap:6px;flex-grow:1;font-size:13px">
+      <span class="pill" style="color:#8fc48a;border-color:#3b5a38">Muster ✓</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#8fc48a;border-color:#3b5a38">Marshalling ✓</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="background:#dcbb80;color:#22180f;border-color:#dcbb80;font-weight:600">The Winnow · 1 of 6</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">Last omens</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84">The duels · at the ford</span>
+    </nav>
+    <button type="button" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Take back</button>
+    <button type="button" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Rules</button>
+    <button type="button" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px">Menu</button>
+  </header>
+
+  <!-- objective: what, why, what next -->
+  <div style="display:flex;align-items:center;gap:20px;padding:14px 28px;background:#1a1511;border-bottom:1px solid #2a231c">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:18px;color:#dcbb80;white-space:nowrap">Your move</span>
+    <p style="margin:0;font-size:16px;line-height:1.4;flex-grow:1">The wheel has turned half way: <b>Balor of the Evil Eye</b>, hero of their first band, is now before you. He meets your <b>Emer</b> in the <b>first duel</b>. Take one action against him or for her; then the wheel turns and his west flank, a Fomorian galley, comes round to you.</p>
+    <span style="font-size:13px;color:#a99c84;white-space:nowrap">The computer acts after you on each step</span>
+  </div>
+
+  <div style="display:flex;gap:24px;padding:20px 28px 0;flex-grow:1;min-height:0">
+
+    <!-- left: the ford forecast -->
+    <aside aria-label="The ford forecast" style="width:300px;display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px;color:#dcbb80">The ford forecast</h2>
+      <p style="margin:0;font-size:13px;color:#a99c84;line-height:1.4">Who meets whom, as the board stands now. Changes as you act.</p>
+
+      <section style="border:1px solid #dcbb80;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:#1c1814">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#dcbb80;letter-spacing:.06em;text-transform:uppercase"><span>First duel · the first bands</span><span>now</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span style="font-weight:600;color:#e8877b">Emer</span><span style="color:#a99c84;font-size:12px">v</span><span style="font-weight:600;color:#b4a6e0;text-align:right">Balor</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;font-size:12.5px">
+          <span>Valour 4</span><span style="color:#a99c84;text-align:center">at the ford +3</span><span style="text-align:right">Valour 5</span>
+          <span>Init 2</span><span style="color:#a99c84;text-align:center">strikes first</span><span style="text-align:right">Init 1</span>
+          <span>2 supports</span><span style="color:#a99c84;text-align:center">usable</span><span style="text-align:right">2 supports</span>
+        </div>
+        <div style="font-size:12.5px;color:#a99c84">Emer strikes first. Balor is giant-kin: half wounds, except Water. Your Gáe Bolga is Water.</div>
+        <div aria-label="Lean: slightly towards the computer" style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#2a231c"><span style="width:42%;background:#c94a3d"></span><span style="width:58%;background:#8a77c0"></span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#a99c84"><span>Lean, from the computer's own evaluation</span><span>[ENGINE]</span></div>
+      </section>
+
+      <section style="border:1px solid #3d3328;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#a99c84;letter-spacing:.06em;text-transform:uppercase"><span>Second duel · the second bands</span><span>4th in the Winnow</span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <span style="font-weight:600;color:#e8877b">Conchobar</span><span style="color:#a99c84;font-size:12px">v</span><span style="font-weight:600;color:#b4a6e0;text-align:right">Indech</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:4px;font-size:12.5px">
+          <span>Valour 6</span><span></span><span style="text-align:right">Valour 4</span>
+          <span>Init 2</span><span style="color:#a99c84;text-align:center">tie: you first</span><span style="text-align:right">Init 2</span>
+        </div>
+        <div style="font-size:12.5px;color:#a99c84">Indech: no Strike against him above 4.</div>
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#2a231c"><span style="width:61%;background:#c94a3d"></span><span style="width:39%;background:#8a77c0"></span></div>
+      </section>
+
+      <section style="border:1px dashed #3d3328;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#a99c84;line-height:1.45">
+        <b style="color:#efe6d2">To win:</b> fell more heroes than they do. One each? The survivors meet in a final duel.
+      </section>
+    </aside>
+
+    <!-- centre: the wheel -->
+    <section aria-label="The wheel" style="width:640px;display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div style="font-size:12.5px;color:#b4a6e0;letter-spacing:.08em;text-transform:uppercase">Before the computer: Emer, hero of your first band · they may act on her</div>
+      <div style="position:relative;width:640px;height:640px">
+        <svg width="640" height="640" viewBox="0 0 640 640" aria-hidden="true" style="position:absolute;inset:0">
+          <circle cx="320" cy="320" r="312" fill="none" stroke="#b08d55" stroke-width="2"></circle>
+          <path d="M242.4 609.8 A300 300 0 0 0 609.8 397.6 L464.9 358.8 A150 150 0 0 1 281.2 464.9 Z" fill="rgba(138,119,192,.16)" stroke="#3d3328"></path>
+          <path d="M609.8 397.6 A300 300 0 0 0 397.6 30.2 L358.8 175.1 A150 150 0 0 1 464.9 358.8 Z" fill="rgba(138,119,192,.09)" stroke="#3d3328"></path>
+          <path d="M397.6 30.2 A300 300 0 0 0 30.2 242.4 L175.1 281.2 A150 150 0 0 1 358.8 175.1 Z" fill="rgba(201,74,61,.16)" stroke="#3d3328"></path>
+          <path d="M30.2 242.4 A300 300 0 0 0 242.4 609.8 L281.2 464.9 A150 150 0 0 1 175.1 281.2 Z" fill="rgba(201,74,61,.09)" stroke="#3d3328"></path>
+          <circle cx="320" cy="320" r="148" fill="#1a1511" stroke="#3d3328"></circle>
+          <line x1="320" y1="130" x2="320" y2="510" stroke="#6fa5b3" stroke-width="2" stroke-dasharray="6 6"></line>
+          <path d="M320 4 l-10 -2 l10 18 l10 -18 Z" fill="#dcbb80"></path>
+          <path d="M320 636 l-10 2 l10 -18 l10 18 Z" fill="#dcbb80"></path>
+          <path d="M470 600 A318 318 0 0 0 600 470" fill="none" stroke="#6fa5b3" stroke-width="2"></path>
+          <path d="M600 470 l-12 2 l9 -12 Z" fill="#6fa5b3"></path>
+        </svg>
+        <span style="position:absolute;left:560px;top:560px;font-size:11.5px;color:#6fa5b3;width:76px;line-height:1.2">turns clockwise</span>
+        <span style="position:absolute;left:400px;top:378px;font-size:11px;color:#b4a6e0;letter-spacing:.06em">THEIR FIRST BAND</span>
+        <span style="position:absolute;left:396px;top:170px;font-size:11px;color:#b4a6e0;letter-spacing:.06em">THEIR SECOND BAND</span>
+        <span style="position:absolute;left:156px;top:170px;font-size:11px;color:#e8877b;letter-spacing:.06em">YOUR FIRST BAND</span>
+        <span style="position:absolute;left:170px;top:452px;font-size:11px;color:#e8877b;letter-spacing:.06em">YOUR SECOND BAND</span>
+
+        <!-- hub: where we are in the revolution -->
+        <div style="position:absolute;left:200px;top:226px;width:240px;height:188px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center">
+          <span style="font-family:'Uncial Antiqua', serif;font-size:20px;color:#dcbb80;background:#1a1511;padding:0 8px">The Winnow</span>
+          <div role="img" aria-label="Step 1 of 6" style="display:flex;gap:6px;background:#1a1511;padding:2px 6px">
+            <span style="width:12px;height:12px;border-radius:50%;background:#dcbb80"></span>
+            <span style="width:12px;height:12px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+            <span style="width:12px;height:12px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+            <span style="width:12px;height:12px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+            <span style="width:12px;height:12px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+            <span style="width:12px;height:12px;border-radius:50%;border:1px solid #5a4b3a;box-sizing:border-box"></span>
+          </div>
+          <span style="font-size:12.5px;color:#a99c84;background:#1a1511;padding:0 6px">5 more turns of the wheel,<br>then the ford</span>
+          <span style="font-size:12px;color:#6fa5b3;background:#1a1511;padding:0 6px">the ford</span>
+        </div>
+
+        <!-- your side -->
+        <div class="tok hero mine faced" style="left:320px;top:95px"><b>Emer</b><span class="st">Valour 4 · Init 2</span><span class="st">Word · weak Fire</span></div>
+        <div class="tok mine next" style="left:207.5px;top:125.1px"><b>Gáe Bolga</b><span class="st">Strike 2, pierce</span><span class="st">Water Weapon</span></div>
+        <div class="tok mine" style="left:125.1px;top:207.5px"><b>Sling of Emain</b><span class="st">Strike 2</span><span class="st">Wind Weapon</span></div>
+        <div class="tok hero mine" style="left:95px;top:320px"><b>Conchobar</b><span class="st">Valour 6 · Init 2</span><span class="st">Word · weak Fire</span></div>
+        <div class="tok mine" style="left:125.1px;top:432.5px"><b>Láeg</b><span class="st">Heal 1, next +1</span><span class="st">Wind Ally</span></div>
+        <div class="tok mine" style="left:207.5px;top:514.9px"><b>The Brown Bull</b><span class="st">Heal 2</span><span class="st">Earth Ally</span></div>
+        <!-- their side -->
+        <div class="tok hero theirs faced" style="left:320px;top:545px"><b>Balor</b><span class="st">Valour 5 · Init 1</span><span class="st">Fire · weak Water</span></div>
+        <div class="tok theirs next" style="left:432.5px;top:514.9px"><b>Fomorian galley</b><span class="st">Strike 2 + Shield 1</span><span class="st">Water Ally</span></div>
+        <div class="tok theirs" style="left:514.9px;top:432.5px"><b>Fomorian galley</b><span class="st">Strike 2 + Shield 1</span><span class="st">Water Ally</span></div>
+        <div class="tok hero theirs" style="left:545px;top:320px"><b>Indech</b><span class="st">Valour 4 · Init 2</span><span class="st">Earth · weak Wind</span></div>
+        <div class="tok theirs" style="left:514.9px;top:207.5px"><b>Host of Lochlann</b><span class="st">Strike 3</span><span class="st">Water Ally</span></div>
+        <div class="tok theirs" style="left:432.5px;top:125.1px"><b>The bitter well</b><span class="st">Strike 2</span><span class="st">Water Word</span></div>
+      </div>
+      <div style="font-size:12.5px;color:#e8877b;letter-spacing:.08em;text-transform:uppercase">Before you: Balor, hero of their first band · you act on him</div>
+      <div style="display:flex;gap:16px;font-size:12px;color:#a99c84">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;box-shadow:0 0 0 2px #dcbb80;margin-right:6px"></span>facing now</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;outline:2px dashed #6fa5b3;margin-right:6px"></span>next turn of the wheel</span>
+        <span>Tap any card to read it</span>
+      </div>
+    </section>
+
+    <!-- right: actions with their consequences -->
+    <aside aria-label="Your actions" style="width:404px;display:flex;flex-direction:column;gap:10px">
+      <h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px;color:#dcbb80">Choose one action</h2>
+      <div role="tablist" aria-label="Kinds of action" style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" role="tab" aria-selected="true" style="height:34px;padding:0 12px;border-radius:999px;border:1px solid #dcbb80;background:#dcbb80;color:#22180f;font-family:inherit;font-size:13.5px;font-weight:600">Against Balor 2</button>
+        <button type="button" role="tab" aria-selected="false" style="height:34px;padding:0 12px;border-radius:999px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:13.5px">For Emer 2</button>
+        <button type="button" role="tab" aria-selected="false" style="height:34px;padding:0 12px;border-radius:999px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:13.5px">Omens 4</button>
+      </div>
+
+      <button type="button" aria-pressed="true" style="text-align:left;border-radius:10px;border:2px solid #dcbb80;background:#2a231c;color:#efe6d2;padding:12px 14px;font-family:inherit;display:flex;flex-direction:column;gap:6px">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">1</span><b style="font-size:15px">Lay Geis of the giant's portion on Balor</b></span>
+        <span style="font-size:13px;color:#a99c84">Forbids Allies · a hero of Valour 5+ starts 2 lower</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px">
+          <span class="pill" style="border-color:#3b5a38;color:#8fc48a">Balor starts his duel −2</span>
+          <span class="pill" style="border-color:#3b5a38;color:#8fc48a">Both his flanks forbidden</span>
+          <span class="pill">Each use costs him 2 Valour</span>
+        </span>
+      </button>
+      <button type="button" aria-pressed="false" style="text-align:left;border-radius:10px;border:1px solid #3d3328;background:transparent;color:#efe6d2;padding:12px 14px;font-family:inherit;display:flex;flex-direction:column;gap:6px">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">2</span><b style="font-size:15px">Lay Geis of the hearth on Balor</b></span>
+        <span style="font-size:13px;color:#a99c84">Forbids Fire</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px">
+          <span class="pill" style="border-color:#6b3a33;color:#e8877b">No effect: none of his supports is Fire</span>
+        </span>
+      </button>
+      <button type="button" aria-pressed="false" style="text-align:left;border-radius:10px;border:1px solid #3d3328;background:transparent;color:#efe6d2;padding:12px 14px;font-family:inherit;display:flex;flex-direction:column;gap:6px">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">H</span><b style="font-size:15px">Hold</b></span>
+        <span style="font-size:13px;color:#a99c84">Keep your cards; the wheel turns.</span>
+      </button>
+
+      <div style="border-top:1px solid #2a231c;padding-top:10px;font-size:13px;color:#a99c84;line-height:1.45">
+        The wheel on the left already shows this choice: Balor's two galleys are dimmed in the preview when you pick it.
+      </div>
+      <div style="flex-grow:1"></div>
+      <button type="button" style="height:48px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:16px;font-weight:700">Lay the geis on Balor <span class="key" style="border-color:#22180f;color:#22180f;margin-left:6px">Enter</span></button>
+    </aside>
+  </div>
+
+  <!-- hand dock, right under the board -->
+  <footer style="display:flex;gap:20px;align-items:center;padding:12px 28px 16px;border-top:1px solid #3d3328;background:#1c1814">
+    <div style="display:flex;flex-direction:column;gap:2px;width:132px">
+      <span style="font-size:12px;color:#a99c84;letter-spacing:.06em;text-transform:uppercase">Your hand · 6</span>
+      <span style="font-size:12px;color:#a99c84">Lit cards can act now</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-grow:1">
+      <div style="width:150px;height:84px;box-sizing:border-box;border-radius:8px;border:2px solid #dcbb80;background:#2a231c;padding:8px 10px;display:flex;flex-direction:column;gap:4px"><b style="font-size:13px">Geis of the giant's portion</b><span style="font-size:11.5px;color:#a99c84">Forbids Allies; Valour 5+ starts 2 lower</span></div>
+      <div style="width:150px;height:84px;box-sizing:border-box;border-radius:8px;border:2px solid #b08d55;background:#221c16;padding:8px 10px;display:flex;flex-direction:column;gap:4px"><b style="font-size:13px">Geis of the hearth</b><span style="font-size:11.5px;color:#a99c84">Forbids Fire</span></div>
+      <div style="width:150px;height:84px;box-sizing:border-box;border-radius:8px;border:2px solid #b08d55;background:#221c16;padding:8px 10px;display:flex;flex-direction:column;gap:4px"><b style="font-size:13px">Blood-oath</b><span style="font-size:11.5px;color:#a99c84">Strikes +2. Vow: no Heals, never rest</span></div>
+      <div style="width:150px;height:84px;box-sizing:border-box;border-radius:8px;border:1px solid #3d3328;background:#1a1511;padding:8px 10px;display:flex;flex-direction:column;gap:4px;opacity:.7"><b style="font-size:13px">Thunder feat</b><span style="font-size:11.5px;color:#a99c84">Strike 3, ignores Shield · for the ford</span></div>
+      <div style="width:150px;height:84px;box-sizing:border-box;border-radius:8px;border:1px solid #3d3328;background:#1a1511;padding:8px 10px;display:flex;flex-direction:column;gap:4px;opacity:.7"><b style="font-size:13px">Salmon leap</b><span style="font-size:11.5px;color:#a99c84">Reaction: Block 2 · for the ford</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;width:260px">
+      <span style="font-size:12px;color:#a99c84;letter-spacing:.06em;text-transform:uppercase">Your omens · 4 face down</span>
+      <div style="display:flex;gap:6px">
+        <span style="width:58px;height:44px;border-radius:6px;border:1px solid #6b5fa0;background:#221c30"></span>
+        <span style="width:58px;height:44px;border-radius:6px;border:1px solid #6b5fa0;background:#221c30"></span>
+        <span style="width:58px;height:44px;border-radius:6px;border:1px solid #6b5fa0;background:#221c30"></span>
+        <span style="width:58px;height:44px;border-radius:6px;border:1px solid #6b5fa0;background:#221c30"></span>
+      </div>
+      <span style="font-size:12px;color:#a99c84">Computer: 6 in hand · 4 omens face down</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

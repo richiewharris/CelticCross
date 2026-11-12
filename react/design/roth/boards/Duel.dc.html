@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The duel at the ford</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;border:1px solid #3d3328;font-size:12.5px;background:#1c1814;color:#efe6d2}
+.pip{width:14px;height:14px;border-radius:3px;box-sizing:border-box}
+.on{background:#d0584a}
+.off{border:1.5px solid #6b3a33}
+.sup{width:150px;box-sizing:border-box;border-radius:10px;background:#221c16;border:2px solid #3d3328;padding:8px 10px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.sup b{font-size:13.5px}
+.sup span{color:#a99c84;font-size:11.5px}
+.act{text-align:left;border-radius:10px;border:1px solid #3d3328;background:transparent;color:#efe6d2;padding:10px 12px;font-family:inherit;display:flex;flex-direction:column;gap:5px}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:4px;border:1px solid #5a4b3a;font-size:11px;color:#a99c84;box-sizing:border-box}
+.lbl{font-size:12px;color:#a99c84;letter-spacing:.07em;text-transform:uppercase}
+.var{border:1px solid #3d3328;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;background:#17130f}
+.var h3{margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:17px;color:#dcbb80}
+.var p{margin:0;font-size:13px;line-height:1.45;color:#a99c84}
+.mock{border-radius:8px;background:#1c1814;border:1px solid #2a231c;padding:8px 10px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+</style>
+</helmet>
+<div style="width:1440px;height:1100px;box-sizing:border-box;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column">
+  <header style="height:60px;display:flex;align-items:center;gap:20px;padding:0 28px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:22px;color:#dcbb80">Roth Catha</span>
+    <nav aria-label="Match progress" style="display:flex;align-items:center;gap:6px;flex-grow:1;font-size:13px">
+      <span class="pill" style="color:#8fc48a;border-color:#3b5a38">Muster · Draft · Play ✓</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#8fc48a;border-color:#3b5a38">First duel ✓ Emer felled The Prey</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="background:#dcbb80;color:#22180f;border-color:#dcbb80;font-weight:600">Second duel · turn 9</span>
+      <span style="color:#5a4b3a">—</span>
+      <span class="pill" style="color:#a99c84;border-style:dashed">Final duel, only if 1–1</span>
+    </nav>
+    <span class="pill" style="color:#b9d0c4;border-color:#4b5e55">At the western crossing · the Slúagh's home</span>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:20px;padding:12px 28px;background:#1a1511;border-bottom:1px solid #2a231c">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:18px;color:#dcbb80;white-space:nowrap">Your turn</span>
+    <p style="margin:0;font-size:15.5px;line-height:1.4;flex-grow:1">Fell <b>The Hunt</b> and the match is yours, 2–0. If <b>Conchobar</b> falls it is 1–1, and Emer meets the survivor in a final duel with the Valour each has left.</p>
+    <span style="font-size:12.5px;color:#b9d0c4;white-space:nowrap">The crossing: Valour +3 · Spirit +1 · Heals −1</span>
+  </div>
+
+  <div style="display:flex;gap:24px;padding:18px 28px 0;flex-grow:1;min-height:0">
+    <!-- left: what just happened, reserve, champions -->
+    <aside style="width:280px;display:flex;flex-direction:column;gap:12px">
+      <span class="lbl">Last moves</span>
+      <div style="border-radius:10px;border:1px solid #7f9a8c;background:#1c2420;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:#a99c84">Turn 8 · The Hunt</span>
+        <span style="font-size:14px">The cóiste bodhar: Strike 2, Spirit</span>
+        <span style="font-size:13px;color:#e8877b">Conchobar 8 → 5 · Strike 2 +1 Spirit at the crossing · couldn't be Blocked</span>
+        <span style="font-size:12.5px;color:#a99c84">The host lost 1 for it: 8 → 7</span>
+      </div>
+      <div style="border-radius:10px;border:1px solid #3d3328;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:#a99c84">Turn 7 · You</span>
+        <span style="font-size:14px">Láeg: Heal 1, next Strike +1</span>
+        <span style="font-size:13px;color:#a99c84">No Heal: Heal 1 −1 at the crossing. The +1 still counts.</span>
+      </div>
+      <span class="lbl" style="margin-top:6px">Champions on the bench</span>
+      <div style="border-radius:10px;border:2px solid #c94a3d;background:#221c16;padding:10px 12px;display:flex;flex-direction:column;gap:3px">
+        <b style="font-size:14px">Lóegaire Búadach</b>
+        <span style="font-size:12.5px">Valour 4 · first Strike +1 · weak to Water</span>
+        <span style="font-size:12px;color:#8fc48a">Can be called now · uses your turn</span>
+      </div>
+      <div style="border-radius:10px;border:2px solid #c94a3d;background:#221c16;padding:10px 12px;display:flex;flex-direction:column;gap:3px">
+        <b style="font-size:14px">Fiacha mac Fir Febe</b>
+        <span style="font-size:12.5px">Valour 5 · Shield 1 when he steps in</span>
+        <span style="font-size:12px;color:#a99c84">One champion per side per duel</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#a99c84;margin-top:6px"><span>Reserve: 7 cards</span><span>Discard: 3</span></div>
+    </aside>
+
+    <!-- centre: the two quadrants across the ford -->
+    <section aria-label="The ford" style="flex-grow:1;display:flex;flex-direction:column;gap:12px;align-items:center">
+      <span class="lbl" style="color:#b4a6e0">Their second band</span>
+      <div style="display:flex;gap:14px;align-items:stretch">
+        <div class="sup" style="border-color:#7f9a8c;opacity:.6"><b>The Dullahan's whip</b><span>west flank · Strike 2 (Spirit) <b style="color:#b9d0c4">+1 here</b></span><span>used ×1 · again after a turn</span></div>
+        <article style="width:300px;box-sizing:border-box;border-radius:14px;border:2px solid #7f9a8c;background:#1f2522;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:4px 4px 0 -1px #12100e, 4px 4px 0 1px #7f9a8c, 8px 8px 0 -1px #12100e, 8px 8px 0 1px #7f9a8c">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px">The Hunt</b><span style="font-size:12px;color:#a99c84">Init 1</span></div>
+          <span style="font-size:12.5px;color:#a99c84">Host · the Dullahan and the Púca ride with it</span>
+          <div role="img" aria-label="Valour 7 of 9" style="display:flex;gap:3px;align-items:center">
+            <span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip off"></span><span class="pip off"></span><b style="margin-left:8px;font-size:15px">7</b>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <span class="pill">Strikes +1</span><span class="pill">Spirit also burns as Fire</span>
+            <span class="pill" style="border-color:#6b3a33;color:#e8877b">weak: Fire, Water, Earth</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <span class="pill" style="border-color:#4b5e55;color:#b9d0c4">Spirit blows can't be Blocked</span>
+            <span class="pill" style="border-color:#4b5e55;color:#b9d0c4">Heals 2 when you rest</span>
+          </div>
+        </article>
+        <div class="sup" style="border-color:#7f9a8c;opacity:.6"><b>The cóiste bodhar</b><span>east flank · Strike 2 (Spirit) <b style="color:#b9d0c4">+1 here</b></span><span>used ×1 · just now</span></div>
+      </div>
+
+      <div style="width:100%;display:flex;align-items:center;gap:12px;color:#6fa5b3;font-family:'Uncial Antiqua', serif;font-size:16px"><span style="flex-grow:1;border-top:2px dashed #2d5f6b"></span>the ford<span style="flex-grow:1;border-top:2px dashed #2d5f6b"></span></div>
+
+      <div style="display:flex;gap:14px;align-items:stretch">
+        <div class="sup" style="border-color:#c94a3d;opacity:.6"><b>Láeg</b><span>west flank · Heal 1, next +1 <b style="color:#e8877b">−1 here</b></span><span>used ×1 · again after a turn</span></div>
+        <article style="width:300px;box-sizing:border-box;border-radius:14px;border:2px solid #c94a3d;background:#221c16;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 0 3px #12100e,0 0 0 5px #dcbb80">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px">Conchobar</b><span style="font-size:12px;color:#a99c84">Init 2 · strikes first</span></div>
+          <span style="font-size:12.5px;color:#a99c84">Hero of the Ulaid · your second band</span>
+          <div role="img" aria-label="Valour 5 of 9" style="display:flex;gap:3px;align-items:center">
+            <span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><span class="pip off"></span><b style="margin-left:8px;font-size:15px">5</b>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <span class="pill">King's due: borrow 1 support</span><span class="pill">Next Strike +1 (Láeg)</span>
+            <span class="pill" style="border-color:#6b3a33;color:#e8877b">weak: Fire</span>
+          </div>
+        </article>
+        <div class="sup" style="border-color:#c94a3d"><b>The Brown Bull</b><span>east flank · Heal 2 <b style="color:#e8877b">−1 here</b></span><span style="color:#8fc48a">unused · first use free</span></div>
+      </div>
+      <span class="lbl" style="color:#e8877b">Your second band</span>
+    </section>
+
+    <!-- right: actions -->
+    <aside aria-label="Your actions" style="width:390px;display:flex;flex-direction:column;gap:8px">
+      <h2 style="margin:0 0 4px;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:18px;color:#dcbb80">Choose one</h2>
+      <button type="button" class="act" aria-pressed="true" style="border:2px solid #dcbb80;background:#2a231c">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">1</span><b style="font-size:14.5px">King's due: borrow Gáe Bolga</b></span>
+        <span style="font-size:12.5px;color:#a99c84">Strike 2, ignores Shield · +1 Láeg · +1 Water, the Dullahan's weakness</span>
+        <span class="pill" style="border-color:#3b5a38;color:#8fc48a;align-self:flex-start">The Hunt 7 → 3</span>
+      </button>
+      <button type="button" class="act">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">2</span><b style="font-size:14.5px">Use the Brown Bull</b></span>
+        <span style="font-size:12.5px;color:#a99c84">Heal 2 −1 at the crossing</span>
+        <span class="pill" style="border-color:#3b5a38;color:#8fc48a;align-self:flex-start">Conchobar 5 → 6</span>
+      </button>
+      <button type="button" class="act">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">3</span><b style="font-size:14.5px">Call Lóegaire Búadach</b></span>
+        <span style="font-size:12.5px;color:#a99c84">He stands in at Valour 4 for the rest of this duel. No geis or oath binds him.</span>
+        <span class="pill" style="border-color:#6b3a33;color:#e8877b;align-self:flex-start">If he falls, Conchobar is felled</span>
+      </button>
+      <button type="button" class="act">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">4</span><b style="font-size:14.5px">Draw from the Reserve</b></span>
+        <span style="font-size:12.5px;color:#a99c84">See the top card, then play it or put it aside and act.</span>
+      </button>
+      <button type="button" class="act">
+        <span style="display:flex;gap:8px;align-items:center"><span class="key">R</span><b style="font-size:14.5px">Rest</b></span>
+        <span style="font-size:12.5px;color:#a99c84">Shield 1; your next Shield, Heal or Block +1</span>
+        <span class="pill" style="border-color:#4b5e55;color:#b9d0c4;align-self:flex-start">The Hunt heals 2: it walks in your dreams</span>
+      </button>
+      <div style="flex-grow:1"></div>
+      <button type="button" style="height:48px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:16px;font-weight:700">Borrow Gáe Bolga and strike</button>
+    </aside>
+  </div>
+
+  <!-- the setting, everywhere it changes a number -->
+  <section aria-label="Where the duels are fought" style="padding:18px 28px 24px;display:flex;flex-direction:column;gap:12px">
+    <span class="lbl">The setting shows wherever it changes a number</span>
+    <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px">
+      <div class="var" style="border-color:#4b5e55">
+        <h3>Named in the bars</h3>
+        <div class="mock"><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">At the western crossing</span></div>
+        <p>From the moment it is chosen, the match bar and every duel header say where you are and whose home it is.</p>
+      </div>
+      <div class="var">
+        <h3>Badges on the cards</h3>
+        <div class="mock"><b>Cóiste bodhar</b><span class="pill" style="color:#b9d0c4;border-color:#4b5e55">+1 here</span><b>Brown Bull</b><span class="pill" style="color:#e8877b;border-color:#6b3a33">−1 here</span></div>
+        <p>Every support the setting changes carries a small +1 or −1 badge on the wheel, in hand and in the Muster.</p>
+      </div>
+      <div class="var">
+        <h3>In the sums</h3>
+        <div class="mock">Heal 2 −1 at the crossing → <b>Conchobar 5 → 6</b></div>
+        <p>Previews and the move log name the setting as one line of the sum, like Focus or kinship.</p>
+      </div>
+      <div class="var">
+        <h3>In the ground itself</h3>
+        <div class="mock"><span style="width:56px;height:20px;border-radius:10px;background:#2d5f6b"></span>river under mist</div>
+        <p>The ford line and the wheel's hub take on the setting's look: river, bog, mound, tower, loughs, a royal hall.</p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

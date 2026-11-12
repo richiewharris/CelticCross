@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Muster, sorting the deck</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&amp;family=Spectral:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap">
+<style>
+body{margin:0;background:#12100e}
+a{color:#dcbb80}a:hover{color:#efe6d2}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#221c16;border:1px solid #3d3328;font-size:14px}
+.row small{color:#a99c84;font-size:12px;margin-left:auto}
+.lbl{font-size:12px;color:#a99c84;letter-spacing:.06em;text-transform:uppercase}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:4px;border:1px solid currentColor;font-size:11px;box-sizing:border-box;opacity:.8}
+.card{width:220px;height:300px;box-sizing:border-box;border-radius:12px;background:#f4ebd7;color:#22180f;border:3px solid #c94a3d;padding:12px;display:flex;flex-direction:column;gap:8px}
+.card .art{height:110px;border-radius:6px;background:#3a2a20}
+.dest{flex:1;height:44px;border-radius:8px;border:1px solid #3d3328;background:transparent;color:#efe6d2;font-family:inherit;font-size:14px}
+.dest.on{background:#dcbb80;border-color:#dcbb80;color:#22180f;font-weight:700}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#12100e;color:#efe6d2;font-family:Spectral, Georgia, serif;display:flex;flex-direction:column">
+  <header style="height:60px;display:flex;align-items:center;gap:24px;padding:0 28px;border-bottom:1px solid #3d3328;background:#1c1814">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:22px;color:#dcbb80">Roth Catha</span>
+    <span style="font-size:13px;padding:2px 10px;border-radius:999px;background:#dcbb80;color:#22180f;font-weight:600">Muster · 14 of 24 drawn</span>
+    <span style="font-size:13px;color:#a99c84">then Drafting · Playing turn · The Ford</span>
+  </header>
+  <div style="display:flex;align-items:center;gap:20px;padding:14px 28px;background:#1a1511;border-bottom:1px solid #2a231c">
+    <span style="font-family:'Uncial Antiqua', serif;font-size:18px;color:#dcbb80">The Muster</span>
+    <p style="margin:0;font-size:16px;line-height:1.4">Split your deck in two. <b>Hand</b> (up to 12) is what you will put on the wheel and play before the ford. <b>Reserve</b> is what you draw from during the duels. Omens wait face down.</p>
+    <span style="font-size:13px;color:#b9d0c4;white-space:nowrap;padding:6px 10px;border:1px solid #4b5e55;border-radius:8px">Duels at the western crossing: Heals −1, Spirit +1</span>
+  </div>
+
+  <div style="display:flex;gap:28px;padding:24px 28px;flex-grow:1;min-height:0">
+    <!-- hand, with its requirements -->
+    <aside aria-label="Your hand so far" style="width:330px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px;color:#dcbb80">Hand</h2><span style="font-size:14px">5 / 12</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between" class="lbl"><span>Heroes</span><span style="color:#e8877b">1 of 2 needed</span></div>
+        <div style="display:flex;height:6px;border-radius:3px;background:#2a231c;overflow:hidden"><span style="width:50%;background:#c94a3d"></span></div>
+        <div class="row"><b>Cú Chulainn</b><small>Valour 5 · Init 5</small></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between" class="lbl"><span>Supports</span><span style="color:#e8877b">3 of 4 needed</span></div>
+        <div style="display:flex;height:6px;border-radius:3px;background:#2a231c;overflow:hidden"><span style="width:75%;background:#c94a3d"></span></div>
+        <div class="row">Thunder feat<small>Strike 3, pierce</small></div>
+        <div class="row">Sling of Emain<small>Strike 2</small></div>
+        <div class="row">Láeg, the charioteer<small style="color:#e8877b">Heal 1 · −1 at the crossing</small></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="lbl">Geasa and oaths</div>
+        <div class="row">Geis of the hearth<small>Forbids Fire</small></div>
+      </div>
+      <p style="margin:0;font-size:13px;color:#a99c84;line-height:1.45">You need 2 heroes and 4 supports to fill your half of the wheel. The Muster won't finish short of them.</p>
+    </aside>
+
+    <!-- the draw -->
+    <section aria-label="Cards drawn now" style="flex-grow:1;display:flex;flex-direction:column;gap:16px;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;width:100%"><h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px;color:#dcbb80">Drawn: four cards</h2><span style="font-size:13px;color:#a99c84">Decide in any order · keys <span class="key">H</span> <span class="key">R</span> <span class="key">O</span></span></div>
+      <div style="display:flex;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+          <div class="card" style="box-shadow:0 0 0 3px #12100e,0 0 0 6px #dcbb80"><b style="font-family:'Uncial Antiqua', serif;font-size:17px">Gáe Bolga</b><div class="art"></div><span style="font-size:13px">Strike 2, ignoring Shield. Strike 4 when Cú Chulainn uses it.</span><span style="font-size:12px;color:#6b5a48;margin-top:auto">Water Weapon · Ulaid · Legendary</span></div>
+          <div style="display:flex;gap:6px"><button type="button" class="dest on">Hand</button><button type="button" class="dest">Reserve</button></div>
+          <span style="font-size:12.5px;color:#8fc48a;text-align:center">Pairs with Cú Chulainn in hand</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+          <div class="card"><b style="font-family:'Uncial Antiqua', serif;font-size:17px">Emer</b><div class="art"></div><span style="font-size:13px">Hero. Valour 4, Init 2. Six gifts: when she rests, Heal 2.</span><span style="font-size:12px;color:#6b5a48;margin-top:auto">Hero of the Ulaid · Common</span></div>
+          <div style="display:flex;gap:6px"><button type="button" class="dest">Hand</button><button type="button" class="dest">Reserve</button></div>
+          <span style="font-size:12.5px;color:#e8877b;text-align:center">Your hand still needs a hero</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+          <div class="card" style="border-color:#8a2f28"><b style="font-family:'Uncial Antiqua', serif;font-size:17px">Geis of the giant's portion</b><div class="art"></div><span style="font-size:13px">Forbids Allies. A hero of Valour 5 or more starts its duel 2 lower.</span><span style="font-size:12px;color:#6b5a48;margin-top:auto">Geis · Rare</span></div>
+          <div style="display:flex;gap:6px"><button type="button" class="dest">Hand</button><button type="button" class="dest">Reserve</button></div>
+          <span style="font-size:12.5px;color:#a99c84;text-align:center">Laid in the Playing turn or a duel</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:stretch">
+          <div class="card" style="border-color:#6b5fa0;background:#2a2440;color:#efe6d2"><b style="font-family:'Uncial Antiqua', serif;font-size:17px">Brigid's mantle</b><div class="art" style="background:#3b3360"></div><span style="font-size:13px">Omen. Targeted: that hero starts its duel with Shield 1.</span><span style="font-size:12px;color:#b4a6e0;margin-top:auto">Omen · Rare</span></div>
+          <div style="display:flex;gap:6px"><button type="button" class="dest on">Omen spot 3</button></div>
+          <span style="font-size:12.5px;color:#a99c84;text-align:center">Omens always go face down</span>
+        </div>
+      </div>
+      <button type="button" style="height:48px;padding:0 28px;border-radius:10px;border:none;background:#dcbb80;color:#22180f;font-family:inherit;font-size:16px;font-weight:700;opacity:.55" disabled>Send all four · 2 still to decide</button>
+    </section>
+
+    <!-- reserve and omens -->
+    <aside aria-label="Your Reserve and omens" style="width:300px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px;color:#dcbb80">Reserve</h2><span style="font-size:14px">3 · + 10 undrawn</span></div>
+      <p style="margin:0;font-size:13px;color:#a99c84;line-height:1.45">Shuffled before the first duel. On a duel turn you may draw its top card and play it. Strong duel cards earn their keep here.</p>
+      <div class="row">The warp-spasm<small>Strike 4</small></div>
+      <div class="row">Ochain, the roaring shield<small>Armour 1</small></div>
+      <div class="row">Salmon leap<small>Block 2</small></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:10px"><h2 style="margin:0;font-family:'Uncial Antiqua', serif;font-weight:400;font-size:20px;color:#dcbb80">Omen spots</h2><span style="font-size:14px">2 / 4</span></div>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
+        <div style="height:64px;border-radius:8px;border:1px solid #6b5fa0;background:#221c30;padding:8px;box-sizing:border-box;font-size:13px">Culann's hound<br><span style="font-size:11.5px;color:#a99c84">face down</span></div>
+        <div style="height:64px;border-radius:8px;border:1px solid #6b5fa0;background:#221c30;padding:8px;box-sizing:border-box;font-size:13px">Emain's ward<br><span style="font-size:11.5px;color:#a99c84">face down</span></div>
+        <div style="height:64px;border-radius:8px;border:1px dashed #6b5fa0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#b4a6e0">Brigid's mantle →</div>
+        <div style="height:64px;border-radius:8px;border:1px dashed #3d3328;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#a99c84">empty</div>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
