@@ -103,9 +103,16 @@ def load(run):
     db.execute(f"CREATE TABLE sides ({K}, seat INTEGER, deck VARCHAR, foe VARCHAR, chose BOOLEAN, score DOUBLE, felled_for INTEGER, felled_against INTEGER, turns INTEGER)")
     db.execute(f"CREATE TABLE ledger ({K}, seat INTEGER, kind VARCHAR, source VARCHAR, value DOUBLE)")
     db.execute(f"CREATE TABLE present ({K}, seat INTEGER, card VARCHAR, how VARCHAR)")
-    for name, data in (("matches", m), ("sides", s), ("ledger", l), ("present", p)):
-        if data:
-            db.executemany(f"INSERT INTO {name} VALUES ({', '.join('?' * len(data[0]))})", data)
+    # bulk load: hand each table to DuckDB as a CSV in one go (row-by-row inserts take minutes)
+    import csv, tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, data in (("matches", m), ("sides", s), ("ledger", l), ("present", p)):
+            if not data:
+                continue
+            f = os.path.join(tmp, name + ".csv")
+            with open(f, "w", newline="") as fh:
+                csv.writer(fh).writerows(data)
+            db.execute(f"INSERT INTO {name} SELECT * FROM read_csv('{f}', header = false, nullstr = '')")
     return meta, db
 
 
