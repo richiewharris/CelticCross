@@ -162,6 +162,10 @@ export interface CombatState {
   cried?: number[];
   /** Ebb and flow given this enemy turn (trial "ebb1": once per enemy turn). */
   ebbed?: number[];
+  /** Drains dodged by resting at the western crossing this duel (only the computer's judgement reads it). */
+  dodged?: number[];
+  /** Rests in a row by each side, this duel (only the computer's judgement reads it). */
+  restRun?: number[];
   /** Duels to the death: each side's Armour (every Strike against it this much less; ignored by what ignores Shield). */
   armour?: number[];
   /** A blow waiting for the defender to block or take it: the attacker's chosen option. */
@@ -450,7 +454,7 @@ export function cloneCombat(C: CombatState): CombatState {
     guests: C.guests, focus: C.focus, focusTodo: C.focusTodo, felled: C.felled, endValour: C.endValour, startV: C.startV,
     cap: [C.cap[0], C.cap[1]], init: [C.init[0], C.init[1]], hit: [C.hit[0], C.hit[1]],
     champ: C.champ, champs: C.champs, hostAdj: C.hostAdj, sacrificed: [C.sacrificed[0], C.sacrificed[1]], summoned: [C.summoned[0], C.summoned[1]],
-    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], cried: C.cried ? [C.cried[0], C.cried[1]] : [0, 0], ebbed: C.ebbed ? [C.ebbed[0], C.ebbed[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
+    uses: C.uses.slice(), lastUse: C.lastUse.slice(), restsSince: C.restsSince.slice(), rested: C.rested ? [C.rested[0], C.rested[1]] : [0, 0], mound: C.mound ? [C.mound[0], C.mound[1]] : [0, 0], bleed: C.bleed ? [C.bleed[0], C.bleed[1]] : [0, 0], stagger: C.stagger ? [C.stagger[0], C.stagger[1]] : [0, 0], cried: C.cried ? [C.cried[0], C.cried[1]] : [0, 0], ebbed: C.ebbed ? [C.ebbed[0], C.ebbed[1]] : [0, 0], dodged: C.dodged ? [C.dodged[0], C.dodged[1]] : [0, 0], restRun: C.restRun ? [C.restRun[0], C.restRun[1]] : [0, 0], armour: C.armour ? [C.armour[0], C.armour[1]] : [0, 0], pending: C.pending ?? null, block: C.block ? [C.block[0], C.block[1]] : [0, 0], acts: [C.acts[0], C.acts[1]], drawn: C.drawn, drew: C.drew,
     endChamp: C.endChamp,
   };
 }
@@ -784,7 +788,7 @@ function startCombat(S: State) {
 export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats | null) {
   C.rested = [0, 0]; // a new duel: no rests yet
   C.armour = [0, 0];
-  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0]; C.stagger = [0, 0]; C.cried = [0, 0];
+  C.pending = null; C.block = [0, 0]; C.bleed = [0, 0]; C.stagger = [0, 0]; C.cried = [0, 0]; C.dodged = [0, 0]; C.restRun = [0, 0];
   C.duel = d;
   // the backwards round fights the second pair of heroes first
   C.hs = (d === 0) !== S.reversed ? [0, 6] : [3, 9];
@@ -1907,6 +1911,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     if (C.ebbed?.[0] || C.ebbed?.[1]) C.ebbed = [0, 0]; // the tide turns with the turn
     // the western crossing: the dead drain the living; a fighter that rested this turn is spared
     const dr = settingDef(S.rules.setting)?.drain ?? 0;
+    if (dr && RESTED_NOW.on && fighter(S, C, a).alignment !== "Sluagh") { const dd = [C.dodged?.[0] ?? 0, C.dodged?.[1] ?? 0]; dd[a] += dr; C.dodged = dd; }
     if (dr && !RESTED_NOW.on && C.valour[a] > 0 && fighter(S, C, a).alignment !== "Sluagh") {
       C.valour[a] -= dr;
       const o = (1 - a) as Side;
@@ -1914,6 +1919,7 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
       if (NARRATE.lines) say(`The dead of the western crossing drain ${fighter(S, C, a).name}: −${dr} Valour.`);
       if (fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
     }
+    { const rr = [C.restRun?.[0] ?? 0, C.restRun?.[1] ?? 0]; rr[a] = RESTED_NOW.on ? rr[a] + 1 : 0; C.restRun = rr; }
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
     RESTED_NOW.on = false;
     // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)

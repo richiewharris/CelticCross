@@ -6,7 +6,7 @@ import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
-import { chooseSetting } from "./settings";
+import { chooseSetting, settingDef } from "./settings";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
 
@@ -479,16 +479,30 @@ function deathEval(S: State, me: Side): number {
     }
     return best + C.nextStrike[p] + (h.ab.strikeAll ?? 0);
   };
-  const vm = C.valour[me] + 0.7 * C.shield[me] + 2 * (C.armour?.[me] ?? 0), vo = C.valour[o] + 0.7 * C.shield[o] + 2 * (C.armour?.[o] ?? 0);
+  // a drain dodged by resting isn't saved, only put off: the side still has to fight, and pay, later
+  const vm = C.valour[me] + 0.7 * C.shield[me] + 2 * (C.armour?.[me] ?? 0) - (C.dodged?.[me] ?? 0);
+  const vo = C.valour[o] + 0.7 * C.shield[o] + 2 * (C.armour?.[o] ?? 0) - (C.dodged?.[o] ?? 0);
+  // what a setting's drain takes from a side every turn it acts (the western crossing: the living, not the dead)
+  const drain = (p: Side) => (fighter(S, C, p).alignment === "Sluagh" ? 0 : settingDef(S.rules.setting)?.drain ?? 0);
   // turns each side needs to fell the other, roughly; fewer is better
-  const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o));
-  // a rested side's next Shield or Heal is stronger
-  const rest = 0.6 * ((C.rested?.[me] ?? 0) - (C.rested?.[o] ?? 0));
+  const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o) + drain(me));
+  // a rested side's next Shield or Heal is stronger, but a rest is a turn not spent fighting: when a side is losing
+  // the race (it needs more turns to fell the other than the other needs to fell it), resting only puts off the end
+  const restWorth = (p: Side, behind: number) => (C.rested?.[p] ?? 0) * (0.6 - 1.5 * Math.min(3, Math.max(0, behind)));
+  const rest = restWorth(me, tm - to) - restWorth(o, to - tm);
+  // short-term tactic or long-term strategy? One rest can set something up; a run of rests is a strategy, and it only
+  // works if resting gives back as much as the enemy takes each turn (Shield +1, and any heal on a rest). Otherwise
+  // every rest after the first is a turn handed to the enemy.
+  const backPerRest = (p: Side) => 1 + (fighter(S, C, p).ab.restHeal ?? 0) + (fighter(S, C, p).ab.restShield ?? 0);
+  const stall = (p: Side, foe: Side) => {
+    const run = C.restRun?.[p] ?? 0;
+    return run > 1 && pot(foe) > backPerRest(p) ? 2.5 * (run - 1) * Math.min(2, pot(foe) - backPerRest(p)) : 0;
+  };
   // what a mound can still soak is nearly Valour in hand
   const mound = (p: Side) => 2.4 * (C.mound?.[p] ?? 0);
   // the Hound's cry spends a Reserve card: about a draw's worth
   const cry = 1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0));
-  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o) - cry;
+  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o) - cry - stall(me, o) + stall(o, me);
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */
 function topCards(S: State, p: Side): { uid: number; w: number }[] {
