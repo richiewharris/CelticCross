@@ -12,7 +12,7 @@ const ENGINE = fileURLToPath(new URL("../../../src/games/roth/engine/", import.m
 /** A hash of the engine's source (not its tests): two runs with the same hash played under the same code. */
 export function engineHash(): string {
   const h = createHash("sha256");
-  for (const f of readdirSync(ENGINE).filter((f) => f.endsWith(".ts") || f.endsWith(".json")).sort()) {
+  for (const f of readdirSync(ENGINE).filter((f) => (f.endsWith(".ts") || f.endsWith(".json")) && f !== "insights.json").sort()) {
     h.update(f);
     h.update(readFileSync(join(ENGINE, f)));
   }
