@@ -29,6 +29,9 @@ export function isElement(x: unknown): x is Element { // the four of the wheel (
 
 /** Hero qualities, all optional. */
 export interface HeroAb {
+  /** Sim only (the target dummies): felled, it rises at once at its starting Valour and the duel goes on to its turn
+   *  limit; each rising is counted (ledger n:undying, credited to the side that felled it). */
+  undying?: boolean;
   strikeAll?: number; // all its Strikes +n
   rally?: { at: number; n: number }; // at <= `at` Valour, Strikes +n more
   avenger?: number; // Strikes +n once your other hero has fallen

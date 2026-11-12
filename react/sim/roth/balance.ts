@@ -28,7 +28,7 @@ interface Rec {
   st: MatchStats; i: number; seed: number; setting: string | null; decisions: DecisionRow[];
 }
 /** The per-blow trace's columns, in the order the cube stores them (one array per blow). */
-export const BLOW_COLS: (keyof BlowRow)[] = ["side", "duel", "src", "el", "spirit", "pierce", "printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting", "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger", "final"];
+export const BLOW_COLS: (keyof BlowRow)[] = ["side", "duel", "turn", "src", "el", "spirit", "pierce", "printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting", "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger", "final"];
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
 /** Which matches a change can reach: any whose setting is one of these, or that has one of these decks in it. */
 interface Touch { setting?: string[]; deck?: string[] }

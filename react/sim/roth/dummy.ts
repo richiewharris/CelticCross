@@ -8,8 +8,8 @@
 //                Block of the field's average size; no champions, geasa, oaths or omens. It measures a people against
 //                an average opponent that does hit back.
 //
-// The averages come from the six starter decks (4 heroes, Valour 4.6 and Initiative 3 on average; 9 supports: about
-// 6.5 Strikes of 1.8, 1.7 Heals of 1.5, 1 Block of 2.4). Register them with registerDummies() and play them like any
+// The averages come from the six starter decks (4 heroes, Valour 4.6 and Initiative 3 on average; supports in the
+// field's proportions of Strikes, Heals and Blocks, at the size they land once kinship and Focus are added). Register them with registerDummies() and play them like any
 // deck (balance.ts --against dummy_post); the post is played by PostPolicy.
 import { DECKS, type CardDef, type Effect, type HeroDef, type SupportDef } from "../../src/games/roth/engine/cards";
 import type { Decision, Policy, State } from "../../src/games/roth/engine/engine";
@@ -20,14 +20,21 @@ export const DUMMY = {
   valour: [5, 5, 4, 4],
   init: 3,
   /** The sparring partner's supports: [effect, size, how many]. */
-  spar: [["strike", 2, 4], ["strike", 1, 2], ["heal", 2, 1], ["heal", 1, 1], ["block", 2, 1]] as [string, number, number][],
+  // At the size a real people's blows land (printed plus kinship and Focus: about 4), and 14 of them, so its Reserve
+  // lasts as long as a real deck's (with 9 it ran dry and paid to reuse cards all match).
+  spar: [["strike", 4, 6], ["strike", 3, 3], ["heal", 3, 2], ["heal", 2, 1], ["block", 2, 2]] as [string, number, number][],
   /** The post's supports: this many Strike 0 (it must have something to do on its turn other than rest). */
   postSupports: 9,
+  /** 1: felled, a dummy rises again at its starting Valour (the duel runs to its turn limit); 0: it stays down. */
+  undying: 1,
 };
 
+/** Undying (the default): felled, a dummy rises again at once, so a duel runs its full length and every turn of it is
+ *  a sample of the exchange. Set "undying": 0 in ROTH_DUMMY for dummies that stay down. */
+const undying = (_id: string) => (dummyParams().undying ?? 1) > 0;
 const hero = (id: string, valour: number, init: number): HeroDef => ({
   type: "hero", id, name: `Dummy ${id.slice(-1)}`, alignment: "None", rarity: "common", valour, init,
-  focus: null, weakness: null, quality: "No strengths, no weaknesses", tag: null, ab: {},
+  focus: null, weakness: null, quality: "No strengths, no weaknesses", tag: null, ab: { undying: undying(id) },
 });
 const sup = (id: string, name: string, effects: Effect[], extra: Partial<SupportDef> = {}): SupportDef => ({
   type: "support", id, name, element: null, kind: null, alignment: "Unaligned", rarity: "common", effects, text: name, ...extra,

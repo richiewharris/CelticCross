@@ -221,6 +221,8 @@ export interface Result {
  *  and the caps cut, what the defence took off, what the halving and the aura cut, and what a stagger added. */
 export interface BlowRow {
   side: number; duel: number; src: string; el: string | null; spirit: number; pierce: number;
+  /** The turn of the duel it was struck on. */
+  turn: number;
   printed: number; base: number; kin: number; focus: number; watch: number; wheel: number; weak: number; fx: number; setting: number; extra: number;
   atk: number; floor: number; cap: number; ward: number; block: number; resist: number; armour: number; mound: number; shield: number;
   halved: number; aura: number; stagger: number; final: number;
@@ -231,12 +233,19 @@ export const TRACE = { on: false, cur: null as Partial<BlowRow> | null };
 export interface DuelRow {
   duel: number; fighters: [string, string]; init: [number, number]; first: number; startV: [number, number]; endV: [number, number];
   felled: [number, number]; turns: number; hand: [number, number]; reserve: [number, number];
+  /** What each side dealt, saved, healed and paid in this duel (Valour; from the ledger), what weariness took from
+   *  it, and how often it fell (and rose again: undying dummies, or every fighter under sim.undyingAll). */
+  deal: [number, number]; save: [number, number]; heal: [number, number]; cost: [number, number]; weary: [number, number]; falls: [number, number];
 }
 export interface MatchStats {
   /** Every blow, when TRACE is on. */
   blows?: BlowRow[];
   /** Every duel. */
   duels?: DuelRow[];
+  /** Running totals by ledger kind (deal, save, heal, cost, weary, fall), per side: what the duel rows difference. */
+  run?: Record<string, [number, number]>;
+  /** The running totals as the current duel began. */
+  runAtDuel?: Record<string, [number, number]>;
   exchanges: number[];
   actions: { omen: number; bind: number; supplant: number; hold: number; swear: number; attend: number };
   champions: number;
@@ -1289,7 +1298,10 @@ export const DREAMS = 1;
 const NO_CAP = 1000;
 export const REST_SHIELD = 1;
 /** Valour lost at the end of each turn of a long duel: 1 after the 20th turn, 2 after the 40th. */
-export const weariness = (turn: number): number => (turn >= 40 ? 2 : turn >= 20 ? 1 : 0);
+export const weariness = (turn: number, R?: Rules): number => {
+  const n = R ? param(R, "duel.weariness") : 1, at = R ? param(R, "duel.wearyAfter") : 20;
+  return n && turn >= 2 * at ? 2 * n : n && turn >= at ? n : 0;
+};
 /** Set while a rest is resolving, so the turn's end keeps the side's rested count. */
 const RESTED_NOW = { on: false };
 export const HALF = { up: true };
@@ -1332,6 +1344,12 @@ function led(S: State, C: CombatState, p: Side | number, key: string, v: number)
   if (!v || !S.stats || C !== S.combat) return;
   const L = (S.stats.ledger ??= {});
   (L[key] ??= [0, 0])[p] += v;
+  // running totals by kind, for the duel rows (Shield raised is counted when it soaks, under save:shield)
+  const kind = key.slice(0, key.indexOf(":"));
+  if (kind === "deal" || kind === "save" || kind === "heal" || kind === "cost" || key === "n:fall" || key === "n:weary") {
+    const R = (S.stats.run ??= {});
+    (R[kind === "n" ? key.slice(2) : kind] ??= [0, 0])[p] += v;
+  }
 }
 /** The Aos Sídhe's mound: like Armour, it takes MOUND_AC off every blow against an Aos Sídhe fighter (even one that
  *  ignores Shield and Armour), until it has soaked MOUND_VALOUR in all, over the whole match. */
@@ -1478,7 +1496,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (dmg > 0 && C.stagger?.[b]) { const k = param(S.rules, "people.ulster.stagger") || 1; dmg += k; if (T) T.stagger = k; led(S, C, a, "deal:people:stagger", k); }
   if (T) {
     const z = (k: keyof BlowRow) => ((T as Record<string, number>)[k] ?? 0);
-    const row = { side: a, duel: C.duel, src: SRC.id || "?", el: SPIRIT_BLOW.on ? "Spirit" : el, spirit: spirit ? 1 : 0, pierce: pierce ? 1 : 0 } as BlowRow;
+    const row = { side: a, duel: C.duel, turn: C.turn, src: SRC.id || "?", el: SPIRIT_BLOW.on ? "Spirit" : el, spirit: spirit ? 1 : 0, pierce: pierce ? 1 : 0 } as BlowRow;
     for (const k of ["printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting", "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger"] as const) (row as unknown as Record<string, number>)[k] = z(k);
     row.final = dmg;
     (S.stats!.blows ??= []).push(row);
@@ -2004,10 +2022,20 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }
     RESTED_NOW.on = false;
     // weariness: a long duel wears both down, so no stalemate lasts (Shield and Armour don't help)
-    const w = weariness(C.turn);
+    const w = weariness(C.turn, S.rules);
     if (w && C.valour[a] > 0) {
       C.valour[a] -= w;
+      led(S, C, a, "n:weary", w);
       if (NARRATE.lines) say(`${fighter(S, C, a).name} is weary: −${w} Valour.`);
+    }
+  }
+  // a target dummy (sim only) never stays down: it rises at its starting Valour, and the felling is counted
+  for (const p of [0, 1] as Side[]) {
+    if (C.valour[p] <= 0 && (fighter(S, C, p).ab.undying || param(S.rules, "sim.undyingAll") > 0)) {
+      led(S, C, p, "n:fall", 1);
+      led(S, C, p, "n:overkill", -C.valour[p]);
+      C.valour[p] = C.startV[C.duel]?.[p] ?? 1;
+      if (NARRATE.lines) say(`${fighter(S, C, p).name} rises again.`);
     }
   }
   C.turn++;
@@ -2025,10 +2053,14 @@ function endDuel(S: State, C: CombatState, stats: MatchStats | null) {
   if (stats) stats.exchanges.push(C.turn);
   if (stats && C === S.combat) {
     const fs = [fighter(S, C, 0), fighter(S, C, 1)];
+    const now = stats.run ?? {}, was = stats.runAtDuel ?? {};
+    const diff = (k: string): [number, number] => [0, 1].map((p) => (now[k]?.[p] ?? 0) - (was[k]?.[p] ?? 0)) as [number, number];
+    stats.runAtDuel = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, [v[0], v[1]] as [number, number]]));
     (stats.duels ??= []).push({
       duel: d, fighters: [fs[0].id, fs[1].id], init: [C.init[0], C.init[1]], first: C.first, startV: [C.startV[d][0], C.startV[d][1]],
       endV: [e[d][0], e[d][1]], felled: [f[d][0] ? 1 : 0, f[d][1] ? 1 : 0], turns: C.turn,
       hand: [S.players[0].hand.length, S.players[1].hand.length], reserve: [S.players[0].reserve.length, S.players[1].reserve.length],
+      deal: diff("deal"), save: diff("save"), heal: diff("heal"), cost: diff("cost"), weary: diff("weary"), falls: diff("fall"),
     });
   }
   if (d === 0) startDuel(S, C, 1, stats);

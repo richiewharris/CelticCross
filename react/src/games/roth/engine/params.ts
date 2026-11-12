@@ -12,6 +12,10 @@ export const PARAMS = {
   // ---- duels to the death
   /** Valour every fighter gets at the start of each duel (the ford's +3; a setting's own value, unless set here). */
   "duel.fordValour": 3,
+  /** Weariness: from turn wearyAfter of a duel each fighter loses n a turn, and 2n from twice that (0 = off)... */
+  "duel.weariness": 1,
+  /** ...starting at this turn of the duel (both sides' turns counted). */
+  "duel.wearyAfter": 20,
   /** A geis costs its break every time it is broken, instead of breaking once (1 = on in duels to the death). */
   "geis.eachTime": 1,
 
@@ -82,6 +86,10 @@ export const PARAMS = {
   "people.connacht.bleedCap": 1,
   /** Fomóire: giant-kin, half the wounds of any blow but their weakness (1 = on). */
   "people.fomoire.giantKin": 1,
+
+  // ---- measurement (sims only; off in play)
+  /** Every fighter, not just a target dummy, rises again when felled, so every duel runs its full turn limit. */
+  "sim.undyingAll": 0,
 
   // ---- layers: which kinds of card are in the game at all (1 = in, 0 = taken out of both decks)
   "layer.champion": 1,

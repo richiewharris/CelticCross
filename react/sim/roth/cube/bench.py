@@ -62,6 +62,15 @@ def collect(runs, dummy):
         for row in db.execute(q).fetchall():
             for c, v in zip(cols, row[1:]):
                 out[row[0]][c] += v or 0
+        # what each people's defence took off the dummy's blows
+        q2 = f"""SELECT s.deck, count(*), {", ".join(f"sum(b.{c})" for c in DEF)} FROM blows b
+                 JOIN sides s ON s.run = b.run AND s.a = b.a AND s.b = b.b AND s.i = b.i AND s.seat <> b.seat
+                WHERE s.foe = '{dummy}' AND s.deck <> '{dummy}' GROUP BY 1"""
+        for row in db.execute(q2).fetchall():
+            dd = out[row[0]].setdefault("_def", defaultdict(float))
+            dd["n"] += row[1]
+            for c, v in zip(DEF, row[2:]):
+                dd[c] += v or 0
     return out
 
 
@@ -83,12 +92,14 @@ def main():
                   f"    {x['atk'] / nb:+.2f}   -{sum(x[c] for c in DEF) / nb:.2f}")
     if spar:
         Q = collect(spar, "dummy_spar")
-        print(f"\nAgainst the sparring partner (runs {', '.join(spar)}):")
-        print(f"  {'people':9} {'win':>6} {'duel':>6} {'dealt/turn':>10} {'taken/turn':>10} {'healed':>7} {'turns/duel':>10}")
-        for d, x in sorted(Q.items(), key=lambda kv: -kv[1]["score"] / kv[1]["m"]):
-            print(f"  {d:9} {100 * x['score'] / x['m']:5.1f}% {100 * x['won'] / max(1, x['duels']):5.1f}% {x['fin'] / max(1, x['turns']):10.2f} {x['taken'] / max(1, x['turns']):10.2f}"
-                  f" {x['healed'] / x['m']:7.1f} {x["turns"] / max(1, x["duels"]):10.1f}")
-
+        print(f"\nAgainst the sparring partner: rates, not wins (runs {', '.join(spar)}):")
+        print(f"  {'people':9} {'dealt/turn':>10} {'taken/turn':>10} {'healed/turn':>11} {'net/turn':>8} {'turns/duel':>10}   its defence per blow taken (ward block resist armour mound shield halved aura)")
+        for d, x in sorted(Q.items(), key=lambda kv: -(kv[1]["fin"] - kv[1]["taken"] + kv[1]["healed"]) / max(1, kv[1]["turns"])):
+            t = max(1, x["turns"])
+            dfn = x.get("_def", {})
+            nb = max(1, dfn.get("n", 0))
+            print(f"  {d:9} {x['fin'] / t:10.2f} {x['taken'] / t:10.2f} {x['healed'] / t:11.2f} {(x['fin'] - x['taken'] + x['healed']) / t:8.2f} {x['turns'] / max(1, x['duels']):10.1f}"
+                  f"   {sum(dfn.get(c, 0) for c in DEF) / nb:.2f} (" + " ".join(f"{dfn.get(c, 0) / nb:.2f}" for c in DEF) + ")")
 
 if __name__ == "__main__":
     main()
