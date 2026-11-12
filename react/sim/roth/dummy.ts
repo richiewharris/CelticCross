@@ -48,9 +48,15 @@ export function dummyDeck(which: "post" | "spar", D = DUMMY): CardDef[] {
   return deck;
 }
 
+/** The dummies' numbers for this process: DUMMY, with any values from the ROTH_DUMMY environment variable (JSON, e.g.
+ *  {"valour":[6,6,5,5]}); balance.ts --dummy sets it for its workers and records it in the cube run. */
+export function dummyParams(): typeof DUMMY {
+  return { ...DUMMY, ...(process.env.ROTH_DUMMY ? JSON.parse(process.env.ROTH_DUMMY) : {}) };
+}
 export function registerDummies() {
-  DECKS.dummy_post ??= dummyDeck("post");
-  DECKS.dummy_spar ??= dummyDeck("spar");
+  const D = dummyParams();
+  DECKS.dummy_post = dummyDeck("post", D);
+  DECKS.dummy_spar = dummyDeck("spar", D);
 }
 export const isDummy = (deck: string) => deck.startsWith("dummy_");
 

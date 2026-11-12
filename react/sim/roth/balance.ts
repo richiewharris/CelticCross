@@ -14,10 +14,12 @@ import { newMatch, playOut, TRACE, type BlowRow, type MatchStats, type Policy, t
 import { DECISIONS, makePolicy, type DecisionRow } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 import { pickSettingId } from "../../src/games/roth/engine/ai";
-import { PostPolicy, registerDummies } from "./dummy";
+import { dummyParams, PostPolicy, registerDummies } from "./dummy";
 import { param } from "../../src/games/roth/engine/params";
 
-// the target dummies (dummy_post, dummy_spar) play like any deck; see sim/roth/dummy.ts
+// the target dummies (dummy_post, dummy_spar) play like any deck; see sim/roth/dummy.ts. --dummy '{"valour":[6,6,5,5]}'
+// changes their numbers (the workers inherit it through the environment).
+{ const i = process.argv.indexOf("--dummy"); if (i >= 0) process.env.ROTH_DUMMY = process.argv[i + 1]; }
 registerDummies();
 
 interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules>; touch?: Touch }
@@ -142,7 +144,7 @@ async function main() {
       // the measurement layer: every duel, every blow step by step (columns: meta.blowCols), every decision weighed
       duels: r.st.duels ?? [], blows: (r.st.blows ?? []).map((b) => BLOW_COLS.map((k) => b[k])),
       decisions: r.decisions.map((d) => [d.kind, d.side, d.eval, d.options, r3(d.best), r3(d.second), d.chose]),
-    })), { blowCols: BLOW_COLS, decisionCols: ["kind", "side", "eval", "options", "best", "second", "chose"] });
+    })), { blowCols: BLOW_COLS, decisionCols: ["kind", "side", "eval", "options", "best", "second", "chose"], ...(against.startsWith("dummy_") ? { dummy: dummyParams() } : {}) });
     console.log(`(cube run ${id}${base ? `, on top of ${base} for the matches it didn't touch` : ""}: python3 sim/roth/cube/cube.py table ${id})`);
     if (base) {
       console.log(`Only the ${recs.length} matches the change reaches were played; the table below covers just those. For the whole table: python3 sim/roth/cube/cube.py table ${id}`);
