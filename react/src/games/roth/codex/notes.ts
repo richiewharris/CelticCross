@@ -49,6 +49,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "Conall Cernach is the avenger: **+1** against big heroes (printed Valour 5+), and **+1 more** in the second duel if your first hero fell. He belongs on a second-duel spot (4 or 10).",
       "Conchobar and Emer are slow Word heroes in a deck with no Words, so they fight on kinship. Conchobar's King's due lets him **borrow** an unused support from your other quadrant; Emer **heals 2** when she rests.",
       "The warp-spasm is **Strike 4** but costs your hero **1 Valour**. Save it for the blow that fells.",
+      "**The Samhain watch**: in a duel to the death, an Ulster hero's Strikes are **+1 against the dead** (a fighter whose Focus is Spirit: the Slúagh hosts). The Ulaid kept watch at Samhain, when the host of the dead rides.",
       "**The Hound's cry**: in a duel to the death, once a duel, an Ulster blow that ignores Shield (Thunder feat, Gáe Bolga) may spend the **top card of your Reserve** to go through a giant's hide: the Fomóire take it in full instead of half. Save it for the biggest blow.",
     ],
     watch: [

@@ -1,7 +1,7 @@
 // Charm, the veiled Aos Sídhe, and the Slúagh hosts' sacrifice and summon.
 import { describe, expect, it } from "vitest";
 import { ALL_DEFS, composeHost, type HostDef, type MonsterDef } from "../cards";
-import { applyDecision, asHybrid, fighter, hostActs, nextDecision, type Side, type State } from "../engine";
+import { applyDecision, asHybrid, fighter, hostActs, nextDecision, primaryBonus, type Side, type State } from "../engine";
 import { card, combatState } from "./helpers";
 
 const host = (h: string, ...ms: string[]) => composeHost(ALL_DEFS[h] as HostDef, ms.map((m) => ALL_DEFS[m] as MonsterDef));
@@ -77,6 +77,18 @@ describe("Slúagh hosts in combat", () => {
     expect(h.type === "hero" && h.weaknesses).toEqual(["Fire"]);
     expect(C.valour[1]).toBe(before + (ALL_DEFS.puca as MonsterDef).valour);
     expect(hostActs(S, C, 1).some((o) => o.t === "sacrifice")).toBe(false); // once a duel
+  });
+  it("the Samhain watch: an Ulaid hero's Strikes are +1 against the dead, in a duel to the death", async () => {
+    const { newCombat } = await import("../engine");
+    const thunder = ALL_DEFS.thunder as Parameters<typeof primaryBonus>[3];
+    const bonus = (rules: Record<string, unknown>) => {
+      const S = mk();
+      S.rules = { ...S.rules, ...rules };
+      S.combat = newCombat(S);
+      return primaryBonus(S, S.combat, 0, thunder, true);
+    };
+    expect(bonus({ duels: "death" }) - bonus({ duels: "death", ulaidVsSpirit: 0 })).toBe(1);
+    expect(bonus({}) - bonus({ ulaidVsSpirit: 0 })).toBe(0); // not in a shorter duel
   });
   it("summon spends the top card of the Reserve where it costs (a duel to the death), and needs one", async () => {
     const { newCombat } = await import("../engine");

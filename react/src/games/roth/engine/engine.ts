@@ -35,7 +35,8 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
   drainNoFeed?: boolean;
-  /** Trial: an Ulaid hero's Strike +n against a fighter whose Focus is Spirit (the dead). */
+  /** The Samhain watch: an Ulaid hero's Strike +n against a fighter whose Focus is Spirit (the dead). Default: 1 in a
+   *  duel to the death (SAMHAIN_WATCH); 0 switches it off. */
   ulaidVsSpirit?: number;
   /** A Slúagh host's summon spends the top card of the Reserve (and needs one to spend). Default: on in a duel to the death. */
   summonCost?: boolean;
@@ -1497,6 +1498,8 @@ export function baseEffects(s: SupportDef, h: FighterDef, e: FighterDef, firstSu
   if (s.vsBig && e.valour >= 5) effs[0].n += s.vsBig;
   return effs;
 }
+/** The Samhain watch: the Ulaid kept watch against the host of the dead. */
+export const SAMHAIN_WATCH = 1;
 /** +1 bonuses for the primary effect (step 4) and Reinforcement (step 5, the omen). */
 export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, isStrike: boolean): number {
   const b = (1 - a) as Side;
@@ -1507,8 +1510,9 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
   if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
-  if (isStrike && toDeath(S) && S.rules.ulaidVsSpirit && h.alignment === "Ulaid" && focusOf(C, b, e) === "Spirit") {
-    n += S.rules.ulaidVsSpirit; if (N) N.push(`${sgn(S.rules.ulaidVsSpirit)} the Ulaid against the dead (${e.name}'s Focus is Spirit)`);
+  const watch = toDeath(S) ? S.rules.ulaidVsSpirit ?? SAMHAIN_WATCH : 0;
+  if (isStrike && watch && h.alignment === "Ulaid" && focusOf(C, b, e) === "Spirit") {
+    n += watch; if (N) N.push(`${sgn(watch)} the Samhain watch (${e.name}'s Focus is Spirit)`);
   }
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
