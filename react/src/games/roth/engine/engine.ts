@@ -1910,7 +1910,9 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     if (C.bleed?.[a]) { C.bleed = [C.bleed[0], C.bleed[1]]; C.bleed[a] = 0; } // the bleeding stops after its turn
     if (C.ebbed?.[0] || C.ebbed?.[1]) C.ebbed = [0, 0]; // the tide turns with the turn
     // the western crossing: the dead drain the living; a fighter that rested this turn is spared
-    const dr = settingDef(S.rules.setting)?.drain ?? 0;
+    // ...only while it is above half its starting Valour: the dead wear the living down but can't finish them
+    const dr0 = settingDef(S.rules.setting)?.drain ?? 0;
+    const dr = dr0 && C.valour[a] * 2 > (C.startV[C.duel]?.[a] ?? 0) ? dr0 : 0;
     if (dr && RESTED_NOW.on && fighter(S, C, a).alignment !== "Sluagh") { const dd = [C.dodged?.[0] ?? 0, C.dodged?.[1] ?? 0]; dd[a] += dr; C.dodged = dd; }
     if (dr && !RESTED_NOW.on && C.valour[a] > 0 && fighter(S, C, a).alignment !== "Sluagh") {
       C.valour[a] -= dr;
