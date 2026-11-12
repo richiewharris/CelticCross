@@ -1,6 +1,6 @@
 // Five-deck balance: every deck against every other (and itself), seats swapped evenly.
 //   npx tsx sim/roth/balance.ts [--level skilled] [--n 400] [--workers 2] [--seed 1] [--cards] [--rules '{"capOver":1}'] [--dump recs.jsonl]
-//     [--cube sim/roth/cube/data] [--no-cube] [--base <run id> --touch setting=crossing,deck=sluagh]
+//     [--cube sim/roth/cube/data] [--no-cube] [--base <run id> --touch setting=crossing,deck=sluagh] [--against dummy_post]
 // Every run is written to the cube (sim/roth/cube): one row per match, with the setting, seats, seed and ledger, tagged
 // with the rules and a hash of the engine. With --base and --touch, only the matches a change can reach are played
 // (those whose setting, or whose decks, match a --touch term); the rest are taken from the base run, so a narrow change
@@ -14,6 +14,10 @@ import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side 
 import { makePolicy } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 import { pickSettingId } from "../../src/games/roth/engine/ai";
+import { PostPolicy, registerDummies } from "./dummy";
+
+// the target dummies (dummy_post, dummy_spar) play like any deck; see sim/roth/dummy.ts
+registerDummies();
 
 interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules>; touch?: Touch }
 interface Rec {
@@ -46,7 +50,7 @@ function runOne(j: Job, i: number): Rec {
   const seed = hashSeed(j.seed, `${j.a}-${j.b}-${j.level}-${j.levelB}`, i);
   const S = newMatch([DECKS[decks[0]], DECKS[decks[1]]], j.rules, seed);
   const lv = aSide === 0 ? [j.level, j.levelB] : [j.levelB, j.level];
-  const pols = lv.map((l) => makePolicy(l, { N: 8, K: 2 })) as [Policy, Policy];
+  const pols = lv.map((l, k) => (decks[k] === "dummy_post" ? new PostPolicy(makePolicy(l, { N: 8, K: 2 })) : makePolicy(l, { N: 8, K: 2 }))) as [Policy, Policy];
   const r = playOut(S, pols, [new Rng(hashSeed(seed, "p1")), new Rng(hashSeed(seed, "p2"))], false);
   return { a: j.a, b: j.b, aSide, w: r.winner, by: r.decidedBy, felled: r.felled, wounds: r.valour, st: S.stats!, i, seed, setting: S.rules.setting ?? null };
 }
@@ -88,6 +92,11 @@ async function main() {
 
   const jobs: Job[] = [];
   const chunk = level === "expert" ? 2 : 50;
+  // --against X: each deck plays only X (a target dummy, say), not the rest of the field.
+  const against = str("against", "");
+  if (against) {
+    for (const d of decks) if (d !== against) for (let i = 0; i < n; i += chunk) jobs.push({ a: d, b: against, from: i, to: Math.min(n, i + chunk), level, levelB, seed, rules, touch });
+  } else
   // With two levels, run every ordered pair so each level plays each deck equally.
   for (let x = 0; x < decks.length; x++) for (let y = levelB !== level ? 0 : x; y < decks.length; y++) {
     for (let i = 0; i < n; i += chunk) jobs.push({ a: decks[x], b: decks[y], from: i, to: Math.min(n, i + chunk), level, levelB, seed, rules, touch });
@@ -120,7 +129,7 @@ async function main() {
   // ---- the cube: one row per match, tagged with the rules and the engine it was played under
   if (!args.includes("--no-cube")) {
     const { writeCubeRun } = await import("./cube/write");
-    const id = writeCubeRun(str("cube", "sim/roth/cube/data"), { rules, seed, n, level, levelB, decks, base: base || null, touch: touch ?? null }, recs.map((r) => ({
+    const id = writeCubeRun(str("cube", "sim/roth/cube/data"), { rules, seed, n, level, levelB, decks: against && !decks.includes(against) ? [...decks, against] : decks, base: base || null, touch: touch ?? null }, recs.map((r) => ({
       i: r.i, a: r.a, b: r.b, aSide: r.aSide, p1: r.aSide === 0 ? r.a : r.b, p2: r.aSide === 0 ? r.b : r.a, setting: r.setting, w: r.w, by: r.by,
       felled: r.felled, seed: r.seed, ledger: r.st.ledger, exchanges: r.st.exchanges,
       placed: r.st.placed.map((p) => ({ side: p.side, id: p.id, how: p.how })), used: r.st.used.map((u) => ({ side: u.side, id: u.id })),
