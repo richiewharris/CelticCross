@@ -1,0 +1,23 @@
+{
+ "id": "2026-11-12-90889fa8",
+ "created": "2026-11-12T18:07:17.092Z",
+ "engine": "beaec16f2ab3",
+ "matches": 1260,
+ "rules": {
+  "dreams": 1
+ },
+ "seed": 1,
+ "n": 60,
+ "level": "skilled",
+ "levelB": "skilled",
+ "decks": [
+  "ulster",
+  "connacht",
+  "sidhe",
+  "fomoire",
+  "merrow",
+  "sluagh"
+ ],
+ "base": null,
+ "touch": null
+}
