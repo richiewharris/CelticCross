@@ -5,6 +5,7 @@ import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, typ
 import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
+  summonCosts,
 } from "./engine";
 import { chooseSetting, SETTINGS, settingDef } from "./settings";
 import INSIGHTS from "./insights.json";
@@ -524,8 +525,8 @@ function deathEval(S: State, me: Side): number {
   const mound = (p: Side) => 2.4 * (C.mound?.[p] ?? 0);
   // the Hound's cry spends a Reserve card: about a draw's worth
   const cry = 1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0));
-  // a summon that spends a Reserve card (the trial rule) costs about a draw too
-  const sumc = S.rules.summonCost ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0;
+  // a summon spends a Reserve card: about a draw too
+  const sumc = summonCosts(S) ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0;
   return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o) - cry - sumc - stall(me, o) + stall(o, me);
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */

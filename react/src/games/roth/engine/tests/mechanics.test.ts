@@ -78,6 +78,28 @@ describe("Slúagh hosts in combat", () => {
     expect(C.valour[1]).toBe(before + (ALL_DEFS.puca as MonsterDef).valour);
     expect(hostActs(S, C, 1).some((o) => o.t === "sacrifice")).toBe(false); // once a duel
   });
+  it("summon spends the top card of the Reserve where it costs (a duel to the death), and needs one", async () => {
+    const { newCombat } = await import("../engine");
+    const S = mk();
+    S.rules = { ...S.rules, summonCost: true };
+    S.combat = newCombat(S);
+    const C = S.combat;
+    C.first = 1; C.turn = 0;
+    const P = S.players[1];
+    P.reserve = [card("cold_touch", 1), card("grave_dirt", 1)];
+    const top = P.reserve[0], n0 = P.reserve.length, d0 = P.discard.length;
+    expect(top).toBeTruthy();
+    pick(S, (o) => o.t === "summon" && o.id === "fear_dearg");
+    expect(P.reserve.length).toBe(n0 - 1);
+    expect(P.discard.length).toBe(d0 + 1);
+    expect(P.discard[P.discard.length - 1]).toBe(top);
+    // with nothing left to spend, no summon is offered
+    const S2 = mk();
+    S2.rules = { ...S2.rules, summonCost: true };
+    S2.combat = newCombat(S2);
+    S2.players[1].reserve = []; S2.players[1].discard = [];
+    expect(hostActs(S2, S2.combat, 1).some((o) => o.t === "summon")).toBe(false);
+  });
   it("summon: a monster comes from the other host, once a match", async () => {
     const { newCombat } = await import("../engine");
     const S = mk();

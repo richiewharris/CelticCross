@@ -35,7 +35,7 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
   drainNoFeed?: boolean;
-  /** Trial: a Slúagh host's summon spends the top card of the Reserve (and needs one to spend). */
+  /** A Slúagh host's summon spends the top card of the Reserve (and needs one to spend). Default: on in a duel to the death. */
   summonCost?: boolean;
   /** Trial: the western crossing drains only a fighter whose foe is Slúagh. */
   drainVsSluagh?: boolean;
@@ -1051,13 +1051,15 @@ function otherHostSpot(S: State, C: CombatState, a: Side): number | null {
   return os;
 }
 /** A Slúagh host's own actions: sacrifice one of its monsters (once a duel), or summon one from its other host (once a match). */
+/** Does a summon spend a Reserve card? (On by default in a duel to the death.) */
+export const summonCosts = (S: State) => S.rules.summonCost ?? toDeath(S);
 export function hostActs(S: State, C: CombatState, a: Side): Option[] {
   if (C.champ[a]) return [];
   const h = fighter(S, C, a);
   if (h.type !== "hero" || !h.host) return [];
   const out: Option[] = [];
   if (!C.sacrificed[a] && h.host.members.length >= 2) for (const m of h.host.members) out.push({ t: "sacrifice", id: m.id });
-  if (!C.summoned[a] && (!S.rules.summonCost || drawable(S, a) > 0)) {
+  if (!C.summoned[a] && (!summonCosts(S) || drawable(S, a) > 0)) {
     const os = otherHostSpot(S, C, a);
     if (os !== null) {
       const other = hostAt(S, C, os);
@@ -1252,7 +1254,7 @@ export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow
  *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
 export const MERROW_DEFAULT = "water";
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
-export const DREAMS = 2;
+export const DREAMS = 1;
 const NO_CAP = 1000;
 export const REST_SHIELD = 1;
 /** Valour lost at the end of each turn of a long duel: 1 after the 20th turn, 2 after the 40th. */
@@ -1804,7 +1806,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       led(S, C, a, "heal:people:summon", v);
       const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
       const sm = C.summoned.slice(); sm[a] = true; C.summoned = sm;
-      if (S.rules.summonCost) {
+      if (summonCosts(S)) {
         if (C === S.combat) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
         led(S, C, a, "n:summonCost", 1);
         if (NARRATE.lines) say(`The summoning spends the top card of the Reserve.`);
