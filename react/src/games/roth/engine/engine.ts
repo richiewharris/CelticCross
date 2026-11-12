@@ -1234,9 +1234,8 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
 /** Duels to the death: extra Valour at the ford, no heal cap, and what a rest gives. */
 export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
-/** Resistance to Spirit blows, by people: the otherworldly take 2 off. (Merrow's −1 was dropped: running water and
- *  its Shield holding against Spirit are enough.) */
-export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : 0);
+/** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
+export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
 /** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block.
  *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
 export const MERROW_DEFAULT = "water";
@@ -1862,7 +1861,8 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         // the Slúagh walk in dreams: when their enemy rests, they feed on its sleep
         const o = (1 - a) as Side;
         const dr = S.rules.dreams ?? DREAMS;
-        if (toDeath(S) && dr > 0 && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
+        // ...but not at the western crossing, where the dead drain the waking instead
+        if (toDeath(S) && dr > 0 && !settingDef(S.rules.setting)?.drain && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
           if (NARRATE.lines) say(`${fighter(S, C, o).name} walks in ${fighter(S, C, a).name}'s dreams.`);
           const src = SRC.id; SRC.id = "people:dreams";
           try { heal(S, C, o, dr); } finally { SRC.id = src; }

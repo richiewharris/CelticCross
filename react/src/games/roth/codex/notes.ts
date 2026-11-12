@@ -22,7 +22,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
       "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too. But the dead cannot cross running water: a **Merrow** hero's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**.",
       "In a duel to the death, {Spirit} Spirit blows can't be **Blocked** either: Block cards do nothing against them. Armour, the mound and giant-kin still do.",
       "**The dead-flesh aura**: in a duel to the death no blow wounds a host for more than **half its full Valour** (its monsters together, plus the setting's Valour), but never less than **5**. Hacking at dead flesh does them little harm: it blunts the great blows of Ulster and the Fomóire.",
-      "**Dream-walking**: in a duel to the death, whenever the enemy **rests**, the host fighting it **heals 2**. Every rest the enemy takes feeds you, so it rests less and braces less.",
+      "**Dream-walking**: in a duel to the death, whenever the enemy **rests**, the host fighting it **heals 2**. Every rest the enemy takes feeds you, so it rests less and braces less. Not at the **western crossing**, though: there the dead drain those who don't rest instead.",
       "**The dead do not sleep**: omens can't lower a host's Initiative (Druid's sleep does nothing to it). A geis still can.",
       "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
       "Some monsters carry **hybrid** damage, the element opposite their weakness. Each Spirit blow is a choice: as **Spirit** it passes Shield and steals 1 (never more than 1 a Strike); as the **hybrid** element it gets the element wheel and weakness bonuses, but Shield soaks it and nothing is stolen. The Dullahan burns as {Fire} Fire, the Fear Dearg blows as {Wind} Wind (and makes a striker pay 1 Valour for wounding his host), the Bean Nighe strikes as {Earth} Earth, the Dearg-due runs as {Water} Water.",
@@ -155,7 +155,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The sea-folk under the waves",
     motto: "Water, Shields and slippery defence. Merrow **outlasts** the enemy and strikes back with the tide.",
     plan: [
-      "**Flowing water**: a Merrow's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**. The dead cannot cross running water.",
+      "**Flowing water**: in a duel to the death every {Spirit} Spirit blow against a Merrow fighter is **−1**, a Merrow's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**. The dead cannot cross running water.",
       "**Water can't be pierced**: in a duel to the death, a blow that ignores Shield (Thunder feat, Gáe Bolga) still meets a Merrow's **Block**. Keep Sealskin up against Ulster.",
       "Manannán's first incoming Strike each duel **misses**. Lí Ban gains **Shield 2** when she rests. The Coomara is **Valour 6** and heals 1 when his Strike wounds.",
       "Fand is the glass cannon: **Valour 3**, Initiative 5, **Strikes +1**.",
