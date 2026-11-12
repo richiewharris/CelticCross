@@ -94,3 +94,16 @@ describe("determinization", () => {
 function playOutStep(S: ReturnType<typeof newMatch>, d: NonNullable<ReturnType<typeof nextDecision>>, p: Policy, rng: Rng) {
   applyDecision(S, d, p.choose(observe(S, d.player), d, rng));
 }
+
+import { INSIGHTS_FRESH, pickSettingId } from "../ai";
+import { DECKS as SET_DECKS } from "../cards";
+import SET_INSIGHTS from "../insights.json";
+
+describe("the second player's setting", () => {
+  it("is the best measured setting for its people against the first player's, while the insights are fresh", () => {
+    expect(INSIGHTS_FRESH).toBe(true);
+    const row = (SET_INSIGHTS.secondPlayer as Record<string, Record<string, Record<string, number>>>).ulster.fomoire;
+    const best = Object.entries(row).sort((a, b) => b[1] - a[1])[0][0];
+    expect(pickSettingId(SET_DECKS.ulster, SET_DECKS.fomoire)).toBe(best);
+  });
+});

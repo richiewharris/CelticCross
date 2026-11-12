@@ -6,7 +6,8 @@ import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
 } from "./engine";
-import { chooseSetting, settingDef } from "./settings";
+import { chooseSetting, SETTINGS, settingDef } from "./settings";
+import INSIGHTS from "./insights.json";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
 
@@ -76,9 +77,30 @@ function musterPick(V: State, d: Decision, omenValue: (c: Card) => number): numb
   return Math.max(0, best);
 }
 
-/** The second player's setting: the one that suits its deck best against the first player's. */
+/** The people a deck plays as, by its heroes (the most of them), for looking it up in the insights. */
+function factionOf(deck: CardDef[]): string | null {
+  const by = new Map<string, number>();
+  for (const c of deck) if (c.type === "hero" || c.type === "host") by.set(c.alignment, (by.get(c.alignment) ?? 0) + 1);
+  const al = [...by].sort((x, y) => y[1] - x[1])[0]?.[0];
+  return al ? FACTION_OF[al] ?? null : null;
+}
+const FACTION_OF: Record<string, string> = { Ulaid: "ulster", Connachta: "connacht", Sidhe: "sidhe", Fomoire: "fomoire", Merrow: "merrow", Sluagh: "sluagh" };
+/** The insights hold for these settings only if the settings haven't changed since they were measured. */
+const canon = (x: unknown): string => Array.isArray(x) ? `[${x.map(canon).join(",")}]`
+  : x && typeof x === "object" ? `{${Object.keys(x).sort().map((k) => `${JSON.stringify(k)}:${canon((x as Record<string, unknown>)[k])}`).join(",")}}`
+  : JSON.stringify(x);
+export const INSIGHTS_FRESH = canon(INSIGHTS.settings) === canon(SETTINGS);
+/** The second player's setting: the one its people has done best at against the first player's, as measured by the
+ *  settings sweep (engine/insights.json); failing that (a deck the sweep didn't cover, or settings changed since), the
+ *  one its cards suit best. */
+export function pickSettingId(mine: CardDef[], theirs: CardDef[]): string {
+  const m = factionOf(mine), t = factionOf(theirs);
+  const row = INSIGHTS_FRESH && m && t ? (INSIGHTS.secondPlayer as Record<string, Record<string, Record<string, number>>>)[m]?.[t] : undefined;
+  if (row && SETTINGS.every((x) => row[x.id] !== undefined)) return SETTINGS.reduce((b, x) => (row[x.id] > row[b.id] ? x : b)).id;
+  return chooseSetting(mine, theirs);
+}
 function pickSetting(V: State, d: Decision): number {
-  const id = chooseSetting(V.players[d.player].deckList, V.players[1 - d.player].deckList);
+  const id = pickSettingId(V.players[d.player].deckList, V.players[1 - d.player].deckList);
   return Math.max(0, d.options.findIndex((o) => o.t === "setting" && o.id === id));
 }
 

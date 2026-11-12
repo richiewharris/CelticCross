@@ -13,7 +13,7 @@ import { ALL_DEFS, DECKS, DECK_IDS, FACTIONS, type CardDef } from "../../src/gam
 import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
 import { makePolicy } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
-import { chooseSetting } from "../../src/games/roth/engine/settings";
+import { pickSettingId } from "../../src/games/roth/engine/ai";
 
 interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules>; touch?: Touch }
 interface Rec {
@@ -29,7 +29,7 @@ function predictedSetting(j: Job, i: number): string | null {
   if (j.rules.settingBy === "none") return null;
   const aSide = i % 2;
   const [p1, p2] = aSide === 0 ? [j.a, j.b] : [j.b, j.a];
-  return chooseSetting(DECKS[p2], DECKS[p1]);
+  return pickSettingId(DECKS[p2], DECKS[p1]);
 }
 function touched(j: Job, i: number): boolean {
   const t = j.touch;
