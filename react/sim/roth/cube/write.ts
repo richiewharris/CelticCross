@@ -26,14 +26,14 @@ export interface RunMeta {
   base: string | null; touch: { setting?: string[]; deck?: string[] } | null;
 }
 
-export function writeCubeRun(dir: string, meta: RunMeta, rows: unknown[]): string {
+export function writeCubeRun(dir: string, meta: RunMeta, rows: unknown[], extra: Record<string, unknown> = {}): string {
   mkdirSync(dir, { recursive: true });
   const engine = engineHash();
   const created = new Date().toISOString();
   const id = `${created.slice(0, 10)}-${createHash("sha256").update(JSON.stringify({ ...meta, engine, created })).digest("hex").slice(0, 8)}`;
   // every parameter's value (engine/params.ts), so each run has numeric coordinates in the rules space
   const params = resolveParams({ ...DEFAULT_RULES, ...(meta.rules as Partial<Rules>) });
-  writeFileSync(join(dir, `${id}.meta.json`), JSON.stringify({ id, created, engine, matches: rows.length, ...meta, params }, null, 1) + "\n");
+  writeFileSync(join(dir, `${id}.meta.json`), JSON.stringify({ id, created, engine, matches: rows.length, ...meta, params, ...extra }, null, 1) + "\n");
   writeFileSync(join(dir, `${id}.jsonl.gz`), gzipSync(rows.map((r) => JSON.stringify(r)).join("\n") + "\n"));
   return id;
 }

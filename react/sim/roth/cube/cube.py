@@ -9,6 +9,16 @@ the untouched matches of its base runs filled in) into DuckDB as four tables, an
            felled_for (enemy heroes it felled), felled_against (its own heroes felled), turns
   ledger   one row per match, seat and ledger entry: kind (deal / save / heal / deny / cost / shield / ...), source, value
   present  one row per match, seat and card that was on the board or used: card, how (draft / supplant / used / geis / oath)
+  duels    one row per duel and seat: duel (0, 1, 2 the final), fighter, init, first (it acted first), start_v, end_v,
+           felled, turns, hand, reserve (cards left as the duel ended)
+  blows    one row per blow, by the striking seat: duel, src, el, spirit, pierce, then each step of the damage formula
+           in Valour: printed, base, kin, focus, watch, wheel, weak, fx, setting, extra (the use-stage bonuses), atk (the
+           strike-stage adds), floor, cap, then what the defence took: ward, block, resist, armour, mound, shield, halved,
+           aura; stagger (added); final. printed + base + ... + cap - ward - ... - aura + stagger = final, always.
+  decisions one row per choice the computer weighed: seat, kind, eval (death / board), options, best, second, chose,
+           gap (best - second, in the evaluation's units)
+  params   one row per run and parameter (engine/params.ts): the rules as numbers each run was played under
+  (duels, blows and decisions exist for runs made after the measurement layer was added)
 
 Commands (run from react/):
   python3 sim/roth/cube/cube.py runs                      list the runs in the cube
@@ -74,11 +84,24 @@ def rows_of(meta):
     return base + own
 
 
+BLOW_COLS = ["side", "duel", "src", "el", "spirit", "pierce", "printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting",
+             "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger", "final"]
+
+
+def base_chain(meta):
+    out, m = [], meta
+    while m and m.get("base"):
+        out.append(m["base"])
+        m = next((x for x in metas() if x["id"] == m["base"]), None)
+    return out
+
+
 def load(run):
     meta = resolve(run)
     rows = rows_of(meta)
     db = duckdb.connect()
-    m, s, l, p = [], [], [], []
+    m, s, l, p, du, bl, de = [], [], [], [], [], [], []
+    bcols = meta.get("blowCols") or BLOW_COLS
     for r in rows:
         key = (r["run"], r["a"], r["b"], r["i"])
         m.append((*key, r["p1"], r["p2"], r.get("setting"), r["w"], r["by"]))
@@ -98,15 +121,34 @@ def load(run):
             p.append((*key, x["side"] + 1, x["id"], "geis"))
         for x in r.get("sworn") or []:
             p.append((*key, x["side"] + 1, x["id"], "oath"))
+        for d in r.get("duels") or []:
+            for seat in (0, 1):
+                du.append((*key, seat + 1, d["duel"], d["fighters"][seat], d["init"][seat], d["first"] == seat, d["startV"][seat], d["endV"][seat],
+                           d["felled"][seat], d["turns"], d["hand"][seat], d["reserve"][seat]))
+        for b in r.get("blows") or []:
+            x = dict(zip(bcols, b))
+            bl.append((*key, x["side"] + 1, x["duel"], x["src"], x["el"], *[x[c] for c in BLOW_COLS[4:]]))
+        for d in r.get("decisions") or []:
+            kind, side, ev, n, best, second, chose = d
+            de.append((*key, side + 1, kind, ev, n, best, second, chose, best - second))
     K = "run VARCHAR, a VARCHAR, b VARCHAR, i INTEGER"
     db.execute(f"CREATE TABLE matches ({K}, p1 VARCHAR, p2 VARCHAR, setting VARCHAR, winner INTEGER, decided_by VARCHAR)")
     db.execute(f"CREATE TABLE sides ({K}, seat INTEGER, deck VARCHAR, foe VARCHAR, chose BOOLEAN, score DOUBLE, felled_for INTEGER, felled_against INTEGER, turns INTEGER)")
     db.execute(f"CREATE TABLE ledger ({K}, seat INTEGER, kind VARCHAR, source VARCHAR, value DOUBLE)")
     db.execute(f"CREATE TABLE present ({K}, seat INTEGER, card VARCHAR, how VARCHAR)")
+    db.execute(f"CREATE TABLE duels ({K}, seat INTEGER, duel INTEGER, fighter VARCHAR, init INTEGER, first BOOLEAN, start_v INTEGER, end_v INTEGER, felled INTEGER, turns INTEGER, hand INTEGER, reserve INTEGER)")
+    db.execute(f"CREATE TABLE blows ({K}, seat INTEGER, duel INTEGER, src VARCHAR, el VARCHAR, " + ", ".join(f"{c} DOUBLE" for c in BLOW_COLS[4:]) + ")")
+    db.execute(f"CREATE TABLE decisions ({K}, seat INTEGER, kind VARCHAR, eval VARCHAR, options INTEGER, best DOUBLE, second DOUBLE, chose INTEGER, gap DOUBLE)")
+    db.execute("CREATE TABLE params (run VARCHAR, key VARCHAR, value DOUBLE)")
+    pr = []
+    for mm in metas():
+        if mm["id"] in {r["run"] for r in rows[:1]} | {meta["id"]} | set(base_chain(meta)):
+            for k2, v2 in (mm.get("params") or {}).items():
+                pr.append((mm["id"], k2, float(v2)))
     # bulk load: hand each table to DuckDB as a CSV in one go (row-by-row inserts take minutes)
     import csv, tempfile
     with tempfile.TemporaryDirectory() as tmp:
-        for name, data in (("matches", m), ("sides", s), ("ledger", l), ("present", p)):
+        for name, data in (("matches", m), ("sides", s), ("ledger", l), ("present", p), ("duels", du), ("blows", bl), ("decisions", de), ("params", pr)):
             if not data:
                 continue
             f = os.path.join(tmp, name + ".csv")

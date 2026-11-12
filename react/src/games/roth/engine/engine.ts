@@ -216,7 +216,27 @@ export interface Result {
   valour: [number, number];
 }
 
+/** One blow, step by step through the damage formula (sim measurement; see TRACE). Every number is that step's
+ *  contribution in Valour: the use-stage bonuses add to printed, the strike-stage adds (atk), then what the floor at 0
+ *  and the caps cut, what the defence took off, what the halving and the aura cut, and what a stagger added. */
+export interface BlowRow {
+  side: number; duel: number; src: string; el: string | null; spirit: number; pierce: number;
+  printed: number; base: number; kin: number; focus: number; watch: number; wheel: number; weak: number; fx: number; setting: number; extra: number;
+  atk: number; floor: number; cap: number; ward: number; block: number; resist: number; armour: number; mound: number; shield: number;
+  halved: number; aura: number; stagger: number; final: number;
+}
+/** Set by a simulation to record every blow of the real match in stats.blows (off in play). */
+export const TRACE = { on: false, cur: null as Partial<BlowRow> | null };
+/** One duel as it began and ended (sim measurement: the duel is the game's atomic contest). */
+export interface DuelRow {
+  duel: number; fighters: [string, string]; init: [number, number]; first: number; startV: [number, number]; endV: [number, number];
+  felled: [number, number]; turns: number; hand: [number, number]; reserve: [number, number];
+}
 export interface MatchStats {
+  /** Every blow, when TRACE is on. */
+  blows?: BlowRow[];
+  /** Every duel. */
+  duels?: DuelRow[];
   exchanges: number[];
   actions: { omen: number; bind: number; supplant: number; hold: number; swear: number; attend: number };
   champions: number;
@@ -1343,6 +1363,9 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const ab = h.ab;
   const N = NARRATE.lines ? [] as string[] : null;
   const n1 = n;
+  // the trace of this blow (a riposte or a follow-up blow starts its own, from what it was given)
+  const T: Partial<BlowRow> | null = TRACE.on && C === S.combat && S.stats ? (TRACE.cur ?? { printed: n, base: 0 }) : null;
+  TRACE.cur = null;
   if (N) {
     if (ab.strikeAll) N.push(`${sgn(ab.strikeAll)} ${h.name}'s quality`);
     if (ab.rally && C.valour[a] <= ab.rally.at) N.push(`${sgn(ab.rally.n)} ${h.name} at ${ab.rally.at} Valour`);
@@ -1380,10 +1403,13 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   C.nextStrike[a] = 0;
   C.hit[a] = true;
   for (const fx of boardFx(S)) if (fx.debility && debilitated(h, fx.debility)) n -= 1;
+  const nAtk = n;
   n = Math.max(0, n);
+  const nFloor = n;
   for (const fx of boardFx(S)) if (fx.truce !== undefined) n = Math.min(n, fx.truce);
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
   const n0 = n;
+  if (T) { T.atk = nAtk - n1; T.floor = nFloor - nAtk; T.cap = n0 - nFloor; }
   // an Ulster blow that, before anything takes off it, is more than half the enemy's starting Valour staggers it
   const staggers = toDeath(S) && h.alignment === "Ulaid" && param(S.rules, "people.ulster.stagger") > 0 && n * 2 > (C.startV[C.duel]?.[b] ?? 99);
   if (N) {
@@ -1406,17 +1432,21 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const wv = Math.min(veil, n - nw);
     led(S, C, b, "save:people:veil", wv);
     led(S, C, b, "save:ward:" + e.id, n - nw - wv);
+    if (T) T.ward = n - nw;
     n = nw;
   }
   // a Block meets this blow (once)
   const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && param(S.rules, "people.merrow.waterUnpierced") > 0) ? C.block?.[b] ?? 0 : 0;
   if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
+  if (T) T.block = blk && n > 0 ? Math.min(blk, n) : 0;
   if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
   // resistance to Spirit: the otherworldly (Aos Sídhe) take 2 off a Spirit blow, flowing water (Merrow) 1
   const sr = SPIRIT_BLOW.on && toDeath(S) ? spiritResistOf(S, e.alignment) : 0;
+  if (T) T.resist = sr && n > 0 ? Math.min(sr, n) : 0;
   if (sr && n > 0) { if (N) N.push(`−${Math.min(sr, n)} ${e.alignment === "Sidhe" ? "otherworldly" : "flowing water"} (Spirit)`); led(S, C, b, `save:people:resist-${e.alignment}`, Math.min(sr, n)); n = Math.max(0, n - sr); }
+  if (T) T.armour = arm && n > 0 ? Math.min(arm, n) : 0;
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); led(S, C, b, "save:" + (S.stats?.armourSrc?.[b] || "armour"), Math.min(arm, n)); n = Math.max(0, n - arm); }
   // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
   if (n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
@@ -1424,11 +1454,13 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const m = C.mound!.slice(); m[b] -= t; C.mound = m;
     n -= t;
     led(S, C, b, "save:people:mound", t);
+    if (T) T.mound = t;
     if (N) N.push(`−${t} the mound (${m[b]} left to soak${m[b] === 0 ? ": spent" : ""})`);
   }
   const soak = pierce || spirit ? 0 : Math.min(C.shield[b], n);
   C.shield[b] -= soak;
   let dmg = n - soak;
+  if (T) T.shield = soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
   let halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
   // the Hound's cry: an Ulster blow that ignores Shield, given with the cry, goes through the giant's hide
@@ -1438,12 +1470,19 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     led(S, C, a, "deal:people:cry", dmg - h2); led(S, C, a, "deal:" + SRC.id, -(dmg - h2));
     if (N) N.push(`through the giant's hide (the Hound's cry)`);
   }
-  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); dmg = h2; }
+  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); if (T) T.halved = dmg - h2; dmg = h2; }
   // the dead-flesh aura: no blow wounds the Slúagh for more than half their full Valour
   const ac = auraCap(S, C, b);
-  if (dmg > ac) { led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }
+  if (dmg > ac) { if (T) T.aura = dmg - ac; led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }
   // staggered: every blow that wounds it lands 1 more
-  if (dmg > 0 && C.stagger?.[b]) { const k = param(S.rules, "people.ulster.stagger") || 1; dmg += k; led(S, C, a, "deal:people:stagger", k); }
+  if (dmg > 0 && C.stagger?.[b]) { const k = param(S.rules, "people.ulster.stagger") || 1; dmg += k; if (T) T.stagger = k; led(S, C, a, "deal:people:stagger", k); }
+  if (T) {
+    const z = (k: keyof BlowRow) => ((T as Record<string, number>)[k] ?? 0);
+    const row = { side: a, duel: C.duel, src: SRC.id || "?", el: SPIRIT_BLOW.on ? "Spirit" : el, spirit: spirit ? 1 : 0, pierce: pierce ? 1 : 0 } as BlowRow;
+    for (const k of ["printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting", "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger"] as const) (row as unknown as Record<string, number>)[k] = z(k);
+    row.final = dmg;
+    (S.stats!.blows ??= []).push(row);
+  }
   const wasUp = C.valour[b] > 0;
   const newly = staggers && !C.stagger?.[b];
   if (staggers) { const st = [C.stagger?.[0] ?? 0, C.stagger?.[1] ?? 0]; st[b] = 1; C.stagger = st; }
@@ -1516,25 +1555,28 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   const e = fighter(S, C, b);
   let n = 0;
   const N = NARRATE.lines;
-  if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
+  // the blow being traced (the real match only)
+  const T = TRACE.cur && C === S.combat && isStrike ? TRACE.cur : null;
+  const part = (k: keyof BlowRow, v: number) => { if (T) (T as Record<string, number>)[k] = ((T as Record<string, number>)[k] ?? 0) + v; };
+  if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; part("kin", h.ab.kinBonus ?? 1); if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
-  if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
+  if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; part("focus", 1); if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
   const watch = toDeath(S) ? param(S.rules, "people.ulster.samhainWatch") : 0;
   if (isStrike && watch && h.alignment === "Ulaid" && focusOf(C, b, e) === "Spirit") {
-    n += watch; if (N) N.push(`${sgn(watch)} the Samhain watch (${e.name}'s Focus is Spirit)`);
+    n += watch; part("watch", watch); if (N) N.push(`${sgn(watch)} the Samhain watch (${e.name}'s Focus is Spirit)`);
   }
   if (isStrike && s.element) {
     const ef = focusOf(C, b, e);
-    if (isElement(ef) && beats(s.element, ef)) { n += 1; if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
+    if (isElement(ef) && beats(s.element, ef)) { n += 1; part("wheel", 1); if (N) N.push(`+1 the wheel (${s.element} beats ${e.name}'s Focus, ${ef})`); }
     if (isElement(s.element) && effWeakness(S, b, e, C).includes(s.element)) {
       if (giantKin(S, e)) { if (N) N.push(`(${e.name} is weak to ${s.element}: the blow lands in full)`); }
-      else { n += 1; if (N) N.push(`+1 weakness (${e.name} is weak to ${s.element})`); }
+      else { n += 1; part("weak", 1); if (N) N.push(`+1 weakness (${e.name} is weak to ${s.element})`); }
     }
   }
   for (const x of N ? namedHeroFx(S, C, a) : heroFx(S, C, a).map((fx) => ({ name: "", fx }))) {
     const fx = x.fx;
-    if (fx.element && s.element === fx.element.el) { n += fx.element.n; if (N) N.push(`${sgn(fx.element.n)} ${x.name}`); }
-    if (fx.kind && s.kind === fx.kind.kind) { n += fx.kind.n; if (N) N.push(`${sgn(fx.kind.n)} ${x.name}`); }
+    if (fx.element && s.element === fx.element.el) { n += fx.element.n; part("fx", fx.element.n); if (N) N.push(`${sgn(fx.element.n)} ${x.name}`); }
+    if (fx.kind && s.kind === fx.kind.kind) { n += fx.kind.n; part("fx", fx.kind.n); if (N) N.push(`${sgn(fx.kind.n)} ${x.name}`); }
   }
   return n;
 }
@@ -1617,7 +1659,11 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       const raw = s.effects[0].n;
       say(`${s0.name}${s !== s0 && s.element !== s0.element ? ` (counting as ${s.element})` : ""}: ${eff.type === "strike" ? "Strike" : eff.type === "heal" ? "Heal" : "Shield"} ${raw}${eff.n !== raw ? `, ${eff.n} here` : ""}.`);
     }
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (toDeath(S) ? settingMod(settingOf(S.rules), s) : 0) + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
+    if (TRACE.on && C === S.combat && eff.type === "strike") TRACE.cur = { printed: s.effects[i]?.n ?? eff.n, base: eff.n - (s.effects[i]?.n ?? eff.n) };
+    const setB = i === 0 && toDeath(S) ? settingMod(settingOf(S.rules), s) : 0;
+    const extra = i === 0 ? (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0;
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + setB + extra : 0);
+    if (TRACE.cur && C === S.combat && eff.type === "strike") { TRACE.cur.setting = setB; TRACE.cur.extra = extra; }
     if (NARRATE.lines && i === 0) {
       if (s.attuned) say(`+${s.attuned} attuned by an attendant`);
       if (eff.type === "strike" && s.channel) say(`+${s.channel} channelled by an attendant`);
@@ -1977,6 +2023,14 @@ function endDuel(S: State, C: CombatState, stats: MatchStats | null) {
   C.felled = f; C.endValour = e;
   const ec = C.endChamp.slice(); ec[d] = [C.champ[0], C.champ[1]]; C.endChamp = ec;
   if (stats) stats.exchanges.push(C.turn);
+  if (stats && C === S.combat) {
+    const fs = [fighter(S, C, 0), fighter(S, C, 1)];
+    (stats.duels ??= []).push({
+      duel: d, fighters: [fs[0].id, fs[1].id], init: [C.init[0], C.init[1]], first: C.first, startV: [C.startV[d][0], C.startV[d][1]],
+      endV: [e[d][0], e[d][1]], felled: [f[d][0] ? 1 : 0, f[d][1] ? 1 : 0], turns: C.turn,
+      hand: [S.players[0].hand.length, S.players[1].hand.length], reserve: [S.players[0].reserve.length, S.players[1].reserve.length],
+    });
+  }
   if (d === 0) startDuel(S, C, 1, stats);
   else if (d === 1 && toDeath(S) && f[0][0] !== f[1][0] && f[0][1] !== f[1][1] && (f[0][0] || f[1][0]) && (f[0][1] || f[1][1])) startDuel(S, C, 2, stats);
   else C.stage = "done";

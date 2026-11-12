@@ -10,8 +10,8 @@ import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
 import { ALL_DEFS, DECKS, DECK_IDS, FACTIONS, type CardDef } from "../../src/games/roth/engine/cards";
-import { newMatch, playOut, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
-import { makePolicy } from "../../src/games/roth/engine/ai";
+import { newMatch, playOut, TRACE, type BlowRow, type MatchStats, type Policy, type Rules, type Side } from "../../src/games/roth/engine/engine";
+import { DECISIONS, makePolicy, type DecisionRow } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 import { pickSettingId } from "../../src/games/roth/engine/ai";
 import { PostPolicy, registerDummies } from "./dummy";
@@ -23,8 +23,11 @@ registerDummies();
 interface Job { a: string; b: string; from: number; to: number; level: string; levelB: string; seed: number; rules: Partial<Rules>; touch?: Touch }
 interface Rec {
   a: string; b: string; aSide: Side; w: -1 | 0 | 1; by: string; felled: [number, number]; wounds: [number, number];
-  st: MatchStats; i: number; seed: number; setting: string | null;
+  st: MatchStats; i: number; seed: number; setting: string | null; decisions: DecisionRow[];
 }
+/** The per-blow trace's columns, in the order the cube stores them (one array per blow). */
+export const BLOW_COLS: (keyof BlowRow)[] = ["side", "duel", "src", "el", "spirit", "pierce", "printed", "base", "kin", "focus", "watch", "wheel", "weak", "fx", "setting", "extra", "atk", "floor", "cap", "ward", "block", "resist", "armour", "mound", "shield", "halved", "aura", "stagger", "final"];
+const r3 = (x: number) => Math.round(x * 1000) / 1000;
 /** Which matches a change can reach: any whose setting is one of these, or that has one of these decks in it. */
 interface Touch { setting?: string[]; deck?: string[] }
 /** The setting a match will be fought at, as the second player would choose it (or as the rules fix it). */
@@ -52,8 +55,9 @@ function runOne(j: Job, i: number): Rec {
   const S = newMatch([DECKS[decks[0]], DECKS[decks[1]]], j.rules, seed);
   const lv = aSide === 0 ? [j.level, j.levelB] : [j.levelB, j.level];
   const pols = lv.map((l, k) => (decks[k] === "dummy_post" ? new PostPolicy(makePolicy(l, { N: 8, K: 2 })) : makePolicy(l, { N: 8, K: 2 }))) as [Policy, Policy];
+  DECISIONS.log = [];
   const r = playOut(S, pols, [new Rng(hashSeed(seed, "p1")), new Rng(hashSeed(seed, "p2"))], false);
-  return { a: j.a, b: j.b, aSide, w: r.winner, by: r.decidedBy, felled: r.felled, wounds: r.valour, st: S.stats!, i, seed, setting: S.rules.setting ?? null };
+  return { a: j.a, b: j.b, aSide, w: r.winner, by: r.decidedBy, felled: r.felled, wounds: r.valour, st: S.stats!, i, seed, setting: S.rules.setting ?? null, decisions: DECISIONS.log };
 }
 
 const pct = (x: number) => (Number.isNaN(x) ? "" : (100 * x).toFixed(1) + "%");
@@ -135,7 +139,10 @@ async function main() {
       felled: r.felled, seed: r.seed, ledger: r.st.ledger, exchanges: r.st.exchanges,
       placed: r.st.placed.map((p) => ({ side: p.side, id: p.id, how: p.how })), used: r.st.used.map((u) => ({ side: u.side, id: u.id })),
       bound: r.st.bound, sworn: r.st.sworn,
-    })));
+      // the measurement layer: every duel, every blow step by step (columns: meta.blowCols), every decision weighed
+      duels: r.st.duels ?? [], blows: (r.st.blows ?? []).map((b) => BLOW_COLS.map((k) => b[k])),
+      decisions: r.decisions.map((d) => [d.kind, d.side, d.eval, d.options, r3(d.best), r3(d.second), d.chose]),
+    })), { blowCols: BLOW_COLS, decisionCols: ["kind", "side", "eval", "options", "best", "second", "chose"] });
     console.log(`(cube run ${id}${base ? `, on top of ${base} for the matches it didn't touch` : ""}: python3 sim/roth/cube/cube.py table ${id})`);
     if (base) {
       console.log(`Only the ${recs.length} matches the change reaches were played; the table below covers just those. For the whole table: python3 sim/roth/cube/cube.py table ${id}`);
@@ -227,6 +234,9 @@ async function main() {
 }
 
 if (process.argv.includes("--worker")) {
+  // the measurement layer is on in every simulated match
+  TRACE.on = true;
+  DECISIONS.on = true;
   process.on("message", (j: Job) => {
     const out: Rec[] = [];
     for (let i = j.from; i < j.to; i++) {

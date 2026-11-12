@@ -419,8 +419,11 @@ export class SkilledPolicy implements Policy {
       }
       case "place":
       case "action":
-      case "late":
-        return argmax(this.scoreOptions(V, d));
+      case "late": {
+        const sc = this.scoreOptions(V, d), i = argmax(sc);
+        if (DECISIONS.on) logDecision(d, sc, i, "board");
+        return i;
+      }
       case "drawn":
       case "focus":
       case "block":
@@ -556,7 +559,7 @@ function deathNode(S: State, me: Side, budget: number, stats: { n: number }): nu
   if (!d || budget <= 0 || stats.n > 20000) return deathEval(S, me);
   return deathPick(S, d, me, budget, stats).v;
 }
-function deathPick(S: State, d: Decision, me: Side, budget: number, stats: { n: number }): { v: number; i: number } {
+function deathPick(S: State, d: Decision, me: Side, budget: number, stats: { n: number }, vals?: number[]): { v: number; i: number } {
   const max = d.player === me;
   const k0 = turnKey(S);
   let best = { v: max ? -Infinity : Infinity, i: 0 };
@@ -580,6 +583,7 @@ function deathPick(S: State, d: Decision, me: Side, budget: number, stats: { n: 
       applyDecision(W, d, i, false);
       v = deathNode(W, me, turnKey(W) !== k0 ? budget - 1 : budget, stats);
     }
+    if (vals) vals[i] = v;
     if (max ? v > best.v : v < best.v) best = { v, i };
   });
   return best;
@@ -590,7 +594,20 @@ function deathChoice(V: State, d: Decision, rng: Rng): number {
   // the enemy's hidden cards (its hand and Reserve) are filled in with a plausible sample
   const D = determinize(V, d.player, rng);
   if (DEATH.budget === 0) return new CasualPolicy().choose(V, d, rng);
-  return deathPick(D, d, d.player, DEATH.budget, { n: 0 }).i;
+  const vals: number[] = [];
+  const i = deathPick(D, d, d.player, DEATH.budget, { n: 0 }, DECISIONS.on ? vals : undefined).i;
+  if (DECISIONS.on) logDecision(d, vals, i, "death");
+  return i;
+}
+/** The decision log (sim measurement): for each choice the computer weighed, how many options it had, the value it
+ *  gave the best and the second best (in its evaluation's units: "death" is the duel look-ahead, about 3 a Valour
+ *  point and 60 a hero; "board" the placement evaluation, a win chance), and which it took. */
+export interface DecisionRow { kind: string; side: number; eval: "death" | "board"; options: number; best: number; second: number; chose: number }
+export const DECISIONS = { on: false, log: [] as DecisionRow[] };
+function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "board") {
+  const v = vals.filter((x) => Number.isFinite(x)).sort((a, b) => b - a);
+  if (v.length < 2) return;
+  DECISIONS.log.push({ kind: d.kind, side: d.player, eval: ev, options: v.length, best: v[0], second: v[1], chose });
 }
 /** Look-ahead depth in whole turns for long duels (a lever for experiments; 0 = Casual's eye). */
 export const DEATH = { budget: 2 };
