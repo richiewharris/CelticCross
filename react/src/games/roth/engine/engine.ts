@@ -35,6 +35,8 @@ export interface Rules {
   noAura?: boolean;
   /** Trial: the western crossing's drain doesn't heal a Slúagh host. */
   drainNoFeed?: boolean;
+  /** Trial: a Slúagh host's summon spends the top card of the Reserve (and needs one to spend). */
+  summonCost?: boolean;
   /** Trial: the western crossing drains only a fighter whose foe is Slúagh. */
   drainVsSluagh?: boolean;
   /** Trial: settings don't change Heals (the crossing's −1, Cruachan's +1). */
@@ -1055,7 +1057,7 @@ export function hostActs(S: State, C: CombatState, a: Side): Option[] {
   if (h.type !== "hero" || !h.host) return [];
   const out: Option[] = [];
   if (!C.sacrificed[a] && h.host.members.length >= 2) for (const m of h.host.members) out.push({ t: "sacrifice", id: m.id });
-  if (!C.summoned[a]) {
+  if (!C.summoned[a] && (!S.rules.summonCost || drawable(S, a) > 0)) {
     const os = otherHostSpot(S, C, a);
     if (os !== null) {
       const other = hostAt(S, C, os);
@@ -1802,6 +1804,11 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
       led(S, C, a, "heal:people:summon", v);
       const sv = C.startV.slice(); sv[C.duel] = sv[C.duel].slice(); sv[C.duel][a] += v; C.startV = sv;
       const sm = C.summoned.slice(); sm[a] = true; C.summoned = sm;
+      if (S.rules.summonCost) {
+        if (C === S.combat) { const c = takeTop(S, a); if (c) S.players[a].discard.push(c); }
+        led(S, C, a, "n:summonCost", 1);
+        if (NARRATE.lines) say(`The summoning spends the top card of the Reserve.`);
+      }
     }
     endTurn(S, C, stats);
     return;
