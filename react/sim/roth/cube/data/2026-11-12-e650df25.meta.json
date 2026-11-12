@@ -1,0 +1,26 @@
+{
+ "id": "2026-11-12-e650df25",
+ "created": "2026-11-12T22:55:31.576Z",
+ "engine": "fe4adbb20ce6",
+ "matches": 840,
+ "rules": {
+  "setting": "crossing",
+  "fordValour": 3,
+  "noSettingHeal": true,
+  "drainNoFeed": true
+ },
+ "seed": 2,
+ "n": 40,
+ "level": "skilled",
+ "levelB": "skilled",
+ "decks": [
+  "ulster",
+  "connacht",
+  "sidhe",
+  "fomoire",
+  "merrow",
+  "sluagh"
+ ],
+ "base": null,
+ "touch": null
+}

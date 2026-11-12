@@ -15,6 +15,7 @@ import { makePolicy } from "../../src/games/roth/engine/ai";
 import { hashSeed, Rng } from "../../src/games/roth/engine/rng";
 import { pickSettingId } from "../../src/games/roth/engine/ai";
 import { PostPolicy, registerDummies } from "./dummy";
+import { param } from "../../src/games/roth/engine/params";
 
 // the target dummies (dummy_post, dummy_spar) play like any deck; see sim/roth/dummy.ts
 registerDummies();
@@ -30,7 +31,7 @@ interface Touch { setting?: string[]; deck?: string[] }
 function predictedSetting(j: Job, i: number): string | null {
   if (j.rules.setting) return j.rules.setting;
   if (j.rules.duels && j.rules.duels !== "death") return null;
-  if (j.rules.settingBy === "none") return null;
+  if (param(j.rules as Rules, "setting.choose") === 0) return null;
   const aSide = i % 2;
   const [p1, p2] = aSide === 0 ? [j.a, j.b] : [j.b, j.a];
   return pickSettingId(DECKS[p2], DECKS[p1]);

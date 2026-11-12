@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { MoveEvent } from "../useMatch";
 import type { CardDef } from "../engine/cards";
-import { actorOf, effSupport, effWeakness, giantKin, hasMound, moundUp, MOUND_AC, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
+import { param } from "../engine/params";
+import { actorOf, effSupport, effWeakness, giantKin, hasMound, moundUp, fighter, ownerOfSpot, quadOf, supportReady, toDeath, type Side, type State } from "../engine/engine";
 import { reuseOf, type SupportDef } from "../engine/cards";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
@@ -125,7 +126,7 @@ export function DuelView(props: {
             <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
             {death && hasMound(S, p) ? (
               <p className="duel-mound" title="The mound shelters the Aos Sídhe like Armour: every Strike against an Aos Sídhe fighter 1 less (even one that ignores Shield and Armour), until it has soaked 5 in all over the match.">
-                <Icon name="mound" /> {moundUp(C, p) ? <>The mound: soaks <b>{Math.min(S.rules.moundAC ?? MOUND_AC, C.mound![p])}</b> a blow, <b>{C.mound![p]}</b> left{f.alignment === "Sidhe" ? "" : " (Aos Sídhe only)"}</> : <>The mound is spent</>}
+                <Icon name="mound" /> {moundUp(C, p) ? <>The mound: soaks <b>{Math.min(param(S.rules, "people.sidhe.moundAC"), C.mound![p])}</b> a blow, <b>{C.mound![p]}</b> left{f.alignment === "Sidhe" ? "" : " (Aos Sídhe only)"}</> : <>The mound is spent</>}
               </p>
             ) : null}
             {C.armour?.[p] || C.rested?.[p] || C.bleed?.[p] || (C.block?.[p] ?? 0) > 0 ? (

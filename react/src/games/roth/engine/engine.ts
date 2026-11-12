@@ -9,10 +9,13 @@ import {
 } from "./cards";
 import { hashSeed, Rng } from "./rng";
 import { SETTINGS, settingDef, settingMod } from "./settings";
+import { param, settingOf, type ParamKey, type Params } from "./params";
 
 export type Side = 0 | 1;
 
 export interface Rules {
+  /** The rules as numbers (engine/params.ts): any parameter's value, overriding the older fields below. */
+  params?: Params;
   /** Lever: added to every hero's starting Valour. */
   /** The Aos Sídhe are veiled: the first Strike against each of their fighters each duel −1. */
   veiled?: boolean;
@@ -198,7 +201,7 @@ export const OATH_BIT = 1 << 5; // shifted by the quadrant: OATH_BIT << q
 /** In a duel to the death (rules.geisEachTime, default on there) a geis is never broken for good: every forbidden act
  *  pays its cost again, and a geis that lays a weakness keeps it. Oaths and the crow still break once. This is the
  *  part of a break mask that stays broken. */
-const keptBroken = (S: State, m: number) => ((S.rules.geisEachTime ?? toDeath(S)) ? m & (CROW_BIT | (15 * OATH_BIT)) : m);
+const keptBroken = (S: State, m: number) => (toDeath(S) && param(S.rules, "geis.eachTime") ? m & (CROW_BIT | (15 * OATH_BIT)) : m);
 /** Global geis i broken by the hero of quadrant q. */
 export const globalBit = (i: number, q: number) => 1 << (9 + 4 * i + q);
 export const MAX_GLOBAL_GEASA = 4;
@@ -442,7 +445,10 @@ export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = 
   if (R.setting) Object.assign(R, withSetting(R, R.setting));
   const rng = new Rng(seed);
   let uid = 1;
-  const players = decks.map((list, p) => {
+  // the layers (engine/params.ts): a kind of card switched off is taken out of both decks
+  const layerOf: Partial<Record<CardDef["type"], ParamKey>> = { champion: "layer.champion", geis: "layer.geis", oath: "layer.oath", omen: "layer.omen", attendant: "layer.attendant" };
+  const players = decks.map((list0, p) => {
+    const list = list0.filter((d) => { const k = layerOf[d.type]; return !k || param(R, k) > 0; });
     const defs = rng.shuffle([...list]);
     const deck = defs.map((def) => ({ uid: uid++, def, owner: p as Side }));
     return { deckList: list, deck, hand: [], reserve: [], omens: [], discard: [], lost: [], musterQ: [] } as PlayerState;
@@ -596,11 +602,11 @@ function musterReturnLegal(P: PlayerState, c: Card): boolean {
 }
 /** The rules with a setting in force: its Valour in place of the ford's, its mound. */
 function withSetting(R: Rules, id: string): Rules {
-  const SET = settingDef(id);
+  const SET = settingOf(R, id);
   return { ...R, setting: id, fordValour: R.fordValour ?? SET?.valour, moundValour: SET?.mound !== undefined ? R.moundValour ?? SET.mound : R.moundValour };
 }
 /** Duels to the death: the setting is still to be chosen (by the second player, before the Muster). */
-export const needsSetting = (S: State) => toDeath(S) && !S.rules.setting && (S.rules.settingBy ?? "p2") === "p2";
+export const needsSetting = (S: State) => toDeath(S) && !S.rules.setting && param(S.rules, "setting.choose") > 0;
 function musterStep(S: State): Decision | null {
   if (needsSetting(S)) return { kind: "setting", player: 1, options: SETTINGS.map((x) => ({ t: "setting" as const, id: x.id })) };
   while (S.phase === "muster") {
@@ -779,7 +785,7 @@ export function newCombat(S: State): CombatState {
     hostAdj: [null, null, null, null], sacrificed: [false, false], summoned: [false, false],
     uses: Array(12).fill(0), lastUse: Array(12).fill(-99), restsSince: Array(12).fill(0), rested: [0, 0], acts: [0, 0], drawn: null, drew: false,
     endChamp: [[null, null], [null, null], [null, null]],
-    mound: [0, 1].map((p) => (hasMound(S, p as Side) ? S.rules.moundValour ?? MOUND_VALOUR : 0)),
+    mound: [0, 1].map((p) => (hasMound(S, p as Side) ? param(S.rules, "people.sidhe.moundValour") : 0)),
   };
   startDuel(S, C, 0, S.stats);
   return C;
@@ -829,7 +835,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
   for (const p of [0, 1] as Side[]) {
     const fx = heroFx(S, C, p);
     const oath = activeOath(S, C, p);
-    let v = h[p].valour + R.valourBonus + (toDeath(S) ? R.fordValour ?? FORD_VALOUR : 0) + (oath?.boon.valour ?? 0);
+    let v = h[p].valour + R.valourBonus + (toDeath(S) ? param(R, "duel.fordValour") : 0) + (oath?.boon.valour ?? 0);
     for (const e of fx) if (e.startValour && e.startValour.duel === d) v += e.startValour.n;
     C.cap[p] = v + (toDeath(S) ? R.deathCapOver ?? NO_CAP : R.capOver);
     // the dead do not sleep: nothing lowers a Slúagh host's Initiative below its own
@@ -849,7 +855,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     C.valour[p] = v;
     C.init[p] = init;
     sv[d][p] = Math.max(0, v);
-    C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart) + (toDeath(S) ? settingDef(R.setting)?.shield ?? 0 : 0);
+    C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart) + (toDeath(S) ? settingOf(R)?.shield ?? 0 : 0);
     if (toDeath(S)) {
       // passive cards beside the hero: their Armour holds from the start (the highest counts)
       let arm = h[p].ab.armour ?? 0, src = arm ? "hero:" + h[p].id : "";
@@ -915,7 +921,7 @@ export function restForbidMask(S: State, C: CombatState, a: Side): number {
 export function breakCost(S: State, m: number, al?: string): number {
   const oaths = bitCount((m >>> 5) & 15);
   // the Aos Sídhe know geasa from the inside: in a duel to the death a break costs them 1
-  const g = al === "Sidhe" && toDeath(S) ? SIDHE_GEIS_COST : S.rules.geisBreakCost;
+  const g = al === "Sidhe" && toDeath(S) ? param(S.rules, "people.sidhe.geisCost") : S.rules.geisBreakCost;
   return g * (bitCount(m) - oaths) + S.rules.oathBreakCost * oaths;
 }
 export const SIDHE_GEIS_COST = 1;
@@ -981,10 +987,10 @@ function blockable(S: State, C: CombatState, a: Side, o: Option): boolean {
   const h = fighter(S, C, a);
   if (unwilling(h.alignment, s.alignment)) return false;
   // a blow that ignores Shield ignores Blocks too, unless (trial) it meets a Merrow: water can't be pierced
-  if (s.pierce && !(toDeath(S) && fighter(S, C, (1 - a) as Side).alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("water"))) return false;
+  if (s.pierce && !(toDeath(S) && fighter(S, C, (1 - a) as Side).alignment === "Merrow" && param(S.rules, "people.merrow.waterUnpierced") > 0)) return false;
   // trial: a Spirit blow can't be Blocked either (Armour still meets it)
   const asEl = o.t === "duel" || o.t === "drawn" ? o.as : undefined;
-  if (toDeath(S) && (S.rules.spiritUnblock ?? true) && !asEl && effSupport(S, a, s).element === "Spirit") return false;
+  if (toDeath(S) && param(S.rules, "people.sluagh.spiritUnblock") > 0 && !asEl && effSupport(S, a, s).element === "Spirit") return false;
   return true;
 }
 /** What a Block card takes off the blow: its Block, +1 kinship, +1 Focus, and +1 or +2 if its hero has rested. */
@@ -1055,7 +1061,7 @@ function otherHostSpot(S: State, C: CombatState, a: Side): number | null {
 }
 /** A Slúagh host's own actions: sacrifice one of its monsters (once a duel), or summon one from its other host (once a match). */
 /** Does a summon spend a Reserve card? (On by default in a duel to the death.) */
-export const summonCosts = (S: State) => S.rules.summonCost ?? toDeath(S);
+export const summonCosts = (S: State) => param(S.rules, "people.sluagh.summonCost") > 0 && (toDeath(S) || S.rules.summonCost === true || S.rules.params?.["people.sluagh.summonCost"] !== undefined);
 export function hostActs(S: State, C: CombatState, a: Side): Option[] {
   if (C.champ[a]) return [];
   const h = fighter(S, C, a);
@@ -1215,7 +1221,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   const e = fighter(S, C, 1 - p);
   const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
-    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0) + (toDeath(S) && !S.rules.noSettingHeal ? settingDef(S.rules.setting)?.heal ?? 0 : 0);
+    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0) + (toDeath(S) ? param(S.rules, "setting.heals") * (settingOf(S.rules)?.heal ?? 0) : 0);
   const v0 = C.valour[p];
   const cap = capTo ?? C.cap[p];
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
@@ -1227,12 +1233,12 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
     led(S, C, p, "over:" + SRC.id, Math.max(0, C.valour[p] - Math.max(v0, C.startV[C.duel]?.[p] ?? Infinity)));
   }
   // trial: the ebb and flow: when the enemy of a Merrow heals, the Merrow rises with the tide (Shield 1)
-  const mr = S.rules.merrow ?? MERROW_DEFAULT;
-  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && mr.includes("ebb") && C.valour[1 - p] > 0 && !(mr.includes("ebb1") && C.ebbed?.[1 - p])) {
-    if (mr.includes("ebb1")) { const eb = [C.ebbed?.[0] ?? 0, C.ebbed?.[1] ?? 0]; eb[1 - p] = 1; C.ebbed = eb; }
-    C.shield[1 - p] += 1;
-    led(S, C, 1 - p, "shield:people:ebb", 1);
-    if (NARRATE.lines) say(`${e.name} rises with the tide: Shield +1.`);
+  const ebb = param(S.rules, "people.merrow.ebb"), ebbOnce = param(S.rules, "people.merrow.ebbOnce") > 0;
+  if (C.valour[p] > v0 && toDeath(S) && e.alignment === "Merrow" && ebb > 0 && C.valour[1 - p] > 0 && !(ebbOnce && C.ebbed?.[1 - p])) {
+    if (ebbOnce) { const eb = [C.ebbed?.[0] ?? 0, C.ebbed?.[1] ?? 0]; eb[1 - p] = 1; C.ebbed = eb; }
+    C.shield[1 - p] += ebb;
+    led(S, C, 1 - p, "shield:people:ebb", ebb);
+    if (NARRATE.lines) say(`${e.name} rises with the tide: Shield +${ebb}.`);
   }
   if (C.bleed?.[p]) led(S, C, 1 - p, "deny:people:bleed", Math.min(C.bleed[p], Math.max(0, n + C.bleed[p])));
   if (NARRATE.lines) {
@@ -1253,6 +1259,8 @@ export const FORD_VALOUR = 3;
 function withSpirit<T>(on: boolean, f: () => T): T { const was = SPIRIT_BLOW.on; SPIRIT_BLOW.on = on; try { return f(); } finally { SPIRIT_BLOW.on = was; } }
 /** Resistance to Spirit blows, by people: the otherworldly take 2 off, flowing water 1. */
 export const spiritResist = (al: string) => (al === "Sidhe" ? 2 : al === "Merrow" ? 1 : 0);
+/** ...as the rules have it (people.sidhe.spiritResist, people.merrow.spiritResist). */
+export const spiritResistOf = (S: State, al: string) => (al === "Sidhe" ? param(S.rules, "people.sidhe.spiritResist") : al === "Merrow" ? param(S.rules, "people.merrow.spiritResist") : 0);
 /** Merrow's standing powers (rules.merrow): "water", a blow that ignores Shield still meets a Merrow's Block.
  *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
 export const MERROW_DEFAULT = "water";
@@ -1274,18 +1282,18 @@ const SPIRIT_BLOW = { on: false };
 /** The dead-flesh aura (the Slúagh, duels to the death): no blow wounds them for more than half their full Valour
  *  (all the host's monsters together, as printed; rounded down). Hacking at dead flesh does them little harm. Infinity when it doesn't apply. */
 export function auraCap(S: State, C: CombatState, b: Side): number {
-  if (!toDeath(S) || !(S.rules.aura ?? true) || S.rules.noAura || fighter(S, C, b).alignment !== "Sluagh") return Infinity;
+  if (!toDeath(S) || !param(S.rules, "people.sluagh.aura") || fighter(S, C, b).alignment !== "Sluagh") return Infinity;
   // the host's full Valour in a duel: all its monsters together, as printed, and the ford's Valour
-  const full = fighter(S, C, b).valour + S.rules.valourBonus + (S.rules.fordValour ?? FORD_VALOUR);
-  const half = full * (S.rules.auraFrac ?? 0.5);
-  return Math.max(S.rules.auraMin ?? AURA_MIN, S.rules.auraUp ? Math.ceil(half) : Math.floor(half));
+  const full = fighter(S, C, b).valour + S.rules.valourBonus + param(S.rules, "duel.fordValour");
+  const half = full * param(S.rules, "people.sluagh.auraFrac");
+  return Math.max(param(S.rules, "people.sluagh.auraMin"), param(S.rules, "people.sluagh.auraRoundUp") ? Math.ceil(half) : Math.floor(half));
 }
 /** Set while a support used with the Hound's cry resolves. */
 const CRY = { on: false };
 /** The Hound's cry (Ulster, duels to the death): once a duel, when an Ulster hero uses a support that ignores Shield
  *  against giant-kin, it may spend the top card of its Reserve (to the discard) so the blow lands in full. */
 export function canCry(S: State, C: CombatState, a: Side, s: SupportDef, as?: Element): boolean {
-  if (!toDeath(S) || S.rules.noCry || C.cried?.[a] || drawable(S, a) <= 0) return false;
+  if (!toDeath(S) || !param(S.rules, "people.ulster.cry") || C.cried?.[a] || drawable(S, a) <= 0) return false;
   const h = fighter(S, C, a), e = fighter(S, C, (1 - a) as Side);
   if (h.alignment !== "Ulaid" || !giantKin(S, e)) return false;
   const es = effSupport(S, a, s);
@@ -1311,7 +1319,7 @@ export const MOUND_AC = 1;
 export const MOUND_VALOUR = 5;
 /** Connacht's blows bleed (duels to the death): every one that wounds makes the enemy's Heals 1 less until the end of
  *  its next turn, and it stacks. */
-export const bleeds = (S: State, h: FighterDef) => toDeath(S) && h.alignment === "Connachta" && !S.rules.noBleed;
+export const bleeds = (S: State, h: FighterDef) => toDeath(S) && h.alignment === "Connachta" && param(S.rules, "people.connacht.bleed") > 0;
 /** Side p fights from a mound: in a duel to the death, with Aos Sídhe heroes in its deck. */
 export function hasMound(S: State, p: Side): boolean {
   return toDeath(S) && S.players[p].deckList.some((d) => d.type === "hero" && d.alignment === "Sidhe");
@@ -1327,7 +1335,7 @@ function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
 
 /** `pierce`: ignores Shield, Armour and Blocks; `spirit`: a Spirit blow, which passes Shield but not Armour or Blocks. */
 /** The Fomóire are giant-kin: in a duel to the death, half the wounds of any blow but one of their weaknesses. */
-export const giantKin = (S: State, f: FighterDef) => toDeath(S) && f.alignment === "Fomoire";
+export const giantKin = (S: State, f: FighterDef) => toDeath(S) && f.alignment === "Fomoire" && param(S.rules, "people.fomoire.giantKin") > 0;
 export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false, el: Element | null = null): number {
   const b = (1 - a) as Side;
   const h = fighter(S, C, a);
@@ -1340,7 +1348,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     if (ab.rally && C.valour[a] <= ab.rally.at) N.push(`${sgn(ab.rally.n)} ${h.name} at ${ab.rally.at} Valour`);
     if (ab.avenger && C.duel === 1 && C.felled[0][a]) N.push(`${sgn(ab.avenger)} ${h.name} avenging`);
     if (ab.firstStrike && !C.hit[a]) N.push(`${sgn(ab.firstStrike)} first Strike this duel`);
-    if (S.rules.veiled && h.alignment === "Sidhe" && !C.hit[a]) N.push("−1 the veil (an Aos Sídhe's own first Strike)");
+    if (param(S.rules, "people.sidhe.veil") && h.alignment === "Sidhe" && !C.hit[a]) N.push(`−${param(S.rules, "people.sidhe.veil")} the veil (an Aos Sídhe's own first Strike)`);
     if (ab.vsBig && e.valour >= 5) N.push(`${sgn(ab.vsBig)} against a big hero`);
     if (ab.vsTag && e.tag === ab.vsTag.tag) N.push(`${sgn(ab.vsTag.n)} ${h.name} against the ${e.tag}`);
     const oath = activeOath(S, C, a); if (oath?.boon.strike) N.push(`${sgn(oath.boon.strike)} ${oath.name}`);
@@ -1355,12 +1363,12 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (ab.rally && C.valour[a] <= ab.rally.at) n += ab.rally.n;
   if (ab.avenger && C.duel === 1 && C.felled[0][a]) n += ab.avenger;
   if (ab.firstStrike && !C.hit[a]) n += ab.firstStrike;
-  const ul = toDeath(S) && h.alignment === "Ulaid" ? S.rules.ulster ?? "" : "";
-  const lt = /light(\d)?/.exec(ul);
-  if (lt && !C.hit[a] && !RIPOSTE.on) { const k = Number(lt[1] ?? 2); n += k; if (N) N.push(`+${k} the hero's light (first Strike this duel)`); }
-  if (ul.includes("fury") && C.valour[a] * 2 <= (C.startV[C.duel]?.[a] ?? 0)) { n += 1; if (N) N.push(`+1 battle-fury (at half Valour)`); }
+  const ul = toDeath(S) && h.alignment === "Ulaid";
+  const lt = ul ? param(S.rules, "people.ulster.light") : 0, fury = ul ? param(S.rules, "people.ulster.fury") : 0;
+  if (lt && !C.hit[a] && !RIPOSTE.on) { n += lt; if (N) N.push(`+${lt} the hero's light (first Strike this duel)`); }
+  if (fury && C.valour[a] * 2 <= (C.startV[C.duel]?.[a] ?? 0)) { n += fury; if (N) N.push(`+${fury} battle-fury (at half Valour)`); }
   // ...and the veil cuts both ways: their own first Strike each duel −1
-  if (S.rules.veiled && h.alignment === "Sidhe" && !C.hit[a]) n -= 1;
+  if (h.alignment === "Sidhe" && !C.hit[a]) n -= param(S.rules, "people.sidhe.veil");
   if (ab.vsBig && e.valour >= 5) n += ab.vsBig;
   if (ab.vsTag && e.tag === ab.vsTag.tag) n += ab.vsTag.n;
   n += activeOath(S, C, a)?.boon.strike ?? 0;
@@ -1377,20 +1385,20 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (e.ab.capTaken !== undefined) n = Math.min(n, e.ab.capTaken);
   const n0 = n;
   // an Ulster blow that, before anything takes off it, is more than half the enemy's starting Valour staggers it
-  const staggers = toDeath(S) && h.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("stagger") && n * 2 > (C.startV[C.duel]?.[b] ?? 99);
+  const staggers = toDeath(S) && h.alignment === "Ulaid" && param(S.rules, "people.ulster.stagger") > 0 && n * 2 > (C.startV[C.duel]?.[b] ?? 99);
   if (N) {
     for (const x of namedBoardFx(S)) if (x.fx.truce !== undefined) N.push(`(${x.name}: no Strike above ${x.fx.truce})`);
     if (e.ab.capTaken !== undefined) N.push(`(${e.name}: no Strike against him above ${e.ab.capTaken})`);
     if (!C.struck[b]) {
       if (e.ab.firstHitSoak) N.push(`−${e.ab.firstHitSoak} ${e.name}'s quality (first Strike against it)`);
-      if (S.rules.veiled && e.alignment === "Sidhe") N.push("−1 the veil (first Strike against an Aos Sídhe)");
+      if (param(S.rules, "people.sidhe.veil") && e.alignment === "Sidhe") N.push(`−${param(S.rules, "people.sidhe.veil")} the veil (first Strike against an Aos Sídhe)`);
       for (const x of namedHeroFx(S, C, b)) if (x.fx.firstHitSoak) N.push(`−${x.fx.firstHitSoak} ${x.name} (first Strike against it)`);
     }
   }
   if (!C.struck[b]) {
     C.struck[b] = true;
     // the Aos Sídhe are veiled: the first Strike against them each duel −1 (positions saved before this rule leave it out)
-    const veil = S.rules.veiled && e.alignment === "Sidhe" ? 1 : 0;
+    const veil = e.alignment === "Sidhe" ? param(S.rules, "people.sidhe.veil") : 0;
     // in a duel to the death no ward softens the first blow by more than 2 (a cloak that makes it miss outright
     // would be worth a whole hero in a long fight)
     const ward = (e.ab.firstHitSoak ?? 0) + veil + sumFx(heroFx(S, C, b), (x) => x.firstHitSoak);
@@ -1401,18 +1409,18 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     n = nw;
   }
   // a Block meets this blow (once)
-  const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && (S.rules.merrow ?? MERROW_DEFAULT).includes("water")) ? C.block?.[b] ?? 0 : 0;
+  const blk = !pierce || (toDeath(S) && e.alignment === "Merrow" && param(S.rules, "people.merrow.waterUnpierced") > 0) ? C.block?.[b] ?? 0 : 0;
   if (C.block?.[b]) { C.block = [C.block[0], C.block[1]]; C.block[b] = 0; }
   if (blk && n > 0) { if (N) N.push(`−${Math.min(blk, n)} blocked`); led(S, C, b, "save:" + (S.stats?.blockSrc?.[b] || "block"), Math.min(blk, n)); n = Math.max(0, n - blk); }
   // Armour takes its share off every blow (what ignores Shield ignores it too)
   const arm = toDeath(S) && !pierce ? C.armour?.[b] ?? 0 : 0;
   // resistance to Spirit: the otherworldly (Aos Sídhe) take 2 off a Spirit blow, flowing water (Merrow) 1
-  const sr = SPIRIT_BLOW.on && toDeath(S) && !S.rules.noSpiritResist ? (e.alignment === "Sidhe" && S.rules.resistSidhe !== undefined ? S.rules.resistSidhe : spiritResist(e.alignment)) : 0;
+  const sr = SPIRIT_BLOW.on && toDeath(S) ? spiritResistOf(S, e.alignment) : 0;
   if (sr && n > 0) { if (N) N.push(`−${Math.min(sr, n)} ${e.alignment === "Sidhe" ? "otherworldly" : "flowing water"} (Spirit)`); led(S, C, b, `save:people:resist-${e.alignment}`, Math.min(sr, n)); n = Math.max(0, n - sr); }
   if (arm && n > 0) { if (N) N.push(`−${Math.min(arm, n)} ${e.name}'s Armour`); led(S, C, b, "save:" + (S.stats?.armourSrc?.[b] || "armour"), Math.min(arm, n)); n = Math.max(0, n - arm); }
   // the mound shelters the Aos Sídhe, like Armour, until it has soaked all it can
   if (n > 0 && e.alignment === "Sidhe" && moundUp(C, b)) {
-    const t = Math.min(S.rules.moundAC ?? MOUND_AC, n, C.mound![b]);
+    const t = Math.min(param(S.rules, "people.sidhe.moundAC"), n, C.mound![b]);
     const m = C.mound!.slice(); m[b] -= t; C.mound = m;
     n -= t;
     led(S, C, b, "save:people:mound", t);
@@ -1435,7 +1443,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   const ac = auraCap(S, C, b);
   if (dmg > ac) { led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }
   // staggered: every blow that wounds it lands 1 more
-  if (dmg > 0 && C.stagger?.[b]) { dmg += 1; led(S, C, a, "deal:people:stagger", 1); }
+  if (dmg > 0 && C.stagger?.[b]) { const k = param(S.rules, "people.ulster.stagger") || 1; dmg += k; led(S, C, a, "deal:people:stagger", k); }
   const wasUp = C.valour[b] > 0;
   const newly = staggers && !C.stagger?.[b];
   if (staggers) { const st = [C.stagger?.[0] ?? 0, C.stagger?.[1] ?? 0]; st[b] = 1; C.stagger = st; }
@@ -1446,7 +1454,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   led(S, C, a, "deal:people:spirit", passed);
   led(S, C, a, "deal:" + SRC.id, dmg - passed);
   // Connacht's blows bleed: each that wounds makes the enemy's Heals 1 less until the end of its next turn
-  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(S.rules.bleedCap ?? 1, bl[b] + 1); C.bleed = bl; }
+  if (dmg > 0 && bleeds(S, h)) { const bl = [C.bleed?.[0] ?? 0, C.bleed?.[1] ?? 0]; bl[b] = Math.min(param(S.rules, "people.connacht.bleedCap"), bl[b] + 1); C.bleed = bl; }
   // what a blow steals back: never more than 1 a Strike
   const dr = Math.min(1, (ab.drain ?? 0) + drain);
     if (dmg > 0 && dr > 0 && C.valour[a] > 0) heal(S, C, a, dr);
@@ -1454,9 +1462,10 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   // where the wounds come from, by element, and how many land on a weakness (for the ledger only)
   if (dmg > 0) { led(S, C, a, "el:" + (SPIRIT_BLOW.on ? "Spirit" : el ?? "none"), dmg); if (el && effWeakness(S, b, e, C).includes(el)) led(S, C, a, "weak:" + el, dmg); }
   // trial: born of the tide: a Water blow that wounds a Merrow gives some of it back
-  const td = toDeath(S) && e.alignment === "Merrow" && el === "Water" && dmg > 0 && C.valour[b] > 0 ? /tide(\d|h)?/.exec(S.rules.merrow ?? MERROW_DEFAULT) : null;
-  if (td) {
-    const k = td[1] === "h" ? Math.ceil(dmg / 2) : Number(td[1] ?? 1);
+  const tide = toDeath(S) && e.alignment === "Merrow" && el === "Water" && dmg > 0 && C.valour[b] > 0
+    ? (param(S.rules, "people.merrow.tideHalf") ? Math.ceil(dmg / 2) : param(S.rules, "people.merrow.tide")) : 0;
+  if (tide) {
+    const k = tide;
     if (NARRATE.lines) say(`${e.name} drinks the tide.`);
     const src = SRC.id; SRC.id = "people:tide";
     try { heal(S, C, b, Math.min(k, dmg)); } finally { SRC.id = src; }
@@ -1469,11 +1478,11 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
   }
   // an Ulster hero's last stand: felled, it strikes once more
-  if (wasUp && C.valour[b] <= 0 && toDeath(S) && e.alignment === "Ulaid" && (S.rules.ulster ?? "").includes("stand") && !RIPOSTE.on && C.valour[a] > 0) {
+  if (wasUp && C.valour[b] <= 0 && toDeath(S) && e.alignment === "Ulaid" && param(S.rules, "people.ulster.stand") > 0 && !RIPOSTE.on && C.valour[a] > 0) {
     if (NARRATE.lines) say(`${e.name} makes a last stand.`);
     RIPOSTE.on = true;
     const src = SRC.id; SRC.id = "power:last-stand";
-    try { strike(S, C, b, Number(/stand(\d)?/.exec(S.rules.ulster ?? "")?.[1] ?? 3)); } finally { RIPOSTE.on = false; SRC.id = src; }
+    try { strike(S, C, b, param(S.rules, "people.ulster.stand")); } finally { RIPOSTE.on = false; SRC.id = src; }
   }
   // a Connacht riposte: when its Shield takes a blow, a free Strike back (not answered by another riposte)
   if (soak > 0 && toDeath(S) && e.ab.riposte && !RIPOSTE.on && C.valour[b] > 0 && C.valour[a] > 0) {
@@ -1510,7 +1519,7 @@ export function primaryBonus(S: State, C: CombatState, a: Side, s: SupportDef, i
   if (kin(s.alignment, h.alignment)) { n += h.ab.kinBonus ?? 1; if (N) N.push(`${sgn(h.ab.kinBonus ?? 1)} kinship (${s.alignment} card, ${h.alignment} hero)`); }
   const f = focusOf(C, a, h);
   if (h.ab.focusAny || (f && (f === s.element || f === s.kind || (s.spiritAs && f === "Spirit")))) { n += 1; if (N) N.push(`+1 Focus (${h.name}'s Focus is ${h.ab.focusAny ? "every support" : f})`); }
-  const watch = toDeath(S) ? S.rules.ulaidVsSpirit ?? SAMHAIN_WATCH : 0;
+  const watch = toDeath(S) ? param(S.rules, "people.ulster.samhainWatch") : 0;
   if (isStrike && watch && h.alignment === "Ulaid" && focusOf(C, b, e) === "Spirit") {
     n += watch; if (N) N.push(`${sgn(watch)} the Samhain watch (${e.name}'s Focus is Spirit)`);
   }
@@ -1608,7 +1617,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       const raw = s.effects[0].n;
       say(`${s0.name}${s !== s0 && s.element !== s0.element ? ` (counting as ${s.element})` : ""}: ${eff.type === "strike" ? "Strike" : eff.type === "heal" ? "Heal" : "Shield"} ${raw}${eff.n !== raw ? `, ${eff.n} here` : ""}.`);
     }
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (toDeath(S) ? settingMod(settingDef(S.rules.setting), s) : 0) + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (toDeath(S) ? settingMod(settingOf(S.rules), s) : 0) + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
     if (NARRATE.lines && i === 0) {
       if (s.attuned) say(`+${s.attuned} attuned by an attendant`);
       if (eff.type === "strike" && s.channel) say(`+${s.channel} channelled by an attendant`);
@@ -1772,7 +1781,7 @@ function callChampion(S: State, C: CombatState, a: Side, card: Card, stats: Matc
     // wounds so far stay counted: the duel's start becomes (Valour already lost) + the champion's Valour
     const sv = C.startV.slice();
     sv[d] = sv[d].slice();
-    const cv = def.valour + S.rules.valourBonus + (toDeath(S) ? S.rules.fordValour ?? FORD_VALOUR : 0);
+    const cv = def.valour + S.rules.valourBonus + (toDeath(S) ? param(S.rules, "duel.fordValour") : 0);
     sv[d][a] = Math.max(0, C.startV[d][a] - C.valour[a]) + cv;
     C.startV = sv;
     C.valour[a] = cv;
@@ -1880,7 +1889,7 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         if (C.stagger?.[a]) { C.stagger = [C.stagger[0], C.stagger[1]]; C.stagger[a] = 0; if (NARRATE.lines) say(`${fighter(S, C, a).name} steadies: no longer staggered.`); }
         C.shield[a] += REST_SHIELD;
         led(S, C, a, "shield:rest", REST_SHIELD);
-        const rh = toDeath(S) ? settingDef(S.rules.setting)?.restHeal ?? 0 : 0;
+        const rh = toDeath(S) ? settingOf(S.rules)?.restHeal ?? 0 : 0;
         if (rh && C.valour[a] > 0) { const src = SRC.id; SRC.id = "setting"; try { heal(S, C, a, rh); } finally { SRC.id = src; } }
         const r = C.rested ?? [0, 0];
         C.rested = [r[0], r[1]];
@@ -1888,9 +1897,9 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         if (NARRATE.lines) say(`${fighter(S, C, a).name} rests and braces: Shield ${C.shield[a] - REST_SHIELD} → ${C.shield[a]}; the next Shield or Heal +${C.rested[a]}.`);
         // the Slúagh walk in dreams: when their enemy rests, they feed on its sleep
         const o = (1 - a) as Side;
-        const dr = S.rules.dreams ?? DREAMS;
+        const dr = param(S.rules, "people.sluagh.dreams");
         // ...but not at the western crossing, where the dead drain the waking instead
-        if (toDeath(S) && dr > 0 && !settingDef(S.rules.setting)?.drain && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
+        if (toDeath(S) && dr > 0 && !settingOf(S.rules)?.drain && C.valour[o] > 0 && fighter(S, C, o).alignment === "Sluagh") {
           if (NARRATE.lines) say(`${fighter(S, C, o).name} walks in ${fighter(S, C, a).name}'s dreams.`);
           const src = SRC.id; SRC.id = "people:dreams";
           try { heal(S, C, o, dr); } finally { SRC.id = src; }
@@ -1935,15 +1944,15 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
     if (C.ebbed?.[0] || C.ebbed?.[1]) C.ebbed = [0, 0]; // the tide turns with the turn
     // the western crossing: the dead drain the living; a fighter that rested this turn is spared
     // ...only while it is above half its starting Valour: the dead wear the living down but can't finish them
-    const dr0 = settingDef(S.rules.setting)?.drain ?? 0;
-    const dr = dr0 && C.valour[a] * 2 > (C.startV[C.duel]?.[a] ?? 0) && (!S.rules.drainVsSluagh || fighter(S, C, (1 - a) as Side).alignment === "Sluagh") ? dr0 : 0;
+    const dr0 = settingOf(S.rules)?.drain ?? 0;
+    const dr = dr0 && C.valour[a] * 2 > (C.startV[C.duel]?.[a] ?? 0) && (!param(S.rules, "setting.drainVsSluaghOnly") || fighter(S, C, (1 - a) as Side).alignment === "Sluagh") ? dr0 : 0;
     if (dr && RESTED_NOW.on && fighter(S, C, a).alignment !== "Sluagh") { const dd = [C.dodged?.[0] ?? 0, C.dodged?.[1] ?? 0]; dd[a] += dr; C.dodged = dd; }
     if (dr && !RESTED_NOW.on && C.valour[a] > 0 && fighter(S, C, a).alignment !== "Sluagh") {
       C.valour[a] -= dr;
       const o = (1 - a) as Side;
       led(S, C, o, "deal:setting:drain", dr);
       if (NARRATE.lines) say(`The dead of the western crossing drain ${fighter(S, C, a).name}: −${dr} Valour.`);
-      if (!S.rules.drainNoFeed && fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
+      if (param(S.rules, "setting.drainFeeds") && fighter(S, C, o).alignment === "Sluagh" && C.valour[o] > 0) { const src = SRC.id; SRC.id = "setting:drain"; try { heal(S, C, o, dr); } finally { SRC.id = src; } }
     }
     { const rr = [C.restRun?.[0] ?? 0, C.restRun?.[1] ?? 0]; rr[a] = RESTED_NOW.on ? rr[a] + 1 : 0; C.restRun = rr; }
     if (!RESTED_NOW.on && C.rested?.[a]) { C.rested = [C.rested[0], C.rested[1]]; C.rested[a] = 0; }

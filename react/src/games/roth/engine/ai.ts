@@ -7,8 +7,9 @@ import { blockValue,
   type Card, type Decision, type Option, type Policy, type Side, type State,
   summonCosts,
 } from "./engine";
-import { chooseSetting, SETTINGS, settingDef } from "./settings";
+import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
+import { param, settingOf } from "./params";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
 
@@ -506,7 +507,7 @@ function deathEval(S: State, me: Side): number {
   const vm = C.valour[me] + 0.7 * C.shield[me] + 2 * (C.armour?.[me] ?? 0) - (C.dodged?.[me] ?? 0);
   const vo = C.valour[o] + 0.7 * C.shield[o] + 2 * (C.armour?.[o] ?? 0) - (C.dodged?.[o] ?? 0);
   // what a setting's drain takes from a side every turn it acts (the western crossing: the living, not the dead)
-  const drain = (p: Side) => (fighter(S, C, p).alignment === "Sluagh" || (S.rules.drainVsSluagh && fighter(S, C, (1 - p) as Side).alignment !== "Sluagh") ? 0 : settingDef(S.rules.setting)?.drain ?? 0);
+  const drain = (p: Side) => (fighter(S, C, p).alignment === "Sluagh" || (param(S.rules, "setting.drainVsSluaghOnly") && fighter(S, C, (1 - p) as Side).alignment !== "Sluagh") ? 0 : settingOf(S.rules)?.drain ?? 0);
   // turns each side needs to fell the other, roughly; fewer is better
   const tm = vo / Math.max(0.5, pot(me)), to = vm / Math.max(0.5, pot(o) + drain(me));
   // a rested side's next Shield or Heal is stronger, but a rest is a turn not spent fighting: when a side is losing

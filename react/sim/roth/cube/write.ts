@@ -6,6 +6,8 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { resolveParams } from "../../../src/games/roth/engine/params";
+import { DEFAULT_RULES, type Rules } from "../../../src/games/roth/engine/engine";
 
 const ENGINE = fileURLToPath(new URL("../../../src/games/roth/engine/", import.meta.url));
 
@@ -29,7 +31,9 @@ export function writeCubeRun(dir: string, meta: RunMeta, rows: unknown[]): strin
   const engine = engineHash();
   const created = new Date().toISOString();
   const id = `${created.slice(0, 10)}-${createHash("sha256").update(JSON.stringify({ ...meta, engine, created })).digest("hex").slice(0, 8)}`;
-  writeFileSync(join(dir, `${id}.meta.json`), JSON.stringify({ id, created, engine, matches: rows.length, ...meta }, null, 1) + "\n");
+  // every parameter's value (engine/params.ts), so each run has numeric coordinates in the rules space
+  const params = resolveParams({ ...DEFAULT_RULES, ...(meta.rules as Partial<Rules>) });
+  writeFileSync(join(dir, `${id}.meta.json`), JSON.stringify({ id, created, engine, matches: rows.length, ...meta, params }, null, 1) + "\n");
   writeFileSync(join(dir, `${id}.jsonl.gz`), gzipSync(rows.map((r) => JSON.stringify(r)).join("\n") + "\n"));
   return id;
 }
