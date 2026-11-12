@@ -8,6 +8,7 @@ import {
   type CardDef, type MonsterDef, type Element, type FighterDef, type Focus, type Forbids, type HeroDef, type OathDef, type OmenEffect, type SupportDef, type GeisDef,
 } from "./cards";
 import { hashSeed, Rng } from "./rng";
+import { chooseSetting, settingDef, settingMod } from "./settings";
 
 export type Side = 0 | 1;
 
@@ -18,6 +19,9 @@ export interface Rules {
   valourBonus: number;
   /** Duels to the death: every fighter enters the ford with this much more Valour (default 3). */
   fordValour?: number;
+  /** Where the duels are fought (engine/settings.ts); settingBy "p2": the second player chooses it after the decks. */
+  setting?: string;
+  settingBy?: "p2";
   /** The Aos Sídhe's mound (duels to the death): how much it soaks off each blow, and in all over the match. */
   moundAC?: number;
   moundValour?: number;
@@ -415,6 +419,10 @@ function emptyStats(): MatchStats {
 // ---------------------------------------------------------------- setup
 export function newMatch(decks: [CardDef[], CardDef[]], rules: Partial<Rules> = {}, seed = 1, trackStats = true): State {
   const R = { ...DEFAULT_RULES, ...rules };
+  // the setting: chosen by the second player after the decks, before the Muster
+  if (R.settingBy === "p2" && !R.setting) R.setting = chooseSetting(decks[1], decks[0]);
+  const SET = settingDef(R.setting);
+  if (SET) { R.fordValour ??= SET.valour; if (SET.mound !== undefined) R.moundValour ??= SET.mound; }
   const rng = new Rng(seed);
   let uid = 1;
   const players = decks.map((list, p) => {
@@ -816,7 +824,7 @@ export function startDuel(S: State, C: CombatState, d: number, stats: MatchStats
     C.valour[p] = v;
     C.init[p] = init;
     sv[d][p] = Math.max(0, v);
-    C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart);
+    C.shield[p] = (h[p].ab.shieldStart ?? 0) + (oath?.boon.shield ?? 0) + sumFx(fx, (e) => e.shieldStart) + (toDeath(S) ? settingDef(R.setting)?.shield ?? 0 : 0);
     if (toDeath(S)) {
       // passive cards beside the hero: their Armour holds from the start (the highest counts)
       let arm = h[p].ab.armour ?? 0, src = arm ? "hero:" + h[p].id : "";
@@ -1175,7 +1183,7 @@ export function heal(S: State, C: CombatState, p: Side, n: number, capTo?: numbe
   const e = fighter(S, C, 1 - p);
   const n1 = n;
   n += (h.ab.healBonus ?? 0) + (activeOath(S, C, p)?.boon.heal ?? 0) + sumFx(heroFx(S, C, p), (x) => x.heal)
-    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0);
+    + sumFx(boardFx(S), (x) => x.healMod) - (e.ab.foeHealMalus ?? 0) - (C.bleed?.[p] ?? 0) + (toDeath(S) ? settingDef(S.rules.setting)?.heal ?? 0 : 0);
   const v0 = C.valour[p];
   const cap = capTo ?? C.cap[p];
   if (C.bleed?.[p] && S.stats && C === S.combat) S.stats.fx.bled[p] += Math.min(C.bleed[p], Math.max(0, n + C.bleed[p]));
@@ -1562,7 +1570,7 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
       const raw = s.effects[0].n;
       say(`${s0.name}${s !== s0 && s.element !== s0.element ? ` (counting as ${s.element})` : ""}: ${eff.type === "strike" ? "Strike" : eff.type === "heal" ? "Heal" : "Shield"} ${raw}${eff.n !== raw ? `, ${eff.n} here` : ""}.`);
     }
-    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
+    const n = eff.n + (i === 0 ? primaryBonus(S, C, a, s, eff.type === "strike") + (toDeath(S) ? settingMod(settingDef(S.rules.setting), s) : 0) + (s.attuned ?? 0) + (eff.type === "strike" ? s.channel ?? 0 : 0) + (seaVsDead(h, e, s, eff.type) ? 1 : 0) : 0);
     if (NARRATE.lines && i === 0) {
       if (s.attuned) say(`+${s.attuned} attuned by an attendant`);
       if (eff.type === "strike" && s.channel) say(`+${s.channel} channelled by an attendant`);
@@ -1828,6 +1836,8 @@ function combatApplyRest(S: State, C: CombatState, o: Option, stats: MatchStats 
         if (C.stagger?.[a]) { C.stagger = [C.stagger[0], C.stagger[1]]; C.stagger[a] = 0; if (NARRATE.lines) say(`${fighter(S, C, a).name} steadies: no longer staggered.`); }
         C.shield[a] += REST_SHIELD;
         led(S, C, a, "shield:rest", REST_SHIELD);
+        const rh = toDeath(S) ? settingDef(S.rules.setting)?.restHeal ?? 0 : 0;
+        if (rh && C.valour[a] > 0) { const src = SRC.id; SRC.id = "setting"; try { heal(S, C, a, rh); } finally { SRC.id = src; } }
         const r = C.rested ?? [0, 0];
         C.rested = [r[0], r[1]];
         C.rested[a] = Math.min(2, r[a] + 1);
