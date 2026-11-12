@@ -395,7 +395,7 @@ export class SkilledPolicy implements Policy {
   name = "Skilled";
   /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
    *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
-  constructor(public fast = false, public depth?: number, public nodes?: number) {}
+  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -431,6 +431,7 @@ export class SkilledPolicy implements Policy {
       case "duel": {
         if (toDeath(V)) {
           if (this.fast) return new CasualPolicy().choose(V, d, rng);
+          if (this.fair) return fairChoice(V, d, rng, this.fair);
           if (this.depth === undefined) return deathChoice(V, d, rng);
           const was = DEATH.budget, wasN = DEATH.nodes;
           DEATH.budget = this.depth;
@@ -607,6 +608,99 @@ function deathChoice(V: State, d: Decision, rng: Rng): number {
   if (DECISIONS.on) logDecision(d, vals, i, "death");
   return i;
 }
+// ---------------------------------------------------------------- the fair search (a candidate replacement)
+/**
+ * The look-ahead made fair and affordable:
+ * - iterative deepening: every option is searched one turn deep, then two, then three; the deepest pass that finished
+ *   for *every* option is the one used (a pass the node limit cuts short is thrown away, so no option is ever judged
+ *   on a shallower search than another);
+ * - a beam: below the root, only the `beam` most promising options at each decision are followed (by the value of
+ *   the position each leads to straight away);
+ * - draws: only the `chance` likeliest cards are followed (their odds renormalised);
+ * - hidden cards: the whole search is repeated over `samples` guesses at the enemy's hand and Reserve, and averaged.
+ */
+export interface FairOpts { depth: number; beam: number; chance: number; samples: number; nodes: number }
+export const FAIR_DEFAULT: FairOpts = { depth: 3, beam: 3, chance: 3, samples: 1, nodes: 60000 };
+interface FairState { n: number; cut: boolean; o: FairOpts }
+function fairNode(S: State, me: Side, budget: number, st: FairState): number {
+  st.n++;
+  const d = S.phase === "combat" ? nextDecision(S) : null;
+  if (!d || budget <= 0) return deathEval(S, me);
+  if (st.n > st.o.nodes) { st.cut = true; return deathEval(S, me); }
+  return fairPick(S, d, me, budget, st, false).v;
+}
+function fairPick(S: State, d: Decision, me: Side, budget: number, st: FairState, root: boolean, vals?: number[]): { v: number; i: number } {
+  const max = d.player === me;
+  const k0 = turnKey(S);
+  let idx: number[] = [];
+  let guestSeen = false;
+  d.options.forEach((x, i) => {
+    if (x.t === "duel" && x.guest >= 0) {
+      if (guestSeen || S.combat!.valour[d.player] >= S.combat!.cap[d.player]) return;
+      guestSeen = true;
+    }
+    idx.push(i);
+  });
+  if (!root && idx.length > st.o.beam) {
+    const quick = new Map<number, number>();
+    for (const i of idx) {
+      if (d.options[i].t === "draw") { quick.set(i, deathEval(S, me)); continue; }
+      const W = cloneState(S);
+      applyDecision(W, d, i, false);
+      st.n++;
+      quick.set(i, deathEval(W, me));
+    }
+    idx = idx.sort((a, b) => (max ? quick.get(b)! - quick.get(a)! : quick.get(a)! - quick.get(b)!)).slice(0, st.o.beam);
+  }
+  let best = { v: max ? -Infinity : Infinity, i: idx[0] ?? 0 };
+  for (const i of idx) {
+    const x = d.options[i];
+    let v: number;
+    if (x.t === "draw") {
+      const tops = topCards(S, d.player).sort((a, b) => b.w - a.w).slice(0, st.o.chance);
+      const tw = tops.reduce((a, t) => a + t.w, 0) || 1;
+      v = 0;
+      for (const t of tops) {
+        const W = withTop(S, d.player, t.uid);
+        const d2 = nextDecision(W)!;
+        applyDecision(W, d2, d2.options.findIndex((y) => y.t === "draw"), false);
+        v += (t.w / tw) * fairNode(W, me, budget, st);
+      }
+    } else {
+      const W = cloneState(S);
+      applyDecision(W, d, i, false);
+      v = fairNode(W, me, turnKey(W) !== k0 ? budget - 1 : budget, st);
+    }
+    if (vals) vals[i] = v;
+    if (max ? v > best.v : v < best.v) best = { v, i };
+  }
+  return best;
+}
+function fairChoice(V: State, d: Decision, rng: Rng, o: FairOpts): number {
+  if (d.options.length === 1) return 0;
+  if (d.kind === "focus") return new CasualPolicy().choose(V, d, rng);
+  const sum: number[] = d.options.map(() => 0);
+  let used = 0;
+  for (let k = 0; k < o.samples; k++) {
+    const D = determinize(V, d.player, rng);
+    let vals: number[] | null = null;
+    for (let depth = 1; depth <= o.depth; depth++) {
+      const st: FairState = { n: 0, cut: false, o };
+      const v: number[] = [];
+      fairPick(D, d, d.player, depth, st, true, v);
+      if (st.cut && vals) break; // this pass didn't finish for every option: keep the last one that did
+      vals = v;
+      if (st.cut) break;
+    }
+    if (!vals) continue;
+    used++;
+    d.options.forEach((_, i) => { sum[i] += vals![i] ?? -Infinity; });
+  }
+  if (!used) return new CasualPolicy().choose(V, d, rng);
+  const i = argmax(sum);
+  if (DECISIONS.on) logDecision(d, sum.map((x) => x / used), i, "death");
+  return i;
+}
 /** The decision log (sim measurement): for each choice the computer weighed, how many options it had, the value it
  *  gave the best and the second best (in its evaluation's units: "death" is the duel look-ahead, about 3 a Valour
  *  point and 60 a hero; "board" the placement evaluation, a win chance), and which it took. */
@@ -735,6 +829,17 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   const [level, at0] = level0.split("@");
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
+    // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
+    const fm = /^(\d+)f(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
+    if (fm) {
+      const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
+      for (const [, k, v] of (fm[2] ?? "").matchAll(/([bcsn])(\d+)/g)) {
+        if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else o.nodes = Number(v);
+      }
+      const p = new SkilledPolicy(false, o.depth, undefined, o);
+      p.name = `Skilled@${at0}`;
+      return p;
+    }
     const [at, nodes] = at0.split(":");
     const p = new SkilledPolicy(false, Number(at), nodes ? Number(nodes) : undefined);
     p.name = `Skilled@${at0}`;
