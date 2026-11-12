@@ -2029,9 +2029,11 @@ function endTurn(S: State, C: CombatState, stats: MatchStats | null) {
       if (NARRATE.lines) say(`${fighter(S, C, a).name} is weary: −${w} Valour.`);
     }
   }
-  // a target dummy (sim only) never stays down: it rises at its starting Valour, and the felling is counted
+  // a target dummy (sim only) never stays down: it rises at its starting Valour, and the falling is counted. Only in
+  // the real match (a copy the computer searches with has no stats): its look-ahead must see a fall as a fall, or it
+  // would read felling a dummy as giving it back its Valour, and dying as free.
   for (const p of [0, 1] as Side[]) {
-    if (C.valour[p] <= 0 && (fighter(S, C, p).ab.undying || param(S.rules, "sim.undyingAll") > 0)) {
+    if (S.stats && C === S.combat && C.valour[p] <= 0 && (fighter(S, C, p).ab.undying || param(S.rules, "sim.undyingAll") > 0)) {
       led(S, C, p, "n:fall", 1);
       led(S, C, p, "n:overkill", -C.valour[p]);
       C.valour[p] = C.startV[C.duel]?.[p] ?? 1;
