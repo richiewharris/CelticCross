@@ -108,7 +108,11 @@ async function main() {
   for (let x = 0; x < decks.length; x++) for (let y = levelB !== level ? 0 : x; y < decks.length; y++) {
     for (let i = 0; i < n; i += chunk) jobs.push({ a: decks[x], b: decks[y], from: i, to: Math.min(n, i + chunk), level, levelB, seed, rules, touch });
   }
-  console.log(`Roth Catha balance: ${decks.length} decks, ${level} vs ${levelB}, ${n} matches per pairing, rules ${JSON.stringify(rules)}, ${W} workers`);
+  // --seat-a d1,d2: play only the pairings whose first deck (level A's, in a two-level run) is listed, so a long
+  // run can be split by deck; the matches and their seeds are the same as in the whole run.
+  const seatA = str("seat-a", "");
+  if (seatA) { const keep = seatA.split(","); for (let i = jobs.length - 1; i >= 0; i--) if (!keep.includes(jobs[i].a)) jobs.splice(i, 1); }
+  console.log(`Roth Catha balance: ${decks.length} decks, ${level} vs ${levelB}${seatA ? ` (first deck ${seatA})` : ""}, ${n} matches per pairing, rules ${JSON.stringify(rules)}, ${W} workers`);
   const recs: Rec[] = [];
   const t0 = Date.now();
   await new Promise<void>((resolve, reject) => {
