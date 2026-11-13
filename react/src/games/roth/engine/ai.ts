@@ -708,6 +708,9 @@ export interface FairOpts {
    *  at each leaf, the action the cube rates best is played out for real before the position is judged; 3 the best
    *  reply to it too. */
   q?: number;
+  /** 1: the beam orders the options below the root by the fast calculator (calc.ts calc3Terms) instead of the
+   *  evaluation the search judges its leaves by, so a narrow beam keeps the right options. */
+  order?: number;
 }
 export const FAIR_DEFAULT: FairOpts = { depth: 3, beam: 3, chance: 3, samples: 1, nodes: 60000, q: 0 };
 /** Judge a position at the search's horizon: as it stands, or (q >= 2) after the line the cube rates best from it,
@@ -768,7 +771,7 @@ function fairPick(S: State, d: Decision, me: Side, budget: number, st: FairState
       const W = cloneState(S);
       applyDecision(W, d, i, false);
       st.n++;
-      quick.set(i, deathEval(W, me));
+      quick.set(i, st.o.order ? orderEval(W, me) : deathEval(W, me));
     }
     idx = idx.sort((a, b) => (max ? quick.get(b)! - quick.get(a)! : quick.get(a)! - quick.get(b)!)).slice(0, st.o.beam);
   }
@@ -795,6 +798,12 @@ function fairPick(S: State, d: Decision, me: Side, budget: number, st: FairState
     if (max ? v > best.v : v < best.v) best = { v, i };
   }
   return best;
+}
+/** The beam's ordering by the fast calculator (on the evaluation's scale). */
+function orderEval(S: State, me: Side): number {
+  const was = EVAL.table;
+  EVAL.table = "fast";
+  try { return deathEval(S, me); } finally { EVAL.table = was; }
 }
 function fairChoice(V: State, d: Decision, rng: Rng, o: FairOpts): number {
   if (d.options.length === 1) return 0;
@@ -970,11 +979,11 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
-    const fm = /^(\d+)f(L|C|T|F)?(?:\/((?:[bcsnq]\d+)+))?$/.exec(at0);
+    const fm = /^(\d+)f(L|C|T|F)?(?:\/((?:[bcsnqo]\d+)+))?$/.exec(at0);
     if (fm) {
       const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
-      for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsnq])(\d+)/g)) {
-        if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else if (k === "q") o.q = Number(v); else o.nodes = Number(v);
+      for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsnqo])(\d+)/g)) {
+        if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else if (k === "q") o.q = Number(v); else if (k === "o") o.order = Number(v); else o.nodes = Number(v);
       }
       // "skilled@3fL": the same, judging positions with the fitted evaluation; "skilled@3fC": with the duel calculator;
       // "skilled@3fT": the table calculator; "skilled@3fF": the fast calculator
