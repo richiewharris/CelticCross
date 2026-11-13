@@ -370,7 +370,7 @@ export function faceLines(d: CardDef): FaceLine[] {
       break;
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
-      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. **Dream-walking**: when the enemy rests, the host heals **2** (not at the western crossing). Its {Spirit} Spirit blows can't be **Blocked**. **Dead flesh**: no blow wounds it for more than half its full Valour (never less than 5). Running water: a Merrow's Shield holds against its Spirit.`);
+      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. **Dream-walking**: when the enemy rests, the host heals **1** (not at the western crossing). Its {Spirit} Spirit blows can't be **Blocked**. **Dead flesh**: no blow wounds it for more than half its full Valour (never less than 5). Running water: a Merrow's Shield holds against its Spirit.`);
       push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
       push("lore", f.lore); break;
     case "monster":

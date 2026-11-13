@@ -24,7 +24,7 @@ describe("the parameter table", () => {
     expect(settingOf(r)!.drain).toBe(0);
     expect(settingOf(r)!.el!.Water).toBe(2);
     expect(settingOf(R({ setting: "crossing" }))!.drain).toBe(1);
-    expect(resolveParams(R({ setting: "crossing" }))["duel.fordValour"]).toBe(2);
+    expect(resolveParams(R({ setting: "crossing" }))["duel.fordValour"]).toBe(3);
     expect(() => settingOf(R({ setting: "ford", params: { "setting.ford.nonsense": 1 } }))).toThrow();
   });
   it("takes a switched-off layer out of both decks", () => {

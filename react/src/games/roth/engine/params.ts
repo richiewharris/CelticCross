@@ -27,7 +27,7 @@ export const PARAMS = {
   /** The western crossing's drain heals a Slúagh host it feeds (1) or not (0). */
   "setting.drainFeeds": 1,
   /** The drain falls only on a fighter whose foe is Slúagh (1) or on everyone but the Slúagh (0). */
-  "setting.drainVsSluaghOnly": 0,
+  "setting.drainVsSluaghOnly": 1,
   // A setting's own numbers can be set too: "setting.<id>.<field>", e.g. "setting.crossing.drain": 0 (fields:
   // valour, shield, heal, restHeal, drain, mound, and el.<Element> / kind.<Kind> for the Strike bonuses).
 

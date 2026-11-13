@@ -1,8 +1,8 @@
 // The rules cube as a function: a duel position reduced to what the rules read (the side to act always side 0, each
 // side's fighting quadrant first, the clocks made relative), every action open there played once by the rules, and
 // what it did recorded with the position it leads to. Positions that reduce alike share one entry, so the cube is
-// filled once and read many times: by the offline cube (sim/roth/rulescube.ts), which chains it into secondary and
-// tertiary actions, and by the computer's search, which reads it to order its options and to look past its horizon.
+// filled once and read many times, by the computer's search (it can order its options by it, and look past its horizon:
+// the "/q" switches of the fair search). The offline cubes of the rules' numbers are sim/roth/rulescube.ts's.
 //
 // What a position keeps: the whole board (fighters, supports, geasa, oaths), the face-up omens, every duel counter of
 // both sides (Valour and its cap and starting value, Shield, rests, bleed, stagger, mound, Armour, the cry, sacrifices
