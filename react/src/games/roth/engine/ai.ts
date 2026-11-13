@@ -13,6 +13,7 @@ import FITTED from "./evalWeights.json";
 import { calcEdge, duelRace, type CalcTerm } from "./calc";
 import CALCW from "./calcWeights.json";
 import { param, settingOf } from "./params";
+import { cubeable, lineValue, lookup, outValue } from "./cube";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
 
@@ -687,13 +688,44 @@ function deathChoice(V: State, d: Decision, rng: Rng): number {
  * - draws: only the `chance` likeliest cards are followed (their odds renormalised);
  * - hidden cards: the whole search is repeated over `samples` guesses at the enemy's hand and Reserve, and averaged.
  */
-export interface FairOpts { depth: number; beam: number; chance: number; samples: number; nodes: number }
-export const FAIR_DEFAULT: FairOpts = { depth: 3, beam: 3, chance: 3, samples: 1, nodes: 60000 };
+export interface FairOpts {
+  depth: number; beam: number; chance: number; samples: number; nodes: number;
+  /** The rules cube (engine/cube.ts) in the search: 0 not at all; 1 it orders the options for the beam (each option
+   *  by the cube's line of it and the best reply, instead of playing every option out); 2 also looks past the horizon:
+   *  at each leaf, the action the cube rates best is played out for real before the position is judged; 3 the best
+   *  reply to it too. */
+  q?: number;
+}
+export const FAIR_DEFAULT: FairOpts = { depth: 3, beam: 3, chance: 3, samples: 1, nodes: 60000, q: 0 };
+/** Judge a position at the search's horizon: as it stands, or (q >= 2) after the line the cube rates best from it,
+ *  each action of it played out by the rules (q - 1 actions). */
+function fairLeaf(S: State, me: Side, st: FairState): number {
+  let X = S;
+  for (let k = 0; k < (st.o.q ?? 0) - 1; k++) {
+    const d = X.phase === "combat" ? nextDecision(X) : null;
+    if (!d || d.kind !== "duel") break;
+    const L = lookup(X);
+    if (!L) break;
+    let bi = -1, bv = -Infinity;
+    d.options.forEach((o, i) => {
+      if (!cubeable(o)) return;
+      const x = L.entry.outs.find((y) => y.sig === L.sig(o));
+      if (!x) return;
+      const v = outValue(x) - (x.next ? lineValue(x.next, 1) : 0);
+      if (v > bv) { bv = v; bi = i; }
+    });
+    if (bi < 0) break;
+    if (X === S) X = cloneState(S);
+    applyDecision(X, d, bi, false);
+    st.n++;
+  }
+  return deathEval(X, me);
+}
 interface FairState { n: number; cut: boolean; o: FairOpts }
 function fairNode(S: State, me: Side, budget: number, st: FairState): number {
   st.n++;
   const d = S.phase === "combat" ? nextDecision(S) : null;
-  if (!d || budget <= 0) return deathEval(S, me);
+  if (!d || budget <= 0) return d && (st.o.q ?? 0) >= 2 ? fairLeaf(S, me, st) : deathEval(S, me);
   if (st.n > st.o.nodes) { st.cut = true; return deathEval(S, me); }
   return fairPick(S, d, me, budget, st, false).v;
 }
@@ -711,7 +743,14 @@ function fairPick(S: State, d: Decision, me: Side, budget: number, st: FairState
   });
   if (!root && idx.length > st.o.beam) {
     const quick = new Map<number, number>();
+    // the cube: each board option by its line (it, then the best reply), on the evaluation's scale (3 a Valour point)
+    const L = (st.o.q ?? 0) >= 1 && d.kind === "duel" ? lookup(S) : null;
+    const base = L ? deathEval(S, me) : 0;
     for (const i of idx) {
+      if (L && cubeable(d.options[i])) {
+        const x = L.entry.outs.find((y) => y.sig === L.sig(d.options[i]));
+        if (x) { const v = outValue(x) - (x.next ? lineValue(x.next, 1) : 0); quick.set(i, base + 3 * (d.player === me ? v : -v)); continue; }
+      }
       if (d.options[i].t === "draw") { quick.set(i, deathEval(S, me)); continue; }
       const W = cloneState(S);
       applyDecision(W, d, i, false);
@@ -912,11 +951,11 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
-    const fm = /^(\d+)f(L|C)?(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
+    const fm = /^(\d+)f(L|C)?(?:\/((?:[bcsnq]\d+)+))?$/.exec(at0);
     if (fm) {
       const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
-      for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsn])(\d+)/g)) {
-        if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else o.nodes = Number(v);
+      for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsnq])(\d+)/g)) {
+        if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else if (k === "q") o.q = Number(v); else o.nodes = Number(v);
       }
       // "skilled@3fL": the same, judging positions with the fitted evaluation; "skilled@3fC": with the duel calculator
       const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L", fm[2] === "C");

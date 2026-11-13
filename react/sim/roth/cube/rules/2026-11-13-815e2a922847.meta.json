@@ -1,7 +1,7 @@
 {
- "id": "2026-11-13-44bfad8589e5",
- "engine": "44bfad8589e5",
- "created": "2026-11-13T03:09:34.314Z",
+ "id": "2026-11-13-815e2a922847",
+ "engine": "815e2a922847",
+ "created": "2026-11-13T04:47:19.259Z",
  "decks": [
   "ulster",
   "connacht",
@@ -10,17 +10,27 @@
   "merrow",
   "sluagh"
  ],
- "settings": [
-  "ford",
-  "tower",
-  "bog",
-  "crossing",
-  "brugh",
-  "loughs",
-  "emain",
-  "cruachan"
+ "foes": [
+  "ulster",
+  "connacht",
+  "sidhe",
+  "fomoire",
+  "merrow",
+  "sluagh",
+  "dummy_spar"
  ],
- "rows": 1108704,
+ "settings": [
+  "ford"
+ ],
+ "situations": [
+  "first",
+  "later"
+ ],
+ "depth": 3,
+ "pool": false,
+ "positions": 1347965,
+ "actions": 2866887,
+ "value": "engine/cube.ts CUBE_VALUE",
  "params": {
   "duel.fordValour": 3,
   "duel.weariness": 1,

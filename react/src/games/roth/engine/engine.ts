@@ -458,7 +458,7 @@ export function forbidsSupport(f: Forbids, s: SupportDef): boolean {
 }
 export const geisForbidsSupport = (g: GeisDef, s: SupportDef) => forbidsSupport(g.forbids, s);
 
-function emptyStats(): MatchStats {
+export function emptyStats(): MatchStats {
   return {
     exchanges: [], actions: { omen: 0, bind: 0, supplant: 0, hold: 0, swear: 0, attend: 0 }, champions: 0, championsBySide: [0, 0], tiebreaks: 0,
     geisBroken: 0, oathBroken: 0, unwilling: 0, invokes: 0, guests: 0, cathbadIgnores: 0, initTies: 0, p2First: 0,
