@@ -10,7 +10,8 @@ import { blockValue,
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
 import FITTED from "./evalWeights.json";
-import { duelRace } from "./calc";
+import { calcEdge, duelRace, type CalcTerm } from "./calc";
+import CALCW from "./calcWeights.json";
 import { param, settingOf } from "./params";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
@@ -397,7 +398,7 @@ export class SkilledPolicy implements Policy {
   name = "Skilled";
   /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
    *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
-  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts, public learned = false) {}
+  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts, public learned = false, public calc = false) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -433,6 +434,11 @@ export class SkilledPolicy implements Policy {
       case "duel": {
         if (toDeath(V)) {
           if (this.fast) return new CasualPolicy().choose(V, d, rng);
+          if (this.calc) {
+            const was = EVAL.calc;
+            EVAL.calc = true;
+            try { return this.fair ? fairChoice(V, d, rng, this.fair) : deathChoice(V, d, rng); } finally { EVAL.calc = was; }
+          }
           if (this.learned) {
             const was = EVAL.weights, wl = EVAL.logit;
             EVAL.weights = fittedWeights(); EVAL.logit = true;
@@ -579,7 +585,7 @@ export function fittedWeights(): Record<EvalFeature, number> {
   return w;
 }
 /** The evaluation in use: HAND_WEIGHTS, or a fitted set (EVAL.weights, when a policy asks for it). */
-export const EVAL = { weights: null as Record<EvalFeature, number> | null, logit: false };
+export const EVAL = { weights: null as Record<EvalFeature, number> | null, logit: false, /** the duel calculator's edge, in Valour points, in place of the hand-set terms */ calc: false };
 function deathEval(S: State, me: Side): number {
   if (S.result) return S.result.winner === -1 ? 0 : S.result.winner === me ? 1000 : -1000;
   const C = S.combat;
@@ -588,6 +594,10 @@ function deathEval(S: State, me: Side): number {
   let felled = 0;
   for (const f of C.felled) felled += (f[o] ? 1 : 0) - (f[me] ? 1 : 0);
   if (C.stage === "done") return 60 * felled;
+  if (EVAL.calc) {
+    const e = calcEdge(S, me, CALCW.weights as Record<CalcTerm, number>);
+    if (e !== null) return 60 * felled + 3 * e;
+  }
   const x = deathFeatures(S, me)!;
   if (!EVAL.weights) {
     const [vd, race, rest, mm, mo, cry, sumc, sm, so] = x.parts;
@@ -902,14 +912,14 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
-    const fm = /^(\d+)f(L?)(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
+    const fm = /^(\d+)f(L|C)?(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
     if (fm) {
       const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
       for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsn])(\d+)/g)) {
         if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else o.nodes = Number(v);
       }
-      // "skilled@3fL": the same, judging positions with the fitted evaluation
-      const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L");
+      // "skilled@3fL": the same, judging positions with the fitted evaluation; "skilled@3fC": with the duel calculator
+      const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L", fm[2] === "C");
       p.name = `Skilled@${at0}`;
       return p;
     }

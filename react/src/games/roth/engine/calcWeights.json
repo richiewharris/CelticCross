@@ -1,0 +1,4 @@
+{
+ "note": "Valour-equivalents of the duel calculator's terms (sim/roth/cube/calcfit.py). Placeholder until measured.",
+ "weights": { "valour": 1, "shield": 0.5, "blow": 1, "sustained": 1, "sustain": 0.3 }
+}

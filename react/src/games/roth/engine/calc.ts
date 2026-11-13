@@ -147,3 +147,33 @@ export function duelRace(S: State, me: Side): Race | null {
   const margin = tFoe - tMe + next;
   return { tMe, tFoe, margin, win: 1 / (1 + Math.exp(-margin / CALC.spread * 2)), rateMe: rm, rateFoe: ro };
 }
+
+/** Level 3, as it turned out: the duel is additive. A side's edge, in Valour points, is its Valour lead plus what each
+ *  of these is worth in Valour (measured: sim/roth/cube/calcfit.py writes engine/calcWeights.json):
+ *    shield     its Shield lead
+ *    blow       its best blow now, less the foe's
+ *    sustained  what it can keep taking off each turn, less the foe's
+ *    sustain    what it can get back in a turn, less the foe's */
+export const CALC_TERMS = ["valour", "shield", "blow", "sustained", "sustain"] as const;
+export type CalcTerm = (typeof CALC_TERMS)[number];
+export function calcTerms(S: State, me: Side): Record<CalcTerm, number> | null {
+  const C = S.combat;
+  if (!C || !toDeath(S) || C.stage !== "turns") return null;
+  const o = (1 - me) as Side;
+  const rm = turnRate(S, me), ro = turnRate(S, o);
+  return {
+    valour: C.valour[me] - C.valour[o],
+    shield: C.shield[me] - C.shield[o],
+    blow: rm.blow - ro.blow,
+    sustained: rm.sustained - ro.sustained,
+    sustain: rm.sustain - ro.sustain,
+  };
+}
+/** A side's edge in Valour points under these Valour-equivalents (valour itself is 1). */
+export function calcEdge(S: State, me: Side, w: Record<CalcTerm, number>): number | null {
+  const t = calcTerms(S, me);
+  if (!t) return null;
+  let e = 0;
+  for (const k of CALC_TERMS) e += (k === "valour" ? 1 : w[k]) * t[k];
+  return e;
+}
