@@ -5,7 +5,7 @@ import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, typ
 import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
-  summonCosts,
+  summonCosts, actorOf,
 } from "./engine";
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
@@ -494,14 +494,18 @@ export class SkilledPolicy implements Policy {
  * The duels are long and every draw is a chance, so nothing is solved exactly: Skilled looks one turn of its own and
  * one of the enemy's ahead (a draw is averaged over what the Reserve could give), and judges the board it reaches.
  */
-function deathEval(S: State, me: Side): number {
-  if (S.result) return S.result.winner === -1 ? 0 : S.result.winner === me ? 1000 : -1000;
+/** The duel position as numbers, from side me's view: the terms of the evaluation, and a few more it doesn't use yet
+ *  (weight 0) that a fitted evaluation may. */
+export const EVAL_FEATURES = ["vdiff", "race", "rest", "mound", "cry", "summon", "stall", "valour", "shield", "armour", "hand", "reserve", "potMe", "potFoe", "turn", "first"] as const;
+export type EvalFeature = (typeof EVAL_FEATURES)[number];
+/** The hand-set evaluation's weights over those features (the one Skilled has always used). */
+export const HAND_WEIGHTS: Record<EvalFeature, number> = { vdiff: 3, race: 6, rest: 1, mound: 1, cry: -1, summon: -1, stall: 1, valour: 0, shield: 0, armour: 0, hand: 0, reserve: 0, potMe: 0, potFoe: 0, turn: 0, first: 0 };
+/** Features of a duel still being fought (null when the match or the combat is over: then the value is exact). */
+export function deathFeatures(S: State, me: Side): (Record<EvalFeature, number> & { parts: number[] }) | null {
+  if (S.result) return null;
   const C = S.combat;
-  if (!C) return 0;
+  if (!C || C.stage === "done") return null;
   const o = (1 - me) as Side;
-  let felled = 0;
-  for (const f of C.felled) felled += (f[o] ? 1 : 0) - (f[me] ? 1 : 0);
-  if (C.stage === "done") return 60 * felled;
   const hm = fighter(S, C, me), ho = fighter(S, C, o);
   // how hard each side can hit with what is ready now
   const pot = (p: Side) => {
@@ -525,7 +529,6 @@ function deathEval(S: State, me: Side): number {
   // a rested side's next Shield or Heal is stronger, but a rest is a turn not spent fighting: when a side is losing
   // the race (it needs more turns to fell the other than the other needs to fell it), resting only puts off the end
   const restWorth = (p: Side, behind: number) => (C.rested?.[p] ?? 0) * (0.6 - 1.5 * Math.min(3, Math.max(0, behind)));
-  const rest = restWorth(me, tm - to) - restWorth(o, to - tm);
   // short-term tactic or long-term strategy? One rest can set something up; a run of rests is a strategy, and it only
   // works if resting gives back as much as the enemy takes each turn (Shield +1, and any heal on a rest). Otherwise
   // every rest after the first is a turn handed to the enemy.
@@ -536,11 +539,50 @@ function deathEval(S: State, me: Side): number {
   };
   // what a mound can still soak is nearly Valour in hand
   const mound = (p: Side) => 2.4 * (C.mound?.[p] ?? 0);
-  // the Hound's cry spends a Reserve card: about a draw's worth
-  const cry = 1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0));
-  // a summon spends a Reserve card: about a draw too
-  const sumc = summonCosts(S) ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0;
-  return 60 * felled + 3 * (vm - vo) + 6 * Math.tanh((to - tm) / 2) + rest + mound(me) - mound(o) - cry - sumc - stall(me, o) + stall(o, me);
+  const P = S.players;
+  return {
+    vdiff: vm - vo,
+    race: Math.tanh((to - tm) / 2),
+    rest: restWorth(me, tm - to) - restWorth(o, to - tm),
+    mound: mound(me) - mound(o),
+    // the Hound's cry and a summon each spend a Reserve card: about a draw's worth
+    cry: 1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0)),
+    summon: summonCosts(S) ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0,
+    stall: stall(o, me) - stall(me, o),
+    valour: C.valour[me] - C.valour[o],
+    shield: C.shield[me] - C.shield[o],
+    armour: (C.armour?.[me] ?? 0) - (C.armour?.[o] ?? 0),
+    hand: P[me].hand.length - P[o].hand.length,
+    reserve: P[me].reserve.length - P[o].reserve.length,
+    potMe: pot(me),
+    potFoe: pot(o),
+    turn: C.turn,
+    first: actorOf(C) === me ? 1 : 0,
+    // the hand-set evaluation's terms one by one, so it adds them in its own order (to the last bit)
+    parts: [vm - vo, Math.tanh((to - tm) / 2), restWorth(me, tm - to) - restWorth(o, to - tm), mound(me), mound(o),
+      1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0)), summonCosts(S) ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0, stall(me, o), stall(o, me)],
+  };
+}
+/** The evaluation in use: HAND_WEIGHTS, or a fitted set (EVAL.weights, when a policy asks for it). */
+export const EVAL = { weights: null as Record<EvalFeature, number> | null, logit: false };
+function deathEval(S: State, me: Side): number {
+  if (S.result) return S.result.winner === -1 ? 0 : S.result.winner === me ? 1000 : -1000;
+  const C = S.combat;
+  if (!C) return 0;
+  const o = (1 - me) as Side;
+  let felled = 0;
+  for (const f of C.felled) felled += (f[o] ? 1 : 0) - (f[me] ? 1 : 0);
+  if (C.stage === "done") return 60 * felled;
+  const x = deathFeatures(S, me)!;
+  if (!EVAL.weights) {
+    const [vd, race, rest, mm, mo, cry, sumc, sm, so] = x.parts;
+    return 60 * felled + 3 * vd + 6 * race + rest + mm - mo - cry - sumc - sm + so;
+  }
+  const w = EVAL.weights;
+  let z = 0;
+  for (const k of EVAL_FEATURES) z += w[k] * x[k];
+  // a fitted evaluation predicts the chance of winning the duel (a logit): worth a felled hero either way
+  return 60 * felled + (EVAL.logit ? 60 * Math.tanh(z / 2) : z);
 }
 /** Each different card that could come off the top of p's Reserve, with its chance (the discards if it is empty). */
 function topCards(S: State, p: Side): { uid: number; w: number }[] {
@@ -604,6 +646,7 @@ function deathChoice(V: State, d: Decision, rng: Rng): number {
   const D = determinize(V, d.player, rng);
   if (DEATH.budget === 0) return new CasualPolicy().choose(V, d, rng);
   const vals: number[] = [];
+  DECISIONS.view = V;
   const i = deathPick(D, d, d.player, DEATH.budget, { n: 0 }, DECISIONS.on ? vals : undefined).i;
   if (DECISIONS.on) logDecision(d, vals, i, "death");
   return i;
@@ -698,18 +741,24 @@ function fairChoice(V: State, d: Decision, rng: Rng, o: FairOpts): number {
   }
   if (!used) return new CasualPolicy().choose(V, d, rng);
   const i = argmax(sum);
+  DECISIONS.view = V;
   if (DECISIONS.on) logDecision(d, sum.map((x) => x / used), i, "death");
   return i;
 }
 /** The decision log (sim measurement): for each choice the computer weighed, how many options it had, the value it
  *  gave the best and the second best (in its evaluation's units: "death" is the duel look-ahead, about 3 a Valour
  *  point and 60 a hero; "board" the placement evaluation, a win chance), and which it took. */
-export interface DecisionRow { kind: string; side: number; eval: "death" | "board"; options: number; best: number; second: number; chose: number }
-export const DECISIONS = { on: false, log: [] as DecisionRow[] };
+export interface DecisionRow { kind: string; side: number; eval: "death" | "board"; options: number; best: number; second: number; chose: number; duel?: number; x?: number[] }
+export const DECISIONS = { on: false, log: [] as DecisionRow[], /** also record the position's features (the evaluation's training data) */ features: false, view: null as State | null };
 function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "board") {
   const v = vals.filter((x) => Number.isFinite(x)).sort((a, b) => b - a);
   if (v.length < 2) return;
-  DECISIONS.log.push({ kind: d.kind, side: d.player, eval: ev, options: v.length, best: v[0], second: v[1], chose });
+  const row: DecisionRow = { kind: d.kind, side: d.player, eval: ev, options: v.length, best: v[0], second: v[1], chose };
+  if (DECISIONS.features && DECISIONS.view?.combat) {
+    const x = deathFeatures(DECISIONS.view, d.player);
+    if (x) { row.duel = DECISIONS.view.combat.duel; row.x = EVAL_FEATURES.map((k) => x[k]); }
+  }
+  DECISIONS.log.push(row);
 }
 /** Look-ahead depth in whole turns for long duels (a lever for experiments; 0 = Casual's eye). */
 export const DEATH = { budget: 2, /** the search's node limit per decision */ nodes: 20000, /** leaves cut short by it (a sim counter) */ capped: 0 };
