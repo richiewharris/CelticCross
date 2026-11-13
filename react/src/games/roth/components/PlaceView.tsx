@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { CardDef } from "../engine/cards";
 import { isHeroSpot, type Decision, type Option, type State } from "../engine/engine";
-import { cardName } from "../text";
+import { cardName, seatName } from "../text";
 import { CardFace } from "./Card";
 
 type PlaceOpt = Extract<Option, { t: "place" }>;
@@ -25,11 +25,11 @@ export function PlaceView(props: {
   const variants = sel === null ? [] : opts.filter(({ o }) => o.uid === sel);
   const key = (o: PlaceOpt) => (o.join ?? []).join(",");
   const chosen = variants.length === 1 ? variants[0] : variants.find(({ o }) => key(o) === props.join) ?? null;
-  const spot = d.spot! + 1;
+  const seat = seatName(S, d.spot!, d.player), Seat = seat.replace(/^the /, "").replace(/^./, (x) => x.toUpperCase());
   const what = isHeroSpot(d.spot!) ? "hero" : "support";
   return (
-    <section className="place" aria-label={`Choose a ${what} for spot ${spot}`}>
-      <p className="place-head"><b>Spot {spot}</b>: choose a {what} to place. Tap a card to pick it, then confirm.</p>
+    <section className="place" aria-label={`Choose a ${what} for ${seat}`}>
+      <p className="place-head"><b>{Seat}</b>: choose a {what}.</p>
       <div className="place-row" role="listbox" aria-label={`${what}s you can place`}>
         {cards.map((c) => (
           <div key={c.uid} ref={(el) => { if (el) refs.current.set(c.uid, el); else refs.current.delete(c.uid); }}
@@ -52,7 +52,7 @@ export function PlaceView(props: {
       ) : null}
       <div className="place-confirm">
         <button type="button" className="btn primary" disabled={!chosen} onClick={() => chosen && props.onPick(chosen.i)}>
-          {chosen ? `Place ${cardName(S, chosen.o.uid)} at spot ${spot}` : sel !== null ? "Choose its monsters" : "Pick a card"}
+          {chosen ? `Place ${cardName(S, chosen.o.uid)}` : sel !== null ? "Choose its monsters" : "Pick a card"}
         </button>
       </div>
     </section>

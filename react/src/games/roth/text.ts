@@ -1,6 +1,6 @@
 // Words for cards, choices and the move log, from one seat's point of view.
 import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
-import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
+import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, ownerOfSpot, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
 import type { Element, SupportDef } from "./engine/cards";
 import { settingDef } from "./engine/settings";
 
@@ -85,13 +85,30 @@ export function cardName(S: State, uid: number): string {
   if (S.combat) for (const g of [...S.combat.guests, ...S.combat.champs]) for (const c of g) if (c.uid === uid) return c.def.name;
   return "a card";
 }
-const at = (S: State, spot: number) => S.board[spot]?.def.name ?? `spot ${spot + 1}`;
-/** A hero named with its spot, for choices that aim at one hero (two may share a name in a mirror match). */
-const atSpot = (S: State, spot: number) => `${at(S, spot)} (spot ${spot + 1})`;
+// ---- Names on the wheel. Players never see a spot number: each place is a seat (the hero, its west flank, its east
+// flank) in a band (a hero and the two who fight beside it). Each side raises a first band and a second band; first
+// meets first in the first duel, second meets second. A band whose hero is placed is also called by its hero's name.
+/** "your first band", "their second band", or "Emer's band" once a hero (or host) stands in it. */
+export function bandName(S: State, spot: number, me: Side, byHero = true): string {
+  const q = quadOf(spot), hero = S.board[q * 3];
+  if (byHero && hero && (hero.def.type === "hero" || hero.def.type === "host")) return `${hero.def.name}'s band`;
+  return `${ownerOfSpot(spot) === me ? "your" : "their"} ${q % 2 === 0 ? "first" : "second"} band`;
+}
+/** "the hero of your first band", "the west flank of Emer's band". */
+export function seatName(S: State, spot: number, me: Side): string {
+  const pos = spot % 3;
+  return `the ${pos === 0 ? "hero" : pos === 1 ? "west flank" : "east flank"} of ${bandName(S, spot, me, pos !== 0)}`;
+}
+/** A seat as a short label: "Hero", "West flank", "East flank". */
+export const seatShort = (spot: number) => (spot % 3 === 0 ? "Hero" : spot % 3 === 1 ? "West flank" : "East flank");
+/** The card in a seat by name, or the seat itself when it is empty. */
+const AT = (S: State, spot: number, me: Side) => S.board[spot]?.def.name ?? seatName(S, spot, me);
+/** A hero named with its side and duel, for choices that aim at one hero (two may share a name in a mirror match). */
+const AT_SPOT = (S: State, spot: number, me: Side) => (S.board[spot] ? `${S.board[spot]!.def.name} (${ownerOfSpot(spot) === me ? "yours" : "theirs"}, ${quadOf(spot) % 2 === 0 ? "first" : "second"} duel)` : seatName(S, spot, me));
 const CRY_TEXT = " with the Hound's cry (spend the top card of your Reserve: no halving)";
 
 /** A button label for one option of the pending decision, for the player who must choose. */
-export function optionLabel(S: State, d: Decision, o: Option): string {
+export function optionLabel(S: State, d: Decision, o: Option, me: Side = d.player): string {
   switch (o.t) {
     case "muster": return o.how === "keep" ? `Keep ${cardName(S, o.uid)} in hand` : o.how === "aside" ? `Set ${cardName(S, o.uid)} aside for the Reserve`
       : o.swap !== undefined ? `Put ${cardName(S, o.uid)} in place of ${cardName(S, o.swap)} (to the Reserve)` : `Put ${cardName(S, o.uid)} in an Omen spot`;
@@ -99,14 +116,14 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
     case "musterReturn": return `Return ${cardName(S, o.uid)} to the Reserve`;
     case "setting": { const x = settingDef(o.id); return `Fight at ${x?.name ?? o.id}: ${x?.text ?? ""}`; }
     case "place": return o.join ? `Place ${cardName(S, o.uid)} with ${o.join.length ? o.join.map((u) => cardName(S, u).replace(/^The /, "")).join(", ") : "no monsters"}` : `Place ${cardName(S, o.uid)}`;
-    case "omen": case "late": return o.target !== undefined ? `Turn ${cardName(S, o.uid)} on ${atSpot(S, o.target)}` : `Turn ${cardName(S, o.uid)}`;
+    case "omen": case "late": return o.target !== undefined ? `Turn ${cardName(S, o.uid)} on ${AT_SPOT(S, o.target, me)}` : `Turn ${cardName(S, o.uid)}`;
     case "lateDone": return "Done turning omens";
     case "bind": {
       const g = S.players[d.player].hand.find((c) => c.uid === o.uid)?.def;
-      return g?.type === "geis" && g.scope === "global" ? `Lay ${g.name} (global)` : `Bind ${at(S, d.spot!)} with ${cardName(S, o.uid)}`;
+      return g?.type === "geis" && g.scope === "global" ? `Lay ${g.name} (global)` : `Bind ${AT(S, d.spot!, me)} with ${cardName(S, o.uid)}`;
     }
-    case "supplant": return `Supplant ${at(S, d.spot!)} with ${cardName(S, o.uid)}`;
-    case "swear": return `Swear ${cardName(S, o.uid)} on ${atSpot(S, o.spot)}`;
+    case "supplant": return `Supplant ${AT(S, d.spot!, me)} with ${cardName(S, o.uid)}`;
+    case "swear": return `Swear ${cardName(S, o.uid)} on ${AT_SPOT(S, o.spot, me)}`;
     case "attend": return `Call ${cardName(S, o.uid)}`;
     case "hold": return "Hold";
     case "focus": return o.el ? `Shape-shift: Focus ${o.el}` : "Keep her Focus";
@@ -121,7 +138,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       if (o.how === "discard") return `Put ${n} aside and do something else`;
       if (o.how === "keep") return c?.type === "hero" ? `Keep ${n} in hand as a guest (can heal 1 first)` : `Keep ${n} in hand to call on later`;
       const mode = o.mode === "break" ? `Break ${c?.type === "support" ? breaksWhat(S, d.player, c, o.as) : "the geis or oath"} (−2 each) and ` : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
-      const t = o.target !== undefined ? ` on ${at(S, o.target)}` : "";
+      const t = o.target !== undefined ? ` on ${AT(S, o.target, me)}` : "";
       const verb = c?.type === "champion" ? "call" : c?.type === "monster" ? "join" : c?.type === "geis" ? "lay" : c?.type === "oath" ? "swear" : c?.type === "omen" ? "turn" : "play";
       const x = (mode + `${verb} ${n}${o.as ? ` as ${o.as}` : ""}${t}${o.cry ? CRY_TEXT : ""}`);
       return x[0].toUpperCase() + x.slice(1);
@@ -131,7 +148,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const om = S.players[d.player].omens.some((x) => x.card.uid === o.uid);
       const g = S.players[d.player].hand.find((c) => c.uid === o.uid)?.def;
       const verb = om ? "Turn" : g?.type === "geis" ? "Lay" : g?.type === "oath" ? "Swear" : "Call";
-      return `${verb} ${n}${o.target !== undefined ? ` on ${at(S, o.target)}` : ""}`;
+      return `${verb} ${n}${o.target !== undefined ? ` on ${AT(S, o.target, me)}` : ""}`;
     }
     case "duel": {
       const guest = o.guest >= 0 ? ` (guest ${cardName(S, o.guest)} heals 1 first)` : "";
@@ -139,7 +156,7 @@ export function optionLabel(S: State, d: Decision, o: Option): string {
       const mode = o.mode === "break" ? `Break ${breaksWhat(S, d.player, o.act === "rest" ? "rest" : sup ?? "rest", o.as)} (−2 each) and ` : o.mode === "ignore" ? "Ignore the geis (Cathbad) and " : "";
       const twin = o.act === "use" && d.options.some((x) => x.t === "duel" && x.act === "use" && x.spot !== o.spot && S.board[x.spot]?.def.name === S.board[o.spot]?.def.name);
       const out = o.act === "use" && toDeath(S) && S.combat && S.board[o.spot]?.def.type === "support" && unwilling(fighter(S, S.combat, d.player).alignment, (S.board[o.spot]!.def as { alignment: string }).alignment);
-      const act = o.act === "rest" ? "rest" : out ? `cast out ${at(S, o.spot)} (it won't serve this hero) and draw in its place` : `use ${twin ? atSpot(S, o.spot) : at(S, o.spot)}${o.as ? ` as ${o.as}` : ""}`;
+      const act = o.act === "rest" ? "rest" : out ? `cast out ${AT(S, o.spot, me)} (it won't serve this hero) and draw in its place` : `use ${twin ? AT_SPOT(S, o.spot, me) : AT(S, o.spot, me)}${o.as ? ` as ${o.as}` : ""}`;
       const s = mode + act + (o.cry ? CRY_TEXT : "");
       return s[0].toUpperCase() + s.slice(1) + guest;
     }
@@ -157,27 +174,27 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "musterOmen": return `${who} sent ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "setting": return `${who} chose to fight at ${settingDef(o.id)?.name ?? o.id}.`;
-    case "place": return `${who} placed ${o.join ? optionLabel(S, d, o).replace(/^Place /, "") : cardName(S, o.uid)} at spot ${d.spot! + 1}.`;
-    case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${at(S, o.target)}` : ""}.`;
+    case "place": return `${who} placed ${o.join ? optionLabel(S, d, o, me).replace(/^Place /, "") : cardName(S, o.uid)} as ${seatName(S, d.spot!, me)}.`;
+    case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${AT(S, o.target, me)}` : ""}.`;
     case "lateDone": return `${who} turned no more omens.`;
-    case "bind": return `${who} ${optionLabel(S, d, o).replace(/^Bind/, "bound").replace(/^Lay/, "laid")}.`;
-    case "supplant": return `${who} supplanted ${at(S, d.spot!)} with ${cardName(S, o.uid)}.`;
-    case "swear": return `${who} swore ${cardName(S, o.uid)} on ${at(S, o.spot)}.`;
+    case "bind": return `${who} ${optionLabel(S, d, o, me).replace(/^Bind/, "bound").replace(/^Lay/, "laid")}.`;
+    case "supplant": return `${who} supplanted ${AT(S, d.spot!, me)} with ${cardName(S, o.uid)}.`;
+    case "swear": return `${who} swore ${cardName(S, o.uid)} on ${AT(S, o.spot, me)}.`;
     case "attend": return `${who} called ${cardName(S, o.uid)}.`;
-    case "hold": return `${who} held at spot ${d.spot! + 1}.`;
+    case "hold": return `${who} held before ${AT(S, d.spot!, me)}.`;
     case "focus": return o.el ? `${who} shape-shifted: Focus ${o.el}.` : `${who} kept the Morrígan's Focus.`;
     case "champion": return `${who} called ${cardName(S, o.uid)} to stand in.`;
     case "sacrifice": return `${who} sacrificed ${ALL_DEFS[o.id]?.name ?? o.id} from the host.`;
     case "summon": return `${who} summoned ${ALL_DEFS[o.id]?.name ?? o.id} from the other host.`;
-    case "duel": return `${who}: ${optionLabel(S, d, o)}.`;
+    case "duel": return `${who}: ${optionLabel(S, d, o, me)}.`;
     case "draw": return `${who} drew from the Reserve.`;
     case "block": return o.spot < 0 ? `${who} took the blow.` : `${who} blocked with ${S.board[o.spot]?.def.name ?? "a card"}.`;
     case "drawn": {
       const n = S.combat?.drawn?.def.name ?? "a card";
       if (o.how === "discard") return `${who} put ${mine || S.combat?.drawn?.def.type !== "support" ? n : n} aside.`;
-      return `${who}: ${optionLabel(S, d, o)}.`;
+      return `${who}: ${optionLabel(S, d, o, me)}.`;
     }
-    case "duelCard": return `${who}: ${optionLabel(S, d, o)}.`;
+    case "duelCard": return `${who}: ${optionLabel(S, d, o, me)}.`;
   }
 }
 

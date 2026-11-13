@@ -73,7 +73,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     leans: { attack: 2, healing: 2, defence: 2 },
     why: { attack: "Light blows that pass Shield and Block, and supports that weaken the enemy rather than wound.", healing: "No Heals: they steal Valour with their blows and feed on the enemy's rests.", defence: "No Shield, but no great blow wounds dead flesh for long." },
     ways: [
-      "**Hosts**: a host goes on a hero spot with **2 or 3 monsters** joined to it from your hand. Its Valour is the monsters' together, **less one**; its Initiative the host's plus theirs. It is weak to the host's own element and to any weakness **two of its monsters share**.",
+      "**Hosts**: a host takes a hero's seat with **2 or 3 monsters** joined to it from your hand. Its Valour is the monsters' together, **less one**; its Initiative the host's plus theirs. It is weak to the host's own element and to any weakness **two of its monsters share**.",
       "{Spirit} **Spirit**: Spirit blows ignore Shield and Block and **steal 1** when they wound. A monster with a **hybrid** element may strike as that element instead (the element wheel and weakness count; Shield soaks it; nothing is stolen).",
       "**The dead-flesh aura**: no blow wounds a host for more than **half its full Valour**, but never less than **5**.",
       "**Dream-walking**: whenever the enemy **rests**, the host fighting it **heals 1** (not at the western crossing).",
@@ -112,15 +112,15 @@ export const BUILDING = {
       text: "A global geis binds every hero, yours too. The Geis of the king's peace forbids Weapons; a deck with no Weapons can lay it for nothing while the enemy's spears fall silent.",
     },
   ],
-  close: "The rest is yours to find: which heroes want which supports, which omen answers which deck, which oath a quadrant never needed.",
+  close: "The rest is yours to find: which heroes want which supports, which omen answers which deck, which oath a band never needed.",
 };
 
 /** What each type of card is, when it's played, and how it works with the rest. */
 export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oath" | "omen" | "attendant" | "host"; title: string; sample: string; what: string; when: string; how: string[] }[] = [
   {
     type: "hero", title: "Heroes", sample: "cu",
-    what: "The fighters. Each quadrant of the wheel is one hero and the two supports behind it, and the heroes fight their duels at the ford to the death.",
-    when: "**Drafting turn**, on a hero spot (1, 4, 7 or 10). Spots 1 and 7 meet in the first duel, 4 and 10 in the second.",
+    what: "The fighters. Each band of the wheel is one hero and the two supports on its flanks, and the heroes fight their duels at the ford to the death.",
+    when: "**Marshalling**, in a band's hero seat. First bands meet in the first duel, second bands in the second.",
     how: [
       "{valour} **Valour** is life: at 0 the hero falls. {init} **Initiative** decides who strikes first (a tie goes to the first player).",
       "**Focus**: supports of that element or kind get **+1**. **Weak to**: enemy Strikes of that element get **+1**.",
@@ -141,7 +141,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "support", title: "Supports", sample: "gae_bolga",
     what: "Weapons, feats, allies and words: the two placed behind a hero are its own, ready at the ford; the rest of your deck waits in the Reserve.",
-    when: "**Drafting turn**, two behind each hero. **Playing turn**: supplant an enemy support with one of yours. **At the ford**: use a placed support (the first time free, then at its price), or play one you draw off the Reserve (used once, then discarded).",
+    when: "**Marshalling**, on the two flanks of each hero. **The Winnow**: supplant an enemy support with one of yours. **At the ford**: use a placed support (the first time free, then at its price), or play one you draw off the Reserve (used once, then discarded).",
     how: [
       "{strike} **Strike** wounds the enemy; {shield} **Shield** soaks it first unless the card ignores Shield. {heal} **Heal** restores Valour, up to 2 above the duel's start. {shield} **Shield** absorbs wounds until used up.",
       "The printed number grows with **kinship**, **Focus**, the **element** matchup and the enemy's **weakness** (see “Reading a blow”).",
@@ -152,7 +152,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "geis", title: "Geasa", sample: "g_giant",
     what: "Taboos. A geis forbids supports of an element or kind, Heals, or resting.",
-    when: "**Playing turn**: bind the enemy hero you face (targeted), or lay a global geis that binds **every** hero on the field, your own too.",
+    when: "**The Winnow**: bind the enemy hero before you (targeted), or lay a global geis that binds **every** hero on the field, your own too.",
     how: [
       "A hero may still **break** a geis: pay **2 Valour**, then act. In a duel to the death a geis is never broken for good: **every** forbidden use costs 2 Valour again, so a well-laid geis taxes the enemy all duel. Cathbad the druid lets one break go free; Emain's ward ignores geasa entirely.",
       "Some geasa also bite at the start of the duel: they invoke a **tag** (−2 Valour), punish big heroes (−2 Valour), or take **3 Initiative**.",
@@ -162,17 +162,17 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "oath", title: "Oaths", sample: "v_blood",
     what: "A vow sworn on your own hero: a **boon** for that hero's duel, paid for by a **vow**.",
-    when: "**Playing turn**, on one of your heroes.",
+    when: "**The Winnow**, on one of your heroes.",
     how: [
       "The boon is Strikes, Shield, Valour, Initiative or Heals. The vow forbids some supports or resting, like a geis you chose.",
       "Breaking the vow costs **2 Valour**. A champion who steps in is free of it, and loses the boon.",
-      "Pick the oath whose vow your hero's quadrant never needed anyway.",
+      "An oath whose vow the hero's band never needed costs little.",
     ],
   },
   {
     type: "omen", title: "Omens", sample: "o_crow",
     what: "Fate. Omens wait face down until you turn them, then hold for the rest of the match.",
-    when: "**The Muster**: put up to four in your Omen spots, face down, as you draw them. **Playing turn**: turn one face up (a targeted omen picks its hero as it turns).",
+    when: "**The Muster**: put up to four in your Omen spots, face down, as you draw them. **The Winnow**: turn one face up (a targeted omen picks its hero as it turns).",
     how: [
       "{global} **Over the whole field**: both sides feel it (the Truce, the crow, the Night of the Fomóire).",
       "{yours} **For your heroes**: wards that soften blows and reinforcements that add +1.",
@@ -183,7 +183,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "host", title: "Hosts and monsters", sample: "hunt",
     what: "The Slúagh have no heroes. A **host** (the Hunt, the Prey or the Taboo) gathers **2 or 3 monsters** and fights as one, in a hero's place.",
-    when: "**Drafting turn**, on a hero spot: the host goes down with the monsters you join to it from your hand.",
+    when: "**Marshalling**, in a hero's seat: the host goes down with the monsters you join to it from your hand.",
     how: [
       "The host's {valour} **Valour** is its monsters' added together, **less one**; its {init} **Initiative** is the host's own plus each monster's (which can be negative).",
       "It is weak to **every** element its monsters and its host type bring, so a bigger host is tougher but easier to hit hard.",
@@ -194,7 +194,7 @@ export const TYPE_NOTES: { type: "hero" | "champion" | "support" | "geis" | "oat
   {
     type: "attendant", title: "Attendants", sample: "a_scribe",
     what: "Smiths, druids, poets and thralls who change what a card **counts as**: its element, its kind, or what a hero is weak to.",
-    when: "**Playing turn**, from your hand, like an oath. It stays for the rest of the match.",
+    when: "**The Winnow**, from your hand, like an oath. It stays for the rest of the match.",
     how: [
       "**Enchant**: your Weapons (or Feats) count as an element. **Turn**: supports of one element count as another. **Channel**: the same, with Strike **+1**, but the hero using it loses **1 Valour**. **Reforge**: supports of one kind count as another. **Curse**: heroes in reach are also weak to a new element.",
       "{yours} **Your heroes**, {enemy} **the enemy's**, or {global} **every hero**: printed on the card.",

@@ -3,8 +3,8 @@
 // button (or a second tap on the same row, or Enter) commits.
 import { useEffect, useMemo } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
-import { cardName, optionLabel } from "../text";
-import type { Decision, Option, State } from "../engine/engine";
+import { cardName, optionLabel, seatName } from "../text";
+import { ownerOfSpot, type Decision, type Option, type State } from "../engine/engine";
 import { previewOf, prompt } from "./Choices";
 
 export interface Pick { key: string | null; target: number | null; guest: number }
@@ -156,7 +156,7 @@ export function ActionPanel(props: {
           <span className="zone-label">On which hero?</span>
           {targets.map((t) => (
             <button key={t} type="button" role="radio" aria-checked={pick.target === t} className={`btn small${pick.target === t ? " primary" : ""}`} onClick={() => props.onPick({ ...pick, target: t })}>
-              {S.board[t]?.def.name ?? `spot ${t + 1}`} <small>(spot {t + 1})</small>
+              {S.board[t]?.def.name ?? seatName(S, t, d.player)} <small>({ownerOfSpot(t) === d.player ? "yours" : "theirs"})</small>
             </button>
           ))}
         </div>

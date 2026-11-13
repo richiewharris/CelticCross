@@ -5,8 +5,8 @@ import boards from "./boards.json";
 export type PuzzleSet = "deck" | "draft" | "play" | "combat";
 export const SETS: { id: PuzzleSet; title: string; intro: string }[] = [
   { id: "deck", title: "Deck building", intro: "Copies, legends, allegiances and the cards your heroes refuse." },
-  { id: "draft", title: "Drafting", intro: "Place the last support. The other spots are settled, and nobody acts in the Playing turn." },
-  { id: "play", title: "Playing turn", intro: "Your action in the Playing turn. Afterwards everyone holds, and both duels are played perfectly." },
+  { id: "draft", title: "Marshalling", intro: "Place the last support. The other seats are settled, and nobody acts in the Winnow." },
+  { id: "play", title: "The Winnow", intro: "Your action in the Winnow. Afterwards everyone holds, and both duels are played perfectly." },
   { id: "combat", title: "Combat", intro: "A move at the ford. Both sides play perfectly from here; guests and champions sit this one out." },
 ];
 

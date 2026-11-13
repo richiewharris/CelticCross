@@ -1,11 +1,12 @@
-// The zoomed view of the wheel as a straight lane: the enemy quadrant across the ford on top, yours below, each a hero
-// and its two supports, in the same order as the duel. The spot in play is marked; spots you can act on are buttons.
+// The zoomed view of the wheel as a straight lane: the enemy band across the ford on top, yours below, each a hero
+// and its two flanks, in the same order as the duel. The seat in play is marked; seats you can act on are buttons.
 import { useEffect, useRef, useState } from "react";
 import type { CardDef } from "../engine/cards";
 import { isHeroSpot, ownerOfSpot, quadOf, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
 import { spotValour, type Mark } from "./Wheel";
+import { bandName, seatName, seatShort } from "../text";
 
 function Spot(props: { S: State; me: Side; spot: number; mark?: Mark; onSpot?: (spot: number) => void; onFocusCard?: (d: CardDef) => void; ghost?: CardDef | null }) {
   const { S, me, spot, mark } = props;
@@ -17,18 +18,18 @@ function Spot(props: { S: State; me: Side; spot: number; mark?: Mark; onSpot?: (
   const val = spotValour(S, spot);
   // the spot you face is a button too: it opens the actions aimed at it
   const click = props.onSpot && mark && mark !== "duel" ? () => props.onSpot!(spot) : undefined;
-  const desc = `Spot ${spot + 1}${c ? `: ${c.def.name}` : ", empty"}${geis ? `, bound by ${geis.def.name}` : ""}${oath ? `, sworn to ${oath.def.name}` : ""}`;
+  const desc = `${seatName(S, spot, me).replace(/^the /, "").replace(/^./, (x) => x.toUpperCase())}${c ? `: ${c.def.name}` : ", empty"}${geis ? `, bound by ${geis.def.name}` : ""}${oath ? `, sworn to ${oath.def.name}` : ""}`;
   return (
     <div className={`lane-spot${hero ? " hero" : ""}${mark ? " m-" + mark : ""}${ownerOfSpot(spot) === me ? " my-half" : " their-half"}`}>
-      <span className="lane-no" aria-hidden="true">{spot + 1}{mark === "faced" ? " · you face this" : mark === "target" ? " · placing here" : ""}</span>
+      <span className="lane-no" aria-hidden="true">{seatShort(spot)}{mark === "faced" ? " · before you" : mark === "target" ? " · placing here" : ""}</span>
       {c ? (
         <CardFace def={c.def} owner={c.owner === me ? "mine" : "theirs"} onFocusCard={props.onFocusCard} onClick={click} playable={!!click} label={desc} />
       ) : props.ghost ? (
-        <div className="ghost"><CardFace def={props.ghost} owner="mine" label={`${props.ghost.name}, picked for spot ${spot + 1}`} /></div>
+        <div className="ghost"><CardFace def={props.ghost} owner="mine" label={`${props.ghost.name}, picked for ${seatName(S, spot, me)}`} /></div>
       ) : click ? (
         <button type="button" className="empty-spot" aria-label={desc} onClick={click}>+</button>
       ) : (
-        <div className="empty-spot" role="img" aria-label={desc}>{hero ? "hero" : "support"}</div>
+        <div className="empty-spot" role="img" aria-label={desc}>{seatShort(spot).toLowerCase()}</div>
       )}
       {geis || oath || omens.length || val ? (
         <div className="lane-tags">
@@ -86,14 +87,14 @@ export function FordLane(props: {
   const { S, me } = props;
   const myQ = props.mine, theirQ = (myQ + 2) % 4;
   return (
-    <div className="lane" role="group" aria-label={`Spots ${theirQ * 3 + 1}–${theirQ * 3 + 3} across the ford from spots ${myQ * 3 + 1}–${myQ * 3 + 3}`}>
+    <div className="lane" role="group" aria-label={`${bandName(S, theirQ * 3, me)} across the ford from ${bandName(S, myQ * 3, me)}`}>
       {/* keyed by the quadrant: moving on to the next one turns the lane like the wheel */}
       <div key={`t${theirQ}`} className="lane-row theirs turn-in">
-        <QuadStack S={S} me={me} q={theirQ} marks={props.marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} label={`Spots ${theirQ * 3 + 1}–${theirQ * 3 + 3}, across the ford`} />
+        <QuadStack S={S} me={me} q={theirQ} marks={props.marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} label={`${bandName(S, theirQ * 3, me)}, across the ford`} />
       </div>
       <div className="lane-ford" aria-hidden="true"><span>the ford</span></div>
       <div key={`m${myQ}`} className="lane-row mine turn-in">
-        <QuadStack S={S} me={me} q={myQ} marks={props.marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} label={`Your spots ${myQ * 3 + 1}–${myQ * 3 + 3}`} ghost={props.ghost} />
+        <QuadStack S={S} me={me} q={myQ} marks={props.marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard} label={bandName(S, myQ * 3, me)} ghost={props.ghost} />
       </div>
     </div>
   );

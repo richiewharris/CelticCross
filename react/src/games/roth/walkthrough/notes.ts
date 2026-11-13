@@ -8,17 +8,17 @@ export interface Chapter { at: number; short: string; title: string; body: strin
 /** Shown before the move with the same index. */
 export const CHAPTERS: Chapter[] = [
   {
-    at: 0, short: "Drafting", title: "Drafting: building the fights",
+    at: 0, short: "Marshalling", title: "Marshalling: raising the bands",
     body: [
-      "The board is a wheel of twelve spots. Your two quadrants are spots 1–3 and 4–6; the computer's are 7–9 and 10–12. Each quadrant is one **hero** and the **two supports** it keeps beside it at the ford.",
-      "Spot 1 fights spot 7 in the **first duel**; spot 4 fights spot 10 in the **second**. Every duel is to the death.",
+      "The board is a wheel of twelve seats in four **bands**: your first and second bands, and the computer's. Each band is one **hero** and the **two supports** on its flanks, which it keeps beside it at the ford.",
+      "Your first band fights theirs in the **first duel**; the second bands meet in the **second**. Every duel is to the death.",
       "Your placed supports are your hero's own. Most are **actions**, used on your turn and again at the price on the card. A **Reaction** card (a Block) waits for the enemy's blow; a **Passive** card gives **Armour** just by being there. Everything else waits in the shuffled **Reserve**, to be drawn in the duels.",
     ],
   },
   {
-    at: 12, short: "Playing turn", title: "The Playing turn: bending the fights",
+    at: 12, short: "The Winnow", title: "The Winnow: bending the fights",
     body: [
-      "The wheel turns six more steps. Each step you face one enemy spot. Facing a **hero** you may bind it with a **geis**; facing a **support** you may **supplant** it with one of yours. At any step you may instead turn an **omen**, **swear an oath** on one of your own heroes, or **hold**.",
+      "The wheel turns six more steps, and the enemy's bands come round to you one seat at a time. With a **hero** before you you may bind it with a **geis**; with a **support** you may **supplant** it with one of yours. At any step you may instead turn an **omen**, **swear an oath** on one of your own heroes, or **hold**.",
       "Geasa and oaths forbid things: a hero may still do a forbidden thing, but **breaking costs 2 Valour first**, and once broken the vow is gone for that duel.",
     ],
   },

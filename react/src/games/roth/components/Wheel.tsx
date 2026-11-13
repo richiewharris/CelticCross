@@ -6,6 +6,7 @@ import type { CardDef } from "../engine/cards";
 import { isHeroSpot, ownerOfSpot, quadOf, type Side, type State } from "../engine/engine";
 import { CardFace } from "./Card";
 import { Icon } from "./Icons";
+import { seatName, seatShort } from "../text";
 
 export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen";
 
@@ -86,17 +87,16 @@ export function Wheel(props: {
             const champ = S.combat && val?.live ? S.combat.champ[ownerOfSpot(spot)] : null;
             const owner = c ? (c.owner === me ? "mine" : "theirs") : undefined;
             const click = props.onSpot && mark && mark !== "faced" && mark !== "duel" ? () => props.onSpot!(spot) : undefined;
-            const desc = `Spot ${spot + 1}${c ? `: ${c.def.name}` : ", empty"}${geis ? `, bound by ${geis.def.name}` : ""}${oath ? `, sworn to ${oath.def.name}` : ""}${omens.length ? `, ${omens.join(", ")}` : ""}${val ? `, Valour ${val.v}${val.shield ? ` and Shield ${val.shield}` : ""}${val.felled ? ", felled" : ""}` : ""}${champ ? `, ${champ.def.name} standing in` : ""}`;
+            const desc = `${seatName(S, spot, me).replace(/^the /, "").replace(/^./, (x) => x.toUpperCase())}${c ? `: ${c.def.name}` : ", empty"}${geis ? `, bound by ${geis.def.name}` : ""}${oath ? `, sworn to ${oath.def.name}` : ""}${omens.length ? `, ${omens.join(", ")}` : ""}${val ? `, Valour ${val.v}${val.shield ? ` and Shield ${val.shield}` : ""}${val.felled ? ", felled" : ""}` : ""}${champ ? `, ${champ.def.name} standing in` : ""}`;
             return (
               <div key={spot} className={`spot${hero ? " hero" : ""}${mark ? " m-" + mark : ""}${ownerOfSpot(spot) === me ? " my-half" : " their-half"}${val?.felled ? " felled" : ""}`} style={style}>
                 <div className="spot-up" style={{ transform: `translate(-50%, -50%) rotate(${-rot}deg)` }}>
-                  <span className="spot-no" aria-hidden="true">{spot + 1}</span>
                   {c ? (
                     <CardFace def={c.def} owner={owner} variant={zoom ? "full" : "compact"} onFocusCard={props.onFocusCard} onClick={click} playable={!!click} label={desc} />
                   ) : click ? (
                     <button type="button" className="empty-spot" aria-label={desc} onClick={click}>+</button>
                   ) : (
-                    <div className="empty-spot" role="img" aria-label={desc}>{hero ? "hero" : "support"}</div>
+                    <div className="empty-spot" role="img" aria-label={desc}>{seatShort(spot).toLowerCase()}</div>
                   )}
                   {geis || oath || omens.length || val || champ ? (
                     <div className="spot-tags" aria-hidden="true">
@@ -119,7 +119,7 @@ export function Wheel(props: {
         const c = S.board[across];
         return (
           <div className="across" aria-label={`Across the ford: ${c ? c.def.name : "no hero yet"}`}>
-            <span className="zone-label">Across the ford (spot {across + 1})</span>
+            <span className="zone-label">Across the ford</span>
             {c ? <CardFace def={c.def} owner={c.owner === me ? "mine" : "theirs"} onFocusCard={props.onFocusCard} /> : <div className="empty-spot">no hero yet</div>}
           </div>
         );

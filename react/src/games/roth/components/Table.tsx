@@ -11,7 +11,7 @@ import { MusterView } from "./MusterView";
 import { FordLane } from "./FordLane";
 import { Icon } from "./Icons";
 import { Legend } from "./Panels";
-import { globalGeasa } from "../text";
+import { globalGeasa, seatName } from "../text";
 import { Wheel, type Mark } from "./Wheel";
 
 /** The spot the zoomed wheel turns to the front: the one you're filling or facing. */
@@ -44,8 +44,8 @@ export function optionAt(d: Decision, sel: Sel, spot: number): number {
 function phaseText(S: State): string {
   switch (S.phase) {
     case "muster": return "The Muster";
-    case "draft": return `Drafting · step ${S.step}`;
-    case "play": return `${S.reversed ? "Backwards round" : "Playing turn"} · step ${Math.min(S.step, 6)}`;
+    case "draft": return `Marshalling · step ${S.step}`;
+    case "play": return `${S.reversed ? "Backwards round" : "The Winnow"} · step ${Math.min(S.step, 6)}`;
     case "late": return "Omens before combat";
     case "combat": return S.combat ? `${settingDef(S.rules.setting)?.name ?? "The Ford"} · ${S.combat.duel === 2 ? "the final duel" : `duel ${S.combat.duel + 1}`}${S.combat.stage === "done" ? "" : ` · turn ${S.combat.turn + 1}`}` : "The Ford";
     default: return "Match over";
@@ -95,7 +95,7 @@ export function Table(props: {
   const omenRow = (p: Side) => S.players[p].omens.map((o) => {
     const mine = p === me;
     const shown = mine || o.faceUp;
-    const target = o.target !== undefined ? `on ${S.board[o.target]?.def.name ?? "spot " + (o.target + 1)}` : undefined;
+    const target = o.target !== undefined ? `on ${S.board[o.target]?.def.name ?? seatName(S, o.target, me)}` : undefined;
     return (
       <CardFace key={o.card.uid} def={shown ? o.card.def : { type: "unknown", id: "unknown", name: "?" }} owner={mine ? "mine" : "theirs"}
         variant={mine && !small ? "full" : "compact"} faceDown={mine && !o.faceUp} badge={o.faceUp ? target : undefined} onFocusCard={props.onFocusCard}
@@ -107,7 +107,7 @@ export function Table(props: {
     <div className="table">
       {O.hand.length || O.omens.length ? (
         <div className="zone theirs" aria-label={`${props.names?.[1] ?? "The computer"}'s hand and omens`}>
-          <span className="zone-label">{props.names?.[1] ?? "The computer"}: {O.hand.length} in hand</span>
+          <span className="zone-label">{props.names?.[1] ?? "The computer"}: {O.hand.length} in hand{(() => { const down = O.omens.filter((o) => !o.faceUp).length; return down ? ` · ${down} ${down === 1 ? "omen" : "omens"} face down` : ""; })()}</span>
           <div className="omens">{omenRow(them)}</div>
         </div>
       ) : null}
@@ -174,7 +174,7 @@ export function Table(props: {
         <summary>Every card on the wheel</summary>
         {[0, 1, 2, 3].map((q) => (
           <div key={q} className="quad-row">
-            <span className="zone-label">Spots {q * 3 + 1}–{q * 3 + 3}{(q < 2 ? 0 : 1) === me ? " (yours)" : " (theirs)"}
+            <span className="zone-label">{(q < 2 ? 0 : 1) === me ? "Your" : "Their"} {q % 2 === 0 ? "first" : "second"} band
               {S.quadGeis[q] ? ` · bound by ${S.quadGeis[q]!.def.name}` : ""}{S.quadOath[q] ? ` · sworn to ${S.quadOath[q]!.def.name}` : ""}</span>
             <div className="hand">
               {[0, 1, 2].map((k) => {

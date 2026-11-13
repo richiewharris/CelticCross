@@ -172,7 +172,7 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
       { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "A host of the Slúagh, and which: the Hunt, the Prey or the Taboo." },
       { sel: ".cf-chips", at: [0.97, 0.5], title: "Focus and weakness", text: "Its Focus is Spirit. The weakness here is the host type's own; each monster adds its weakness too." },
       { sel: ".ln-text", at: [0.97, 0.5], title: "What the host does", text: "Its bonus for the monsters joined to it, and its own weakness." },
-      { sel: ".ln-rule", at: [0.97, 0.5], title: "How it is played", text: "On a hero spot, with 2 or 3 monsters from your hand." },
+      { sel: ".ln-rule", at: [0.97, 0.5], title: "How it is played", text: "In a hero's seat, with 2 or 3 monsters from your hand." },
     ],
   },
   attendant: {
@@ -183,7 +183,7 @@ const PARTS: Record<string, { def: string; parts: Part[] }> = {
       { sel: ".cf-pic", at: [0.5, 0.45], title: "Art", text: "What it changes, an arrow, and what it becomes: here a Weapon becomes a Word." },
       { sel: ".cf-type", at: [0.95, 0.5], title: "Type line", text: "An attendant, its reach, and its people if it has one." },
       { sel: ".ln-text", at: [0.97, 0.5], title: "Effect", text: "What cards count as from now on. The new element or kind counts for everything, geasa included." },
-      { sel: ".ln-break", at: [0.97, 0.5], title: "When", text: "Called in the Playing turn instead of another action; it stays for the match." },
+      { sel: ".ln-break", at: [0.97, 0.5], title: "When", text: "Called in the Winnow instead of another action; it stays for the match." },
     ],
   },
 };
@@ -374,7 +374,7 @@ function Blow() {
   return (
     <section id="cx-blow" className="cx-section">
       <h2>Reading a blow</h2>
-      <p>At the ford the fighters take turns, starting with the higher Initiative, until one falls. On a turn: draw the top card of your Reserve and play it (or put it aside and do something else), use a support from your quadrant (again, at its price), turn an omen, lay a geis, swear an oath, call a champion, or rest. A support's number is worked out like this:</p>
+      <p>At the ford the fighters take turns, starting with the higher Initiative, until one falls. On a turn: draw the top card of your Reserve and play it (or put it aside and do something else), use a support from your band (again, at its price), turn an omen, lay a geis, swear an oath, call a champion, or rest. A support's number is worked out like this:</p>
       <ol className="cx-steps">{steps.map((s) => <li key={s.title}><span className="cx-step-n">{s.n}</span><span><b>{s.title}.</b> {s.text}</span></li>)}</ol>
       <div className="cx-panel cx-example">
         <h3>Example: Cú Chulainn uses Thunder feat against Lugh</h3>

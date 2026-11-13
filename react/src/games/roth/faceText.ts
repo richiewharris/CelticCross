@@ -22,7 +22,7 @@ export const FACE: Record<string, Face> = {
   // heroes
   cu: { ability: "Ríastrad", text: "**Strikes +1.** At 1 Valour or less, **+2 more**. Untouched by the Debility of the Ulstermen." },
   conall: { ability: "Cet's bane", text: `**Strikes +1** against ${BIG}. In the second duel, **+1 more** if your first hero fell.` },
-  conchobar: { ability: "King's due", text: "Once per duel, he may use an unused support from your other hero's quadrant." },
+  conchobar: { ability: "King's due", text: "Once per duel, he may use an unused support from your other hero's band." },
   emer: { ability: "Six gifts", text: "When she rests, {heal} **Heal 2**." },
   medb: { ability: "Queen of Cruachan", text: "**Kinship** gives her **+2**, not +1, when she uses a support of her own people." },
   ferdiad: { ability: "Horn-skin", text: "{armour} **Armour 1**: every Strike against him is **1** less, all duel (what ignores Shield ignores it)." },
@@ -371,7 +371,7 @@ export function faceLines(d: CardDef): FaceLine[] {
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
       push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. **Dream-walking**: when the enemy rests, the host heals **1** (not at the western crossing). Its {Spirit} Spirit blows can't be **Blocked**. **Dead flesh**: no blow wounds it for more than half its full Valour (never less than 5). Running water: a Merrow's Shield holds against its Spirit.`);
-      push("rule", "Goes on a hero spot with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
+      push("rule", "Takes a hero's seat with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
       push("lore", f.lore); break;
     case "monster":
       push("ability", d.quality.split(":")[0]);
@@ -388,7 +388,7 @@ export function faceLines(d: CardDef): FaceLine[] {
     case "omen":
       push("text", f.text ?? d.text); push("lore", f.lore); break;
     case "attendant":
-      push("text", attendantLine(d)); if (d.mode !== "curse" && d.scope !== "enemy") push("text", "Your cards it changes get **+1**."); push("lore", f.lore); push("break", "Called in the Playing turn; stays for the match."); break;
+      push("text", attendantLine(d)); if (d.mode !== "curse" && d.scope !== "enemy") push("text", "Your cards it changes get **+1**."); push("lore", f.lore); push("break", "Called in the Winnow; stays for the match."); break;
     default: break;
   }
   return out;

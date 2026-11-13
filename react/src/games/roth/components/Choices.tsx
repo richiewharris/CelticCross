@@ -1,7 +1,7 @@
 // The pending decision as a prompt and a list of buttons (filtered by the card or spot you picked).
 import { useEffect, useMemo } from "react";
 import { applyDecision, cloneState, nextDecision, NARRATE, toDeath, type Decision, type Option, type State } from "../engine/engine";
-import { optionLabel } from "../text";
+import { optionLabel, seatName } from "../text";
 
 export function prompt(S: State, d: Decision): string {
   switch (d.kind) {
@@ -12,8 +12,8 @@ export function prompt(S: State, d: Decision): string {
     case "setting": return "You are the second player: choose where the duels are fought. Your choice holds for the whole match.";
     case "musterOmen": return "Your Omen spots are full. Choose one omen to send to the Reserve.";
     case "musterReturn": return "Muster check: you took cards to make up 2 heroes and 4 supports. Return a card to the Reserve.";
-    case "place": return `Drafting, step ${S.step}: place a ${d.spot! % 3 === 0 ? (d.options.some((o) => o.t === "place" && o.join) ? "host with its monsters" : "hero") : "support"} at spot ${d.spot! + 1}.`;
-    case "action": return `${S.reversed ? "The round run backwards" : "Playing turn"}, step ${S.step}: you face spot ${d.spot! + 1}. Choose one action.`;
+    case "place": return `Marshalling, step ${S.step}: place a ${d.spot! % 3 === 0 ? (d.options.some((o) => o.t === "place" && o.join) ? "host with its monsters" : "hero") : "support"} as ${seatName(S, d.spot!, d.player)}.`;
+    case "action": return `${S.reversed ? "The round run backwards" : "The Winnow"}, step ${S.step}: before you, ${S.board[d.spot!]?.def.name ?? seatName(S, d.spot!, d.player)}. Choose one action.`;
     case "late": return "Turn any omens before combat.";
     case "focus": return "The Morrígan may change her Focus once.";
     case "duel": return toDeath(S)

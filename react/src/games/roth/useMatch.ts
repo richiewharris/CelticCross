@@ -52,8 +52,8 @@ const BACK_MAX = 10;
 /** A heading for the log when the match moves into a new part. */
 function sectionOf(S: State): string {
   if (S.phase === "muster") return "The Muster";
-  if (S.phase === "draft") return "Drafting";
-  if (S.phase === "play" || S.phase === "late") return S.reversed ? "The round run backwards" : "The Playing turn";
+  if (S.phase === "draft") return "Marshalling";
+  if (S.phase === "play" || S.phase === "late") return S.reversed ? "The round run backwards" : "The Winnow";
   if (S.phase === "combat" && S.combat) return S.combat.duel === 2 ? "The final duel" : `Duel ${S.combat.duel + 1}`;
   return "The result";
 }

@@ -13,7 +13,7 @@ import { Puzzles } from "./Puzzles";
 import { BuildingGuide, CardsGuide, DecksGuide } from "./codex/Codex";
 import { DeckBuilder } from "./DeckBuilder";
 import { Walkthrough } from "./walkthrough/Walkthrough";
-import { FACTION_TITLE } from "./text";
+import { FACTION_TITLE, seatName } from "./text";
 import { useMatch } from "./useMatch";
 
 type Tab = "play" | "build" | "guide";
@@ -130,14 +130,14 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} last={m.last}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
             placeOpen ? (
-              <div className="place-sheet" role="dialog" aria-modal="false" aria-label={`Choose a card for spot ${d.spot! + 1}`}>
+              <div className="place-sheet" role="dialog" aria-modal="false" aria-label={`Choose a card for ${seatName(S, d.spot!, m.me)}`}>
                 <button type="button" className="btn quiet small place-close" onClick={() => setPlaceOpen(false)} aria-label="Close the card choice">Close ✕</button>
                 <PlaceView S={S} d={d} sel={sel?.uid ?? null} join={join} onFocusCard={setFocus} onPick={pick}
                   onSelect={(uid, j) => { setSel(uid === null ? null : { uid }); setJoin(j ?? null); }} />
               </div>
             ) : (
               <div className="place-hint">
-                <p><b>Spot {d.spot! + 1}</b>: tap the <span className="plus">+</span> to choose a {d.spot! % 3 === 0 ? "hero" : "support"}.</p>
+                <p><b>{seatName(S, d.spot!, m.me).replace(/^the /, "").replace(/^./, (x) => x.toUpperCase())}</b>: a {d.spot! % 3 === 0 ? "hero" : "support"}.</p>
                 <button type="button" className="btn primary" onClick={() => setPlaceOpen(true)}>Choose a card</button>
               </div>
             )
