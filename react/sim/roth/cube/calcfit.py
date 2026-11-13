@@ -99,7 +99,7 @@ def main():
     if "--write" in a:
         out = a[a.index("--write") + 1]
         with open(out, "w") as fh:
-            json.dump({"note": ("Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS)" if "--table" in sys.argv else "Valour-equivalents of the duel calculator's terms") + ", measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
+            json.dump({"note": ("Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS)" if ("--table" in sys.argv or "--both" in sys.argv) else "Valour-equivalents of the duel calculator's terms") + ", measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
                        "train": group("--train"), "weights": {**{t[0]: round(float(e), 4) for t, e in zip(TERMS, eq)}, "move": round(float(b / w[0]), 4)},
                        "perValourLogit": round(float(w[0]), 5)}, fh, indent=1)
             fh.write("\n")

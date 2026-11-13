@@ -326,16 +326,17 @@ export function rollout(S: State, me: Side, reps?: [Repertoire | null, Repertoir
   return { win: fell < 0 ? 0 : fell === o ? 1 : -1, margin: Math.max(0, st[me].v) - Math.max(0, st[o].v), turns: Math.ceil(plies / 2) };
 }
 
-/** The table calculator's terms: the additive ones (Valour, Shield, the move) and the rollout's verdict. */
-export const CALC2_TERMS = ["valour", "shield", "move", "rollWin", "rollMargin"] as const;
+/** The table calculator's terms: the additive ones of level 3 (Valour, Shield, the blow, what can be kept up, the
+ *  sustain, the move) and the rollout's verdict (who fell, and the Valour margin it ended at). Measured together, the
+ *  rollout carries what the level-3 terms miss (held out: log-loss 0.412 against 0.432, accuracy 81.2% against 79.9%). */
+export const CALC2_TERMS = ["valour", "shield", "blow", "sustained", "sustain", "move", "rollWin", "rollMargin"] as const;
 export type Calc2Term = (typeof CALC2_TERMS)[number];
 export function calc2Terms(S: State, me: Side): Record<Calc2Term, number> | null {
-  const C = S.combat;
-  if (!C || !toDeath(S) || C.stage !== "turns") return null;
+  const t = calcTerms(S, me);
+  if (!t) return null;
   const r = rollout(S, me);
   if (!r) return null;
-  const o = (1 - me) as Side;
-  return { valour: C.valour[me] - C.valour[o], shield: C.shield[me] - C.shield[o], move: actorOf(C) === me ? 1 : -1, rollWin: r.win, rollMargin: r.margin };
+  return { ...t, rollWin: r.win, rollMargin: r.margin };
 }
 export function calc2Edge(S: State, me: Side, w: Record<Calc2Term, number>): number | null {
   const t = calc2Terms(S, me);

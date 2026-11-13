@@ -1,4 +1,17 @@
 {
- "note": "Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS), measured by sim/roth/cube/calcfit.py --table. Don't edit by hand.",
- "weights": { "valour": 1, "shield": 0.19, "move": 1, "rollWin": 3, "rollMargin": 0.5 }
+ "note": "Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS), measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
+ "train": [
+  "sim/roth/cube/evaldata/table-s1-n40.csv.gz"
+ ],
+ "weights": {
+  "valour": 1.0,
+  "shield": 0.2382,
+  "blow": 0.603,
+  "sustained": 0.6967,
+  "sustain": 0.4586,
+  "rollWin": 1.3462,
+  "rollMargin": 0.1254,
+  "move": 1.4289
+ },
+ "perValourLogit": 0.35119
 }
