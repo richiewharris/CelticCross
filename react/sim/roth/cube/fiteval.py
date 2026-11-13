@@ -58,6 +58,31 @@ def fit_logistic(X, y, l2=1e-3, iters=50):
     return raw, b
 
 
+# The signs the rules guarantee: more of your own Valour, Shield, Armour, mound, cards or hitting power never hurts you,
+# and more of the enemy's hitting power never helps you. --signed fits within them, on these features only.
+SIGNS = {"race": 1, "valour": 1, "shield": 1, "armour": 1, "mound": 1, "hand": 1, "reserve": 1, "potMe": 1, "potFoe": -1, "rest": 0, "stall": 1}
+
+
+def fit_signed(X, y, feats, l2=1e-3, iters=3000, lr=0.5):
+    """Logistic regression by projected gradient descent: each weight kept to its sign (0 = either), on standardised columns."""
+    keep = [i for i, f in enumerate(feats) if f in SIGNS]
+    Xs = X[:, keep]
+    mu, sd = Xs.mean(0), Xs.std(0)
+    sd[sd == 0] = 1
+    Z = (Xs - mu) / sd
+    sg = np.array([SIGNS[feats[i]] for i in keep])
+    w, b = np.zeros(len(keep)), 0.0
+    for _ in range(iters):
+        p = 1 / (1 + np.exp(-(Z @ w + b)))
+        g = Z.T @ (p - y) / len(y) + l2 * w
+        w -= lr * g
+        b -= lr * (p - y).mean()
+        w = np.where(sg > 0, np.maximum(w, 0), np.where(sg < 0, np.minimum(w, 0), w))
+    raw = np.zeros(len(feats))
+    raw[keep] = w / sd
+    return raw, b - (w / sd * mu).sum()
+
+
 def score(p, y):
     p = np.clip(p, 1e-6, 1 - 1e-6)
     return {"logloss": float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean()), "accuracy": float(((p > 0.5) == (y > 0.5)).mean()),
@@ -81,7 +106,7 @@ def main():
     # the hand-set evaluation, given its best scale and offset
     hs, hb = fit_logistic((Xtr @ hw)[:, None], ytr)
     p_hand = 1 / (1 + np.exp(-((Xte @ hw) * hs[0] + hb)))
-    w, b = fit_logistic(Xtr, ytr)
+    w, b = fit_signed(Xtr, ytr, feats) if "--signed" in a else fit_logistic(Xtr, ytr)
     p_fit = 1 / (1 + np.exp(-(Xte @ w + b)))
     base = np.full(len(yte), ytr.mean())
     for name, p in (("coin (base rate)", base), ("hand-set", p_hand), ("fitted", p_fit)):
