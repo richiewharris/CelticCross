@@ -153,8 +153,9 @@ export function duelRace(S: State, me: Side): Race | null {
  *    shield     its Shield lead
  *    blow       its best blow now, less the foe's
  *    sustained  what it can keep taking off each turn, less the foe's
- *    sustain    what it can get back in a turn, less the foe's */
-export const CALC_TERMS = ["valour", "shield", "blow", "sustained", "sustain"] as const;
+ *    sustain    what it can get back in a turn, less the foe's
+ *    move       +1 if it acts next, -1 if the foe does */
+export const CALC_TERMS = ["valour", "shield", "blow", "sustained", "sustain", "move"] as const;
 export type CalcTerm = (typeof CALC_TERMS)[number];
 export function calcTerms(S: State, me: Side): Record<CalcTerm, number> | null {
   const C = S.combat;
@@ -167,6 +168,8 @@ export function calcTerms(S: State, me: Side): Record<CalcTerm, number> | null {
     blow: rm.blow - ro.blow,
     sustained: rm.sustained - ro.sustained,
     sustain: rm.sustain - ro.sustain,
+    // having the move: the side to act next gets its blow in first
+    move: actorOf(C) === me ? 1 : -1,
   };
 }
 /** A side's edge in Valour points under these Valour-equivalents (valour itself is 1). */

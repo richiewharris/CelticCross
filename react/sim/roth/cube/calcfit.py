@@ -35,16 +35,19 @@ def load(paths):
     return X, y, H, rows
 
 
-def fit(X, y, iters=4000, lr=0.3):
-    """Logistic regression with no offset, weights >= 0, by projected gradient on scaled columns."""
+def fit(X, y, iters=4000, lr=0.3, offset=False):
+    """Logistic regression, weights >= 0, by projected gradient on scaled columns. With offset, also the value of having
+    the move (every row is the view of the side about to act); returned as the last weight."""
     sd = X.std(0)
     sd[sd == 0] = 1
     Z = X / sd
-    w = np.zeros(X.shape[1])
+    w, b = np.zeros(X.shape[1]), 0.0
     for _ in range(iters):
-        p = 1 / (1 + np.exp(-Z @ w))
+        p = 1 / (1 + np.exp(-(Z @ w + b)))
         w = np.maximum(0, w - lr * Z.T @ (p - y) / len(y))
-    return w / sd
+        if offset:
+            b -= lr * (p - y).mean()
+    return np.r_[w / sd, b] if offset else w / sd
 
 
 def ll(p, y):
@@ -71,14 +74,17 @@ def main():
         w = fit(Xtr[:, :k], ytr)
         p = 1 / (1 + np.exp(-Xte[:, :k] @ w))
         print(f"  {'+ '.join(t[0] for t in TERMS[:k]):34} log-loss {ll(p, yte):.4f}  accuracy {acc(p):.1f}%")
-    w = fit(Xtr, ytr)
+    wb = fit(Xtr, ytr, offset=True)
+    w, b = wb[:-1], wb[-1]
+    p = 1 / (1 + np.exp(-(Xte @ w + b)))
+    print(f"  {'+ having the move':34} log-loss {ll(p, yte):.4f}  accuracy {acc(p):.1f}%")
     eq = w / w[0]
     print("\n  Valour-equivalents (one point of each, less the foe's, is worth this much Valour lead in winning the duel):")
     for (name, _, _), e in zip(TERMS, eq):
         print(f"    {name:10} {e:6.2f}")
+    print(f"    {'the move':10} {b / w[0]:6.2f}  (being the side to act next)")
     print(f"  (one point of Valour lead moves the odds of winning the duel by a factor of {np.exp(w[0]):.2f})")
     # how well the formula holds for each people (a big miss means an interaction the formula lacks)
-    p = 1 / (1 + np.exp(-Xte @ w))
     print("\n  by people (the deciding side): observed - predicted, log-loss")
     for d in sorted({x["deck"] for x in rte}):
         m = np.array([x["deck"] == d for x in rte])
@@ -87,7 +93,7 @@ def main():
         out = a[a.index("--write") + 1]
         with open(out, "w") as fh:
             json.dump({"note": "Valour-equivalents of the duel calculator's terms, measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
-                       "train": group("--train"), "weights": {t[0]: round(float(e), 4) for t, e in zip(TERMS, eq)},
+                       "train": group("--train"), "weights": {**{t[0]: round(float(e), 4) for t, e in zip(TERMS, eq)}, "move": round(float(b / w[0]), 4)},
                        "perValourLogit": round(float(w[0]), 5)}, fh, indent=1)
             fh.write("\n")
         print(f"\nwrote {out}")
