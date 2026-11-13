@@ -42,6 +42,11 @@ body.has-consent { padding-bottom: 200px; }
 .yg-open, .yg-copy { font: inherit; font-size: .9rem; font-weight: 600; padding: 5px 14px; border-radius: 8px; text-decoration: none; cursor: pointer; border: 1px solid var(--bronze, #b08d55); background: transparent; color: var(--ink, inherit); }
 .yg-row.mine .yg-open { background: var(--bronze, #b08d55); color: var(--oak, #17130f); }
 .yg-open:focus-visible, .yg-copy:focus-visible, .yg-main:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 2px; }
+.yg-actions, .yg-confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.yg-cancel { font: inherit; font-size: .85rem; padding: 4px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line, #3d3328); background: transparent; color: var(--muted, #a99c84); }
+.yg-cancel.yes { border-color: var(--bronze, #b08d55); color: var(--ink, inherit); }
+.yg-cancel:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 2px; }
+.yg-err { font-size: .85rem; color: #e08a7a; }
 .yg-empty { margin: 0; color: var(--muted, #a99c84); font-style: italic; }
 .yg-empty a { color: var(--bronze-hi, inherit); }
 @media (max-width: 520px) {

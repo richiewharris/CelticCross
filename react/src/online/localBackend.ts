@@ -1,7 +1,7 @@
 // A stand-in for Firebase that keeps games in localStorage and syncs open tabs with a
 // BroadcastChannel. Each tab is a different player (its id lives in sessionStorage), so two tabs
 // can play each other. Used with ?online=local and by the tests.
-import { OnlineError, type OnlineBackend } from "./backend";
+import { canCancel, OnlineError, type OnlineBackend } from "./backend";
 import { LOCAL_OWNER_EMAIL } from "./owner";
 import type { OnlineDoc } from "./types";
 
@@ -85,6 +85,12 @@ export function localBackend(): OnlineBackend {
         if (d.status !== "active" || !d.players.includes(uid)) throw new OnlineError("stale", "The game is over.");
         return { ...d, status: "done", turn: null, result };
       });
+    },
+    async cancel(id, uid) {
+      const all = load(), d = all[id];
+      if (!d) return;
+      if (!canCancel(d, uid)) throw new OnlineError("stale", "Someone has joined, so the game can't be called off now.");
+      delete all[id]; save(all); changed(id);
     },
     watchMyGames(uid, cb) {
       const send = () => cb(Object.entries(load()).filter(([, d]) => d.players.includes(uid)).map(([id, doc]) => ({ id, doc })).sort((a, b) => b.doc.updatedAt - a.doc.updatedAt));

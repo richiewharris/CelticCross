@@ -3,7 +3,7 @@
 // every move received is checked again on replay.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBackend, markPlayedOnline, OnlineError } from "./backend";
-import { goOnline } from "./route";
+import { goOnline, leaveOnline } from "./route";
 import { yourMoveAlert, markTitle } from "./notify";
 import { recordGameEnd, recordGameStart } from "./analytics";
 import { replay, type OnlineAdapter, type OnlineDoc, type OnlineGameSummary, type OnlineResult, type SeatId } from "./types";
@@ -25,6 +25,8 @@ export interface OnlineSession<S, M, O> {
   join(seat: SeatId): Promise<void>;
   play(m: M): Promise<boolean>;
   resign(): Promise<void>;
+  /** Call off a game nobody has joined yet (its creator only). */
+  cancel(): Promise<void>;
   rematch(): Promise<void>;
   myGames: OnlineGameSummary[] | null;
   loadMyGames(): Promise<void>;
@@ -138,6 +140,17 @@ export function useOnlineGame<S, M, O>(adapter: OnlineAdapter<S, M, O>, id: stri
     });
   }, [adapter, id]);
 
+  /** Call off a game nobody has joined yet (its creator only): it is deleted, and this page leaves online play. */
+  const cancel = useCallback(async () => {
+    const me = uidRef.current;
+    if (!id || !me) return;
+    await guard(async () => {
+      const b = await getBackend();
+      await b.cancel(id, me);
+      leaveOnline(adapter.game);
+    });
+  }, [adapter, id]);
+
   const rematch = useCallback(async () => {
     const d = docRef.current, me = uidRef.current;
     if (!id || !d || !me) return;
@@ -168,6 +181,6 @@ export function useOnlineGame<S, M, O>(adapter: OnlineAdapter<S, M, O>, id: stri
 
   return {
     id, phase, error, uid, doc, mySeat, s, myTurn, illegalAt: rep?.illegalAt ?? null, busy,
-    create, join, play, resign, rematch, myGames, loadMyGames, clearError: () => setError(null),
+    create, join, play, resign, cancel, rematch, myGames, loadMyGames, clearError: () => setError(null),
   };
 }

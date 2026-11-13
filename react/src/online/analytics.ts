@@ -7,8 +7,15 @@ import { backendKind } from "./backend";
 export type Consent = "yes" | "no" | null;
 const CONSENT_KEY = "analytics-consent";
 
+// The question's wording changed (version 2 adds Roth Catha's match records): an Allow given to the earlier wording
+// is asked again, so nobody's matches are recorded on a yes to a question that said moves were never seen.
+const CONSENT_VERSION_KEY = "analytics-consent-version", CONSENT_VERSION = "2";
 export function getConsent(): Consent {
-  try { const v = localStorage.getItem(CONSENT_KEY); return v === "yes" || v === "no" ? v : null; } catch { return null; }
+  try {
+    const v = localStorage.getItem(CONSENT_KEY);
+    if (v === "yes" && localStorage.getItem(CONSENT_VERSION_KEY) !== CONSENT_VERSION) return null;
+    return v === "yes" || v === "no" ? v : null;
+  } catch { return null; }
 }
 
 type Log = (name: string, params?: Record<string, unknown>) => void;
@@ -28,7 +35,7 @@ function analytics(): Promise<Log | null> {
 }
 
 export function setConsent(v: "yes" | "no") {
-  try { localStorage.setItem(CONSENT_KEY, v); } catch { /* storage blocked: ask again next visit */ }
+  try { localStorage.setItem(CONSENT_KEY, v); localStorage.setItem(CONSENT_VERSION_KEY, CONSENT_VERSION); } catch { /* storage blocked: ask again next visit */ }
   window.dispatchEvent(new Event("consentchange"));
   if (v === "yes") void analytics(); // the first load sends a page view by itself
 }

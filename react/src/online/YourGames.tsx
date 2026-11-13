@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { GameScope } from "../kit/GameScope";
 import { gameById } from "../games/registry";
+import { canCancel, getBackend } from "./backend";
+import { getRaceStore } from "./races";
 import { AccountLine } from "./AccountLine";
 import { inviteUrl, onlineHash } from "./route";
 import { isMyTurn, useMyGames, type MyGames } from "./useMyGames";
@@ -23,6 +25,19 @@ const ago = (t: number) => {
   return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
 };
 
+/** "Call off" for a game or race nobody has joined: asks once, then deletes it (the list updates by itself). */
+function CallOff({ run }: { run: () => Promise<void> }) {
+  const [ask, setAsk] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null);
+  if (!ask) return <button type="button" className="yg-cancel" onClick={() => setAsk(true)}>Call off</button>;
+  return (
+    <span className="yg-confirm">
+      <button type="button" className="yg-cancel yes" disabled={busy} onClick={async () => { setBusy(true); setErr(null); try { await run(); } catch (e) { setErr((e as Error).message); setBusy(false); } }}>Yes, call it off</button>
+      <button type="button" className="yg-cancel" disabled={busy} onClick={() => setAsk(false)}>Keep</button>
+      {err ? <span className="yg-err" role="alert">{err}</span> : null}
+    </span>
+  );
+}
+
 function Row({ g, uid, kind }: { g: OnlineGameSummary; uid: string | null; kind: "mine" | "theirs" | "open" | "done" }) {
   const d = g.doc, title = gameById(d.game)?.title ?? d.game;
   const mySeat = Object.keys(d.seats).find(k => d.seats[k] === uid);
@@ -43,7 +58,9 @@ function Row({ g, uid, kind }: { g: OnlineGameSummary; uid: string | null; kind:
         <span className="yg-line">{line}</span>
       </a>
       <span className="yg-when">{ago(d.updatedAt)}</span>
-      {kind === "open" ? <button type="button" className="yg-copy" onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button>
+      {kind === "open" ? <span className="yg-actions">
+          {canCancel(d, uid) ? <CallOff run={async () => { const b = await getBackend(); await b.cancel(g.id, uid!); }} /> : null}
+          <button type="button" className="yg-copy" onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button></span>
         : <a className="yg-open" href={onlineHash(d.game, g.id)}>{kind === "mine" ? "Play" : kind === "done" ? "View" : "Open"}</a>}
     </li>
   );
@@ -82,7 +99,9 @@ function RaceRow({ r, uid }: { r: RaceSummary; uid: string | null }) {
         <span className="yg-line">{line}</span>
       </a>
       <span className="yg-when">{ago(d.updatedAt)}</span>
-      {kind === "open" ? <button type="button" className="yg-copy" onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button>
+      {kind === "open" ? <span className="yg-actions">
+          {uid && d.creator === uid && d.seats.b === null ? <CallOff run={async () => { const s = await getRaceStore(); await s.cancelRace(r.id, uid); }} /> : null}
+          <button type="button" className="yg-copy" onClick={() => void copy()}>{copied ? "Copied" : "Copy link"}</button></span>
         : <a className="yg-open" href={raceHash(r.id)}>{kind === "mine" ? "Ready" : kind === "done" ? "View" : "Open"}</a>}
     </li>
   );

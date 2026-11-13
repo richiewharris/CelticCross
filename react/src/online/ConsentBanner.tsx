@@ -18,7 +18,7 @@ export function ConsentBanner() {
   if (c !== null) return null;
   return (
     <div className="consent" role="region" aria-label="Visit statistics">
-      <p>May we count your visit? We use Google Analytics to see which games people play. It sets cookies but never sees your games or moves.</p>
+      <p>May we count your visit? We use Google Analytics to see which games people play (it sets cookies). For Roth Catha we also keep a record of each match against the computer: the decks and the moves, with no name or account, to see how people play against the computer.</p>
       <div className="consent-buttons">
         <button type="button" className="consent-yes" onClick={() => setConsent("yes")}>Allow</button>
         <button type="button" onClick={() => setConsent("no")}>No thanks</button>

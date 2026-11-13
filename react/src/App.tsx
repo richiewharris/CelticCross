@@ -8,6 +8,7 @@ import { useHashRoute } from "./useHashRoute";
 import { YourGames, YourGamesLink } from "./online/YourGames";
 import { PrivateGate } from "./online/PrivateGate";
 import { useIsOwner } from "./online/owner";
+import { TelemetryPage } from "./online/TelemetryPage";
 
 export function App() {
   const route = useHashRoute();
@@ -16,11 +17,11 @@ export function App() {
   const owner = useIsOwner();
   const locked = !!game?.private && owner !== true;
   useEffect(() => { trackPageView(); }, [route]);
-  const page = locked ? <PrivateGate checking={owner === undefined} /> : game ? <game.Page /> : first === "playground" ? <Playground /> : first === "games" ? <YourGames /> : <Home />;
+  const page = locked ? <PrivateGate checking={owner === undefined} /> : game ? <game.Page /> : first === "playground" ? <Playground /> : first === "games" ? <YourGames /> : first === "telemetry" ? <TelemetryPage /> : <Home />;
   return (
     <div id="app-shell">
       <nav className="topnav" aria-label="Pages">
-        <a href="#/" aria-current={!game && first !== "playground" && first !== "games" ? "page" : undefined}>← All games</a>
+        <a href="#/" aria-current={!game && first !== "playground" && first !== "games" && first !== "telemetry" ? "page" : undefined}>← All games</a>
         {game && !locked ? <span className="here">{game.title}</span> : null}
         <span className="topnav-right">
           <YourGamesLink current={first === "games"} />

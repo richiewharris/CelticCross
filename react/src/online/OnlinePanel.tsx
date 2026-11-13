@@ -2,6 +2,7 @@
 // resign, rematch, and reopen your recent games. The board itself stays with each game.
 import { useEffect, useId, useState } from "react";
 import { AccountLine } from "./AccountLine";
+import { canCancel } from "./backend";
 import { askToNotify, notifyPermission } from "./notify";
 import { inviteUrl, leaveOnline, onlineHash } from "./route";
 import type { OnlineSession } from "./useOnlineGame";
@@ -28,6 +29,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
   const [copied, setCopied] = useState(false);
   const [perm, setPerm] = useState(notifyPermission);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const seatLabel = (id: SeatId | null | undefined) => adapter.seats.find(x => x.id === id)?.label ?? String(id);
   const describe = adapter.describeOptions?.(o.doc?.options ?? options);
 
@@ -76,7 +78,7 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
   const leave = <button className="btn" type="button" onClick={() => leaveOnline(adapter.game)}>Leave online play</button>;
 
   if (o.phase === "connecting") return <div className="panel online"><p className="label">Online game</p><p className="online-note" aria-live="polite">Connecting…</p></div>;
-  if (o.phase === "missing") return <div className="panel online"><p className="label">Online game</p><p className="online-error">This game link doesn't lead to a game. Check that it was copied whole.</p><div className="row">{leave}</div></div>;
+  if (o.phase === "missing") return <div className="panel online"><p className="label">Online game</p><p className="online-error">This game link doesn't lead to a game. It may have been called off before anyone joined, or the link wasn't copied whole.</p><div className="row">{leave}</div></div>;
   if (o.phase === "error" || !o.doc) return <div className="panel online"><p className="label">Online game</p>{errorLine ?? <p className="online-error">Something went wrong.</p>}<div className="row">{leave}</div></div>;
 
   const d = o.doc;
@@ -98,7 +100,14 @@ export function OnlinePanel<S, M, O>({ session: o, adapter, options, title }: On
           <button className="btn primary" type="button" onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</button>
           {typeof navigator.share === "function" ? <button className="btn" type="button" onClick={() => void share()}>Share</button> : null}
         </div>
-        <div className="row">{notifyButton}{leave}</div>
+        <div className="row">
+          {notifyButton}
+          {canCancel(d, o.uid) ? (confirmCancel
+            ? <><button className="btn" type="button" disabled={o.busy} onClick={() => void o.cancel()}>Yes, call it off</button><button className="btn" type="button" onClick={() => setConfirmCancel(false)}>Keep waiting</button></>
+            : <button className="btn" type="button" onClick={() => setConfirmCancel(true)}>Call off this game</button>) : null}
+          {leave}
+        </div>
+        {errorLine}
       </>
     );
   } else if (d.status === "open") {

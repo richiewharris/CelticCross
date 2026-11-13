@@ -73,10 +73,10 @@ export const GAMES: GameEntry[] = [
     Page: lazy(() => import("./goldmines/index")), Playground: lazy(() => import("./goldmines/Playground")),
   },
   {
-    id: "roth", title: "Roth Catha", say: "(roh KAH-ha)", kicker: "Cards · vs computer · private preview", image: "roth-catha.jpg", private: true,
-    blurb: "The wheel of battle: an Ulster Cycle card game on a round board, with five decks, four computer levels and puzzles. Private preview.",
+    id: "roth", title: "Roth Catha", say: "(roh KAH-ha)", kicker: "Cards · vs computer", image: "roth-catha.jpg", featured: true,
+    blurb: "The wheel of battle: an Ulster Cycle card game on a round board. Draft heroes and their supports, bind your rival's heroes with geasa, swear oaths and turn omens, then fight to the death at the ford. Six decks to play or build your own, four computer levels, and puzzles to learn the duels.",
     alt: "A round board divided into four quadrants, each with a hero card and two support cards, bronze rim on a dark ground.",
-    facts: ["5 decks", "4 computer levels", "21 puzzles"],
+    facts: ["6 decks", "Build your own deck", "4 computer levels", "21 puzzles"],
     Page: lazy(() => import("./roth/index")), Playground: lazy(() => import("./roth/Playground")),
   },
 ];

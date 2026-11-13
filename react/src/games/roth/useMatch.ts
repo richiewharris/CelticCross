@@ -12,6 +12,8 @@ import { applyDecision, cloneState, fighter, newMatch, nextDecision, upgradeStat
 import { summarize } from "./components/Choices";
 import { cancelComputer, computerChoice } from "./aiClient";
 import { logLine } from "./text";
+import { recordGameEnd, recordGameStart } from "../../online/analytics";
+import { recordMatch } from "../../online/telemetry";
 
 export type Level = "novice" | "casual" | "skilled" | "expert";
 /** mine: a faction (its starter deck) or "custom:<id>" (a saved deck). theirsDeck: the computer builds its own, or plays the starter. */
@@ -26,10 +28,25 @@ export const RECORD_KEY = "roth-react-record";
 export const DEFAULT_SETUP: Setup = { mine: "ulster", theirs: "random", theirsDeck: "built", level: "casual", seat: "random" };
 
 /** The state before each of your recent moves, so you can take one back (and the computer's replies with it). */
-interface Back { S: State; log: string[] }
+interface Back { S: State; log: string[]; moves?: number[] }
 /** A move as the table shows it afterwards: who, what, what changed, and the support it used. */
 export interface MoveEvent { mine: boolean; text: string; fx: string | null; spot?: number; n: number }
-interface Saved { v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: string[]; seed: number; back?: Back[]; recorded?: boolean; last?: MoveEvent[] }
+interface Saved {
+  v: 1; setup: Setup; S: State; me: Side; theirs: Faction; log: string[]; seed: number; back?: Back[]; recorded?: boolean; last?: MoveEvent[];
+  /** For the match record (online/telemetry.ts): every choice made, both decks by seat, when it began, moves taken back. */
+  moves?: number[]; decks?: [string[], string[]]; t0?: number; undos?: number;
+}
+/** The match as a record: enough to replay it by the rules (the seed, both decks, every choice) and how it ended. */
+function sendRecord(m: Saved, outcome: "won" | "lost" | "drawn" | "abandoned") {
+  if (!m.moves?.length || !m.decks) return;
+  const st = m.setup, r = m.S.result;
+  void recordMatch({ game: "roth", outcome, match: {
+    setup: { mine: st.mine.startsWith("custom:") ? "custom" : st.mine, theirs: m.theirs, theirsDeck: st.theirsDeck ?? "built", level: st.level, seat: m.me === 0 ? "first" : "second" },
+    me: m.me, seed: m.seed, decks: { first: m.decks[0], second: m.decks[1] }, moves: m.moves, undos: m.undos ?? 0,
+    ms: m.t0 ? Date.now() - m.t0 : null, phase: m.S.phase, duel: m.S.combat?.duel ?? null,
+    result: r ? { winner: r.winner, felled: [r.felled[0], r.felled[1]] } : null,
+  } });
+}
 const BACK_MAX = 10;
 
 /** A heading for the log when the match moves into a new part. */
@@ -58,6 +75,7 @@ export function useMatch() {
   const d = useMemo(() => (saved ? settle(saved.S).d : null), [saved]);
 
   const start = useCallback((st: Setup = setup) => {
+    if (saved && !saved.recorded) sendRecord(saved, "abandoned");
     cancelComputer();
     busy.current++;
     const seed = Math.floor(Math.random() * 1e9);
@@ -72,8 +90,9 @@ export function useMatch() {
     const S0 = newMatch([decks[0], decks[1]], {}, seed, false);
     const { S } = settle(S0);
     setSetup(st);
-    setSaved({ v: 1, setup: st, S, me, theirs, back: [], log: [`§ ${sectionOf(S)}`, `New match: you play ${mine.label} as the ${me === 0 ? "first" : "second"} player against ${built ? (theirs === "ulster" ? "an" : "a") : "the"} ${FACTION_TITLE[theirs]} ${built ? "deck the computer built" : "starter deck"} (${st.level}).`], seed });
-  }, [setup, setSetup, setSaved]);
+    recordGameStart("roth", { mode: "computer", level: st.level });
+    setSaved({ v: 1, setup: st, S, me, theirs, back: [], moves: [], decks: [decks[0].map((c) => c.id), decks[1].map((c) => c.id)], t0: Date.now(), undos: 0, log: [`§ ${sectionOf(S)}`, `New match: you play ${mine.label} as the ${me === 0 ? "first" : "second"} player against ${built ? (theirs === "ulster" ? "an" : "a") : "the"} ${FACTION_TITLE[theirs]} ${built ? "deck the computer built" : "starter deck"} (${st.level}).`], seed });
+  }, [setup, setSetup, setSaved, saved]);
 
   const [record, setRecord] = useStoredState<MatchRecord>(RECORD_KEY, {});
   const play = useCallback((i: number) => {
@@ -96,15 +115,19 @@ export function useMatch() {
     const resultLine = res ? `${res.winner === -1 ? "A draw" : res.winner === saved.me ? "You win" : "The computer wins"}: heroes felled, you ${res.felled[1 - saved.me]}, the computer ${res.felled[saved.me]}.` : null;
     const log = [...saved.log, line, ...(after !== before ? [`§ ${after}`] : []), ...(resultLine ? [resultLine] : [])].slice(-240);
     // your own moves can be taken back; the Muster's are quick enough to keep out of the way
-    const back = d.player === saved.me && d.kind !== "muster" ? [...(saved.back ?? []), { S: saved.S, log: saved.log }].slice(-BACK_MAX) : saved.back;
+    const back = d.player === saved.me && d.kind !== "muster" ? [...(saved.back ?? []), { S: saved.S, log: saved.log, moves: saved.moves }].slice(-BACK_MAX) : saved.back;
+    const moves = saved.moves ? [...saved.moves, i] : undefined;
     let recorded = saved.recorded;
     if (!next && S.result && !recorded) {
       recorded = true;
       const r = S.result, lv = saved.setup.level, cur = record[lv] ?? { w: 0, l: 0, d: 0 };
       setRecord({ ...record, [lv]: { w: cur.w + (r.winner === saved.me ? 1 : 0), l: cur.l + (r.winner === 1 - saved.me ? 1 : 0), d: cur.d + (r.winner === -1 ? 1 : 0) } });
+      const outcome = r.winner === -1 ? "drawn" : r.winner === saved.me ? "won" : "lost";
+      recordGameEnd("roth", { mode: "computer", level: lv, result: outcome === "won" ? "win" : outcome === "lost" ? "loss" : "draw" });
+      sendRecord({ ...saved, S, moves }, outcome);
     }
     const last = T.phase === "combat" || S.phase === "combat" ? [...(saved.last ?? []), ev].slice(-4) : [];
-    setSaved({ ...saved, S, log, back, recorded, last });
+    setSaved({ ...saved, S, log, back, recorded, last, moves });
   }, [saved, d, setSaved, record, setRecord]);
 
   /** Take back your last move, and the computer's replies since. */
@@ -113,7 +136,7 @@ export function useMatch() {
     cancelComputer();
     busy.current++;
     const back = saved.back.slice(0, -1), b = saved.back[saved.back.length - 1];
-    setSaved({ ...saved, S: b.S, log: [...b.log, "You took back a move."], back, last: [] });
+    setSaved({ ...saved, S: b.S, log: [...b.log, "You took back a move."], back, last: [], moves: b.moves, undos: (saved.undos ?? 0) + 1 });
   }, [saved, setSaved]);
 
   // The computer's turn
@@ -129,7 +152,7 @@ export function useMatch() {
     });
   }, [saved, d, play]);
 
-  const quit = useCallback(() => { cancelComputer(); busy.current++; setSaved(null); }, [setSaved]);
+  const quit = useCallback(() => { if (saved && !saved.recorded) sendRecord(saved, "abandoned"); cancelComputer(); busy.current++; setSaved(null); }, [saved, setSaved]);
 
   return {
     setup, setSetup, start, quit, play, thinking, undo, canUndo: !!saved?.back?.length && !saved.recorded, record,

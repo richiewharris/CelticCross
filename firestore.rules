@@ -5,9 +5,10 @@ rules_version = '2';
 //
 // games/{id}: one online game by invite. Anyone signed in (anonymously) who has the link can read it.
 //   Players can only: take an empty seat, add exactly one move on their own turn, resign, or offer a
-//   rematch. Moves are checked against the game's rules by both players' browsers on replay.
+//   rematch; and its creator can delete it while nobody else has joined (calling it off). Moves are checked against the game's rules by both players' browsers on replay.
 // stats/games: public "games played" tallies; anyone may add exactly 1 to one known game.
-// races/{id}: a two-player Celtic Cross Lock race. Only the creator creates it; one other player takes
+// races/{id}: a two-player Celtic Cross Lock race. Only the creator creates it (and may delete it while it is
+//   still open and nobody has joined); one other player takes
 //   the empty seat once; each racer sets only their own Ready flag and writes only their own run, whose
 //   counts only grow, whose bonus and penalty must follow from them, and which freezes once finished,
 //   within a window from the server-stamped start. races/{id}/scores/{uid}: one challenge score per
@@ -32,7 +33,9 @@ service cloud.firestore {
 
       allow get: if signedIn();
       allow list: if signedIn() && me() in resource.data.players;
-      allow delete: if false;
+      // The creator may call off a game nobody has joined yet.
+      allow delete: if signedIn() && resource.data.status == 'open'
+        && resource.data.creator == me() && resource.data.players == [me()];
 
       allow create: if signedIn()
         && request.resource.data.keys().hasAll(fields())
@@ -115,7 +118,7 @@ service cloud.firestore {
 
     match /stats/games {
       function tallied() {
-        return ['monsiv', 'fidchell', 'lock', 'fiche', 'cnoc', 'cnoc-mor', 'fidchell-cups', 'goldmines'];
+        return ['monsiv', 'fidchell', 'lock', 'fiche', 'cnoc', 'cnoc-mor', 'fidchell-cups', 'goldmines', 'roth'];
       }
       function upByOne(k) {
         return !(k in request.resource.data.diff(resource.data).affectedKeys())
@@ -130,7 +133,41 @@ service cloud.firestore {
       allow update: if request.resource.data.diff(resource.data).affectedKeys().size() == 1
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(tallied())
         && upByOne('monsiv') && upByOne('fidchell') && upByOne('lock') && upByOne('fiche')
-        && upByOne('cnoc') && upByOne('cnoc-mor') && upByOne('fidchell-cups') && upByOne('goldmines');
+        && upByOne('cnoc') && upByOne('cnoc-mor') && upByOne('fidchell-cups') && upByOne('goldmines') && upByOne('roth');
+    }
+
+    // ---------- Match records (src/online/telemetry.ts) ----------
+    // telemetry/{id}: one finished or abandoned Roth Catha match, for balancing the cards: the setup, both decks, the
+    //   seed, every choice (by index) and the result. No name, account or id. Anyone may add one (the site sends them
+    //   only for visitors who allowed visit statistics); nobody may change or delete one; only the site's admins
+    //   may read them.
+    // admins/{uid}: the accounts that may read match records. Made by hand in the Firebase console (a document
+    //   whose id is the owner's uid, shown on #/telemetry when signed in); nobody can write it from the site.
+    function admin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && uid == me();
+      allow list, create, update, delete: if false;
+    }
+
+    match /telemetry/{id} {
+      function recordOk(d) {
+        let m = d.match;
+        return d.keys().hasAll(['v', 'game', 'build', 'at', 'outcome', 'match'])
+          && d.keys().hasOnly(['v', 'game', 'build', 'at', 'outcome', 'match'])
+          && d.v == 1 && d.game == 'roth'
+          && d.build is string && d.build.size() <= 40
+          && d.at is int
+          && d.outcome in ['won', 'lost', 'drawn', 'abandoned']
+          && m is map
+          && m.keys().hasOnly(['setup', 'me', 'seed', 'decks', 'moves', 'undos', 'ms', 'phase', 'duel', 'result'])
+          && m.moves is list && m.moves.size() <= 4000
+          && m.decks is map && m.decks.first is list && m.decks.second is list
+          && m.decks.first.size() <= 80 && m.decks.second.size() <= 80;
+      }
+      allow create: if recordOk(request.resource.data);
+      allow get, list: if admin();
+      allow update, delete: if false;
     }
 
     // ---------- Lock races ----------
@@ -173,7 +210,9 @@ service cloud.firestore {
 
       allow get: if signedIn();
       allow list: if signedIn() && me() in resource.data.players;
-      allow delete: if false;
+      // The creator may call off a race nobody has joined yet.
+      allow delete: if signedIn() && resource.data.status == 'open'
+        && resource.data.creator == me() && resource.data.players == [me()] && resource.data.seats.b == null;
 
       allow create: if signedIn()
         && request.resource.data.keys().hasAll(raceFields())

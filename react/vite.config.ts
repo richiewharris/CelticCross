@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { createReadStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { execSync } from "node:child_process";
 
 // The built site lives in /next/ and uses the repo's shared /images/ folder (../images/...).
 // In dev and preview the site is served from /, so serve that folder at /images/ too.
@@ -17,8 +18,12 @@ const repoImages = (): Plugin => {
   return { name: "repo-images", configureServer: s => { s.middlewares.use(mw as never); }, configurePreviewServer: s => { s.middlewares.use(mw as never); } };
 };
 
+// The build's commit, stamped into match records so a recorded match is replayed by the rules it was played under.
+const build = (() => { try { return execSync("git rev-parse --short HEAD", { cwd: __dirname }).toString().trim(); } catch { return "unknown"; } })();
+
 export default defineConfig({
   base: "./",
+  define: { __BUILD__: JSON.stringify(build) },
   plugins: [react(), repoImages()],
   worker: { format: "es" },
   test: { environment: "node", include: ["src/**/*.test.ts"] },

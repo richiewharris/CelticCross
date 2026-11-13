@@ -59,6 +59,8 @@ export interface RaceStore {
   /** End the race (only once your own run is finished), e.g. when the other racer has gone away. */
   endRace(id: string, uid: string): Promise<void>;
   offerRematch(id: string, uid: string, next: string): Promise<void>;
+  /** Call off a race nobody has joined yet (only its creator, while it is open): the race is deleted. */
+  cancelRace(id: string, uid: string): Promise<void>;
   /** Begin this player's challenge score; "exists" if they already have one (then they play for practice). */
   startScore(raceId: string, uid: string, name: string | null): Promise<"started" | "exists">;
   /** Report this challenger's count as they go (numbers only grow; frozen once finished). */
@@ -142,6 +144,9 @@ export const raceChecks = {
     const s = seatOf(d, uid);
     if (!s || d.status !== "running" || !d.runs[s].finished) throw new OnlineError("stale", "The race can't end yet.");
   },
+  cancel(d: RaceDoc, uid: string) {
+    if (d.status !== "open" || d.creator !== uid || d.seats.b !== null || d.players.length !== 1) throw new OnlineError("stale", "Someone has joined, so the race can't be called off now.");
+  },
   rematch(d: RaceDoc, uid: string) {
     if (d.status !== "done" || !d.players.includes(uid) || d.next) throw new OnlineError("stale", "A rematch is already on offer.");
   },
@@ -176,6 +181,12 @@ export function localRaces(): RaceStore {
   };
   return {
     async createRace(d) { const id = rid(), all = load(); all[id] = d; localStorage.setItem(KEY, JSON.stringify(all)); changed(); return id; },
+    async cancelRace(id, uid) {
+      const all = load(), d = all[id];
+      if (!d) return;
+      raceChecks.cancel(d, uid);
+      delete all[id]; localStorage.setItem(KEY, JSON.stringify(all)); changed();
+    },
     watchRace(id, cb) {
       let last = "";
       return sub(() => { const d = load()[id] ?? null; const k = JSON.stringify(d); if (k !== last) { last = k; cb(d); } });

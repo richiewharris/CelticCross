@@ -33,7 +33,6 @@ export function RothGame() {
       <header>
         <h1>Roth Catha</h1>
         <p className="lede">The wheel of battle. Draft heroes and their supports onto a round board, bind your rival's heroes with geasa, swear oaths, turn omens, then fight to the death at the ford. Six decks from the Ulster Cycle and beyond.</p>
-        <p className="private-note">Private preview: only you can see this page.</p>
       </header>
       <nav className="roth-nav" aria-label="Roth Catha">
         <Segmented label="Section" value={tab} onChange={(t) => (t === "guide" ? goGuide(guide) : setTab(t))} className="tabs"

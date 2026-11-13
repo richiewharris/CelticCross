@@ -1,7 +1,7 @@
 // Lock races on Firestore (see races.ts). The checks here mirror firestore.rules, which enforce them.
 // startedAt is a server timestamp: the rules use it to close the window for reporting a run.
 import {
-  Timestamp, addDoc, collection, doc, getFirestore, limit, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where,
+  Timestamp, addDoc, collection, deleteDoc, doc, getDoc, getFirestore, limit, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where,
   type DocumentData,
 } from "firebase/firestore";
 import { OnlineError } from "./backend";
@@ -54,6 +54,14 @@ export function firebaseRaces(): RaceStore {
     },
     updateRun(id, uid, run) {
       return tx(id, d => { const s = raceChecks.run(d, uid); return { [`runs.${s}`]: run, status: statusAfterRun(d, s, run) }; });
+    },
+    async cancelRace(id, uid) {
+      try {
+        const ref = doc(races, id), snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        raceChecks.cancel(fromRace(snap.data()), uid);
+        await deleteDoc(ref);
+      } catch (e) { throw friendly(e); }
     },
     endRace(id, uid) { return tx(id, d => { raceChecks.end(d, uid); return { status: "done" }; }); },
     offerRematch(id, uid, next) { return tx(id, d => { raceChecks.rematch(d, uid); return { next }; }); },

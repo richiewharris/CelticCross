@@ -5,10 +5,10 @@ import {
   signInWithPopup, signOut, type User,
 } from "firebase/auth";
 import {
-  addDoc, collection, doc, getDocs, getFirestore, limit, onSnapshot, query, runTransaction, where,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, runTransaction, where,
   type Firestore,
 } from "firebase/firestore";
-import { OnlineError, type OnlineBackend } from "./backend";
+import { canCancel, OnlineError, type OnlineBackend } from "./backend";
 import { firebaseApp } from "./firebaseApp";
 import type { OnlineDoc } from "./types";
 
@@ -118,6 +118,14 @@ export function firebaseBackend(): OnlineBackend {
         if (d.status !== "active" || !d.players.includes(uid)) throw new OnlineError("stale", "The game is over.");
         return { status: "done", turn: null, result };
       });
+    },
+    async cancel(id, uid) {
+      try {
+        const ref = doc(games, id), snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        if (!canCancel(snap.data() as Stored, uid)) throw new OnlineError("stale", "Someone has joined, so the game can't be called off now.");
+        await deleteDoc(ref);
+      } catch (e) { throw friendly(e); }
     },
     watchMyGames(uid, cb, onError) {
       return onSnapshot(query(games, where("players", "array-contains", uid), limit(100)),

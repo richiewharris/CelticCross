@@ -29,7 +29,7 @@ export function Home() {
             <circle r="5" fill="#d9b77d" />
           </svg>
           <h1>Celtic Cross Games</h1>
-          <p className="lede">Small games to play in the browser: a lost strategy game brought back, the board game of early Ireland, a puzzle lock carved in stone, a dice race to twenty, and a battle for a fairy mound. Nothing to install.</p>
+          <p className="lede">Small games to play in the browser: a lost strategy game brought back, the board game of early Ireland, a puzzle lock carved in stone, a dice race to twenty, a battle for a fairy mound, and a card game of the Ulster Cycle. Nothing to install.</p>
         </header>
         {live ? (
           <a className={`yourgames${myMove ? " mine" : ""}`} href="#/games">

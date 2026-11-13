@@ -36,7 +36,6 @@ body.gm-roth header { display: grid; gap: 4px; }
 body.gm-roth h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.1rem, 6.5vw, 3.1rem); margin: 0; line-height: 1.05; color: var(--bronze-hi); }
 body.gm-roth h2 { font-family: var(--font-display); font-weight: 400; margin: 0; color: var(--bronze-hi); font-size: 1.4rem; }
 body.gm-roth .lede { margin: 0; color: var(--muted); font-style: italic; max-width: 70ch; }
-body.gm-roth .private-note { margin: 0; font-size: .85rem; color: var(--bronze); }
 body.gm-roth .game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
 @media (max-width: 900px) { body.gm-roth .game { grid-template-columns: minmax(0, 1fr); } }
 body.gm-roth .stage { display: grid; gap: 12px; min-width: 0; }
@@ -764,7 +763,7 @@ body.gm-roth aside > .actions { position: sticky; top: 10px; z-index: 4; max-hei
   body.gm-roth .duel-supports .card.compact { width: 100%; }
   body.gm-roth .duel-supports .empty-spot { width: auto; aspect-ratio: auto; min-height: 4em; }
   body.gm-roth .duel-ford { padding: 2px; font-size: .85rem; }
-  body.roth-in-match.gm-roth header .lede, body.roth-in-match.gm-roth header .private-note { display: none; }
+  body.roth-in-match.gm-roth header .lede { display: none; }
   body.roth-in-match.gm-roth header h1 { font-size: 1.6rem; margin: 0; }
 }
 body.gm-roth .act-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

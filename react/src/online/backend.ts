@@ -19,6 +19,8 @@ export interface OnlineBackend {
   /** Add a move, if the game still has `expected` moves and it is this player's turn. */
   move(id: string, uid: string, expected: number, move: unknown, nextTurn: string | null, result: OnlineResult | null): Promise<void>;
   resign(id: string, uid: string, result: OnlineResult): Promise<void>;
+  /** Call off a game nobody has joined yet (only its creator, only while it is open): the game is deleted. */
+  cancel(id: string, uid: string): Promise<void>;
   /** Follow who is signed in (null when nobody has signed in on this browser yet). */
   onAccount(cb: (a: Account | null) => void): () => void;
   /** Sign in with Google. An anonymous player keeps their games: the Google account is linked to them. */
@@ -31,6 +33,10 @@ export interface OnlineBackend {
   /** This player's games of one kind, newest first. */
   myGames(game: string, uid: string): Promise<OnlineGameSummary[]>;
 }
+
+/** Can this player call the game off? Only its creator, while nobody else has taken a seat. */
+export const canCancel = (d: { status: string; creator: string; players: string[] }, uid: string | null) =>
+  !!uid && d.status === "open" && d.creator === uid && d.players.length === 1 && d.players[0] === uid;
 
 export class OnlineError extends Error {
   constructor(public code: "taken" | "stale" | "not-your-turn" | "missing" | "denied" | "offline" | "other", message: string) { super(message); }
