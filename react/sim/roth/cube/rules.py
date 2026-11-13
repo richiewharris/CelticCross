@@ -25,12 +25,12 @@ import sys
 import duckdb
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-def worth(p="", x=""):
+def worth(p="", x="", fell=True):
     """An outcome's worth to the side acting, in Valour: its Valour change less its foe's, Shield at 0.19 a point, a
     Reserve card at half a point, a duel won (or lost) at 10. Columns {p}name{x}."""
-    c = lambda n: f"{p}{n}{x}"
-    return (f"({c('dSelf')} - {c('dFoe')} + 0.19 * ({c('dSelfShield')} - {c('dFoeShield')}) - 0.5 * {c('spent')}"
-            f" + 10 * ({c('end')} in (2, 3))::int - 10 * ({c('end')} in (1, 3))::int)")
+    c = lambda n: f"\"{p}{n}{x}\""
+    v = f"({c('dSelf')} - {c('dFoe')} + 0.19 * ({c('dSelfShield')} - {c('dFoeShield')}) - 0.5 * {c('spent')}"
+    return v + (f" + 10 * ({c('end')} in (2, 3))::int - 10 * ({c('end')} in (1, 3))::int)" if fell else ")")
 
 
 def main():
@@ -87,15 +87,17 @@ def primary(q):
             big = sorted(((v, s) for s, v in diff.items() if abs(v) >= 0.15), key=lambda t: -abs(t[0]))
             if big:
                 print(f"   {x:9} vs {y:9} {m[(x, y)] - m[(x, 'dummy_spar')]:+.2f}: " + ", ".join(f"{s} {v:+.2f}" for v, s in big))
-    print("\n3. Every kind of action at the ford (every fighter and foe): its worth, and its parts")
+    print("\n3. Every kind of action at the ford (every fighter; each foe people weighted alike): its worth, and its parts")
     kind = """case when action = 'card' then 'card: ' || case when card like 'g\\_%' escape '\\' then 'geis' when card like 'v\\_%' escape '\\' then 'oath'
                    when card like 'o\\_%' escape '\\' then 'omen' when card like 'a\\_%' escape '\\' then 'attendant' else 'other' end
               when action = 'use' and cry = 'cry' then 'the cry' when mode = 'break' then action || ', breaking' when action = 'use' and struck = 1 then 'use: a blow'
               when action = 'use' then 'use: no blow' else action end"""
     print(f"   {'people':9} {'action':16} {'n':>7} {'worth':>7} {'own V':>7} {'foe V':>7} {'own Sh':>7} {'foe Sh':>7} {'cards':>6}  any effect")
-    for r in q(f"""select deck, {kind} k, count(*), avg({worth()}), avg(dSelf), avg(dFoe), avg(dSelfShield), avg(dFoeShield), avg(spent),
-                   avg((dSelf <> 0 or dFoe <> 0 or dSelfShield <> 0 or dFoeShield <> 0 or spent <> 0)::int)
-                   from p where setting = 'ford' and foeDeck <> 'dummy_spar' group by 1, 2 order by 1, 2"""):
+    # each foe people counts once (the Slúagh's hundred host pairings would outweigh the rest)
+    for r in q(f"""with x as (select deck, {kind} k, foeDeck, count(*) n, avg({worth()}) w, avg(dSelf) a, avg(dFoe) b, avg(dSelfShield) c, avg(dFoeShield) d, avg(spent) e,
+                   avg((dSelf <> 0 or dFoe <> 0 or dSelfShield <> 0 or dFoeShield <> 0 or spent <> 0)::int) f
+                   from p where setting = 'ford' and foeDeck <> 'dummy_spar' group by 1, 2, 3)
+                   select deck, k, sum(n), avg(w), avg(a), avg(b), avg(c), avg(d), avg(e), avg(f) from x group by 1, 2 order by 1, 2"""):
         print(f"   {r[0]:9} {r[1]:16} {r[2]:7} {r[3]:+7.2f} {r[4]:+7.2f} {r[5]:+7.2f} {r[6]:+7.2f} {r[7]:+7.2f} {r[8]:6.2f}  {100 * r[9]:4.0f}%")
     sets = [x[0] for x in q("select distinct setting from p order by 1")]
     W = {(x, s): v for x, s, v in q(f"select deck, setting, avg(wound) from p where {blow.replace(chr(39) + 'ford' + chr(39), 'setting')} and foeDeck <> 'dummy_spar' group by 1, 2")}
@@ -124,19 +126,22 @@ def secondary(q):
                   100.0 * sum(changed) filter (where kind = 'foe') / sum(compared) filter (where kind = 'foe'),
                   100.0 * sum(changed) filter (where kind = 'beside') / sum(compared) filter (where kind = 'beside') from sc group by 1 order by 1"""):
         print(f"   {r[0]:9} own {r[1]:5.1f}%   foe's {r[2]:5.1f}%   a card beside {r[3] or 0:5.1f}%")
-    w0, w1 = worth(x="0"), worth()
-    print("\n7. The priors that change the next action's worth most (the mean change over the next actions open both before")
-    print("   and after; and how many next actions it closes or opens). Own priors: setting up; the foe's: what to answer.")
-    for kind in ("own", "foe", "beside"):
-        rows = q(f"""with x as (select deck, kind, prior, avg(({w1}) - ({w0})) filter (where avail = 'both') dw, count(*) filter (where avail = 'lost') lost,
-                     count(*) filter (where avail = 'gained') gained, count(*) filter (where avail = 'both') n from s where kind = '{kind}' group by 1, 2, 3)
-                     select deck, prior, dw, n, lost, gained from x where dw is not null and n >= 20 order by abs(dw) desc limit 30""")
+    w0, w1 = worth(x="0", fell=False), worth(fell=False)
+    fell = "(\"end\" in (2, 3))::int - (end0 in (2, 3))::int"
+    print("\n7. The priors that change the next action most: the mean change in its worth in Valour (a duel won apart),")
+    print("   the change in how often it fells the foe, over the next actions open before and after (the dummy apart),")
+    print("   and how many next actions the prior closes or opens. Own priors set up the next action; the foe's must be answered.")
+    for kind in ("own", "foe"):
+        rows = q(f"""with x as (select deck, prior, avg(({w1}) - ({w0})) filter (where avail = 'both') dw, avg({fell}) filter (where avail = 'both') df,
+                     count(*) filter (where avail = 'lost') lost, count(*) filter (where avail = 'gained') gained, count(*) filter (where avail = 'both') n
+                     from s where kind = '{kind}' and foeDeck <> 'dummy_spar' group by 1, 2)
+                     select deck, prior, dw, df, n, lost, gained from x where dw is not null and n >= 200 order by abs(dw) desc limit 25""")
         print(f"\n   {kind}:")
         for r in rows:
-            print(f"   {r[0]:9} {r[1][:40]:40} next worth {r[2]:+6.2f} (n {r[3]:6})  closes {r[4]:6}  opens {r[5]:6}")
+            print(f"   {r[0]:9} {r[1][:38]:38} worth {r[2]:+6.2f}  fells {100 * r[3]:+5.1f}%  (n {r[4]:6})  closes {r[5]:6}  opens {r[6]:6}")
     print("\n   What the foe's rest changes (by the people striking next): next worth, and the wound")
     for r in q(f"""select deck, avg(({w1}) - ({w0})), avg(wound - wound0) filter (where struck = 1 and struck0 = 1) from s
-                  where kind = 'foe' and prior like 'rest:%normal%' and avail = 'both' group by 1 order by 1"""):
+                  where kind = 'foe' and prior like 'rest:%normal%' and avail = 'both' and foeDeck <> 'dummy_spar' group by 1 order by 1"""):
         print(f"   {r[0]:9} {r[1]:+.2f} worth, {r[2] or 0:+.2f} wound")
 
 
@@ -146,13 +151,15 @@ def tertiary(q):
     print("   the rest are exactly the sum of what each prior changes alone (the secondary cube).")
     for r in q("select deck, 100.0 * sum(interacting) / sum(compared) from tc group by 1 order by 1"):
         print(f"   {r[0]:9} {r[1]:5.2f}% interact")
-    iw = worth(p="i_")
-    print("\n8. The pairs (own action, the foe's reply) whose interaction moves the next action's worth most:")
-    for r in q(f"""select deck, own, reply, count(*), avg({iw}) from t group by 1, 2, 3 having count(*) >= 5 order by abs(avg({iw})) desc limit 30"""):
-        print(f"   {r[0]:9} {r[1][:30]:30} then {r[2][:30]:30} x{r[3]:5}  {r[4]:+.2f}")
+    iw = worth(p="i_", fell=False)
+    print("\n8. The pairs (own action, the foe's reply) whose interaction moves the next action most (in Valour, a duel won")
+    print("   apart; the dummy apart), with how often the interaction is a duel won or saved:")
+    for r in q(f"""select deck, own, reply, count(*), avg({iw}), avg((i_end <> 0)::int) from t where foeDeck <> 'dummy_spar'
+                   group by 1, 2, 3 having count(*) >= 20 order by abs(avg({iw})) desc limit 30"""):
+        print(f"   {r[0]:9} {r[1][:30]:30} then {r[2][:30]:30} x{r[3]:5}  {r[4]:+.2f}  ended {100 * r[5]:3.0f}%")
     print("\n   Which steps interact (mean |interaction| per field, over the interacting rows):")
     fs = ["dSelf", "dFoe", "dSelfShield", "dFoeShield", "spent", "wound", "struck", "end", "broke"]
-    r = q("select " + ", ".join(f"avg(abs(i_{f}))" for f in fs) + " from t")[0]
+    r = q("select " + ", ".join(f"avg(abs(\"i_{f}\"))" for f in fs) + " from t")[0]
     print("   " + ", ".join(f"{f} {v:.2f}" for f, v in zip(fs, r)))
 
 
