@@ -84,6 +84,8 @@ export const PARAMS = {
   "people.connacht.bleed": 1,
   /** ...stacking up to this. */
   "people.connacht.bleedCap": 1,
+  /** Connacht: Swift reads the blow before a giant's hide halves it (1), or after (0). */
+  "people.connacht.swiftUnhalved": 0,
   /** Fomóire: giant-kin, half the wounds of any blow but their weakness (1 = on). */
   "people.fomoire.giantKin": 1,
 

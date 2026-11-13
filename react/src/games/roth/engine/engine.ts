@@ -1374,8 +1374,11 @@ function seaVsDead(h: CardDef, e: CardDef, s: SupportDef, t: string) {
 /** `pierce`: ignores Shield, Armour and Blocks; `spirit`: a Spirit blow, which passes Shield but not Armour or Blocks. */
 /** The Fomóire are giant-kin: in a duel to the death, half the wounds of any blow but one of their weaknesses. */
 export const giantKin = (S: State, f: FighterDef) => toDeath(S) && f.alignment === "Fomoire" && param(S.rules, "people.fomoire.giantKin") > 0;
+/** The last blow's wounds before a giant's hide halved them (Swift may read it: people.connacht.swiftUnhalved). */
+const LAST_BLOW = { unhalved: 0 };
 export function strike(S: State, C: CombatState, a: Side, n: number, pierce = false, drain = 0, spirit = false, el: Element | null = null): number {
   const b = (1 - a) as Side;
+  LAST_BLOW.unhalved = -1;
   const h = fighter(S, C, a);
   const e = fighter(S, C, b);
   const ab = h.ab;
@@ -1480,6 +1483,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   let dmg = n - soak;
   if (T) T.shield = soak;
   // giant-kin: half the wounds (rounded up) unless the blow is of a weakness
+  LAST_BLOW.unhalved = dmg;
   let halved = dmg > 0 && giantKin(S, e) && !(el && effWeakness(S, b, e, C).includes(el));
   // the Hound's cry: an Ulster blow that ignores Shield, given with the cry, goes through the giant's hide
   if (halved && CRY.on && pierce && h.alignment === "Ulaid") {
@@ -1547,7 +1551,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     if (S.stats && C === S.combat) S.stats.fx.ripostes[b]++;
     RIPOSTE.on = true;
     const src = SRC.id; SRC.id = "power:riposte";
-    try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; SRC.id = src; }
+    const keep = LAST_BLOW.unhalved; // the riposte is a blow of its own: keep this one's for Swift
+    try { strike(S, C, b, e.ab.riposte); } finally { RIPOSTE.on = false; SRC.id = src; LAST_BLOW.unhalved = keep; }
   }
   const F = S.stats?.fx;
   if (F && C === S.combat) { F.strikes[a]++; F.dmg[a] += dmg; F.soaked[a] += soak; F.blunted[a] += n0 - n; }
@@ -1693,8 +1698,10 @@ function resolveSupport(S: State, C: CombatState, a: Side, s0: SupportDef, first
     if (eff.type === "strike") {
       const hit = () => withSpirit(s.element === "Spirit", () => strike(S, C, a, n, !!s.pierce, (s.drain ?? 0) + (s.element === "Spirit" && !REUSING.on ? 1 : 0), s.element === "Spirit" && e.alignment !== "Merrow", isElement(s.element) ? s.element : null));
       const dmg = hit();
-      // a swift Connacht hero: a blow that wounds for 1 or less is followed at once by a second
-      if (i === 0 && dmg <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
+      // a swift Connacht hero: a blow that wounds for 1 or less is followed at once by a second (read before a
+      // giant's hide halves it, when people.connacht.swiftUnhalved is on)
+      const light = param(S.rules, "people.connacht.swiftUnhalved") && LAST_BLOW.unhalved >= 0 ? LAST_BLOW.unhalved : dmg;
+      if (i === 0 && light <= 1 && toDeath(S) && h.ab.followUp && C.valour[b] > 0 && C.valour[a] > 0) {
         if (NARRATE.lines) say(`${h.name} is swift: a second blow.`);
         if (S.stats && C === S.combat) S.stats.fx.swift[a]++;
         const src = SRC.id; SRC.id = "power:swift";
