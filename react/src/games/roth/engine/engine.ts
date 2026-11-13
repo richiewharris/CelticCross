@@ -2419,6 +2419,11 @@ export function playOut(S: State, policies: [Policy, Policy], rngs: [Rng, Rng], 
 export function sameOption(a: Option, b: Option): boolean {
   if (a.t !== b.t) return false;
   const x = a as Record<string, unknown>, y = b as Record<string, unknown>;
-  for (const k of Object.keys(x)) if (x[k] !== y[k]) return false;
+  for (const k of Object.keys(x)) {
+    const u = x[k], v = y[k];
+    // a list (a Slúagh host's monsters to join) is the same list when it holds the same things in the same order
+    if (Array.isArray(u) && Array.isArray(v)) { if (u.length !== v.length || u.some((e, i) => e !== v[i])) return false; }
+    else if (u !== v) return false;
+  }
   return true;
 }

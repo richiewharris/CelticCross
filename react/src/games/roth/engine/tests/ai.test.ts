@@ -107,3 +107,27 @@ describe("the second player's setting", () => {
     expect(pickSettingId(SET_DECKS.ulster, SET_DECKS.fomoire)).toBe(best);
   });
 });
+
+describe("determinized decisions (Expert's rollouts) for every people", () => {
+  it("offer every option the real decision does, a Slúagh host's joined monsters included", async () => {
+    const { DECKS, FACTIONS } = await import("../cards");
+    const { cloneState, sameOption } = await import("../engine");
+    let n = 0;
+    for (const a of FACTIONS) for (const b of FACTIONS) if (a !== b) {
+      const S = newMatch([DECKS[a], DECKS[b]], {}, 77);
+      const P = [new CasualPolicy(), new CasualPolicy()];
+      const R = [new Rng(1), new Rng(2)], rng = new Rng(3);
+      for (let g = 0; g < 3000; g++) {
+        const d = nextDecision(S);
+        if (!d) break;
+        if ((d.kind === "place" || d.kind === "action" || d.kind === "late") && d.options.length > 1) {
+          const d2 = nextDecision(determinize(observe(cloneState(S), d.player), d.player, rng))!;
+          for (const o of d.options) expect(d2.options.some((y) => sameOption(y, o)), `${a}/${b} ${JSON.stringify(o)}`).toBe(true);
+          n++;
+        }
+        applyDecision(S, d, P[d.player].choose(S, d, R[d.player]));
+      }
+    }
+    expect(n).toBeGreaterThan(300);
+  });
+});

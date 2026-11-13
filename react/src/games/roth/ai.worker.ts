@@ -8,7 +8,14 @@ type Msg = { id: number; type: "choose"; payload: { view: State; d: Decision; le
 self.onmessage = (e: MessageEvent<Msg>) => {
   const { id, payload } = e.data;
   const { view, d, level, seed } = payload;
-  const pol = makePolicy(level, { N: 16, K: 3 });
-  const result = d.options.length === 1 ? 0 : pol.choose(view, d, new Rng(seed));
+  let result = 0;
+  if (d.options.length > 1) {
+    try { result = makePolicy(level, { N: 16, K: 3 }).choose(view, d, new Rng(seed)); }
+    catch (err) {
+      // never leave the match waiting on an answer: fall back to Casual's rules of thumb, and say so in the console
+      console.error("the computer's choice failed; playing by rules of thumb instead", err);
+      result = makePolicy("casual").choose(view, d, new Rng(seed));
+    }
+  }
   self.postMessage({ id, result });
 };
