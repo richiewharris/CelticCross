@@ -1,0 +1,25 @@
+{
+ "note": "Fitted by sim/roth/cube/fiteval.py: logit of winning the duel. Don't edit by hand.",
+ "train": [
+  "sim/roth/cube/evaldata/skilled-s1-n40.csv.gz"
+ ],
+ "weights": {
+  "vdiff": -0.01462,
+  "race": 0.78757,
+  "rest": -0.08499,
+  "mound": 0.00224,
+  "cry": -0.0336,
+  "summon": 0.00577,
+  "stall": 0.02542,
+  "valour": 0.14394,
+  "shield": 0.03373,
+  "armour": -0.07475,
+  "hand": -0.00542,
+  "reserve": 0.00088,
+  "potMe": -0.11337,
+  "potFoe": 0.09824,
+  "turn": -0.00828,
+  "first": -0.16622
+ },
+ "offset": 0.49751
+}

@@ -9,6 +9,7 @@ import { blockValue,
 } from "./engine";
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
+import FITTED from "./evalWeights.json";
 import { param, settingOf } from "./params";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
@@ -395,7 +396,7 @@ export class SkilledPolicy implements Policy {
   name = "Skilled";
   /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
    *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
-  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts) {}
+  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts, public learned = false) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -431,6 +432,11 @@ export class SkilledPolicy implements Policy {
       case "duel": {
         if (toDeath(V)) {
           if (this.fast) return new CasualPolicy().choose(V, d, rng);
+          if (this.learned) {
+            const was = EVAL.weights, wl = EVAL.logit;
+            EVAL.weights = fittedWeights(); EVAL.logit = true;
+            try { return this.fair ? fairChoice(V, d, rng, this.fair) : deathChoice(V, d, rng); } finally { EVAL.weights = was; EVAL.logit = wl; }
+          }
           if (this.fair) return fairChoice(V, d, rng, this.fair);
           if (this.depth === undefined) return deathChoice(V, d, rng);
           const was = DEATH.budget, wasN = DEATH.nodes;
@@ -562,6 +568,14 @@ export function deathFeatures(S: State, me: Side): (Record<EvalFeature, number> 
     parts: [vm - vo, Math.tanh((to - tm) / 2), restWorth(me, tm - to) - restWorth(o, to - tm), mound(me), mound(o),
       1.5 * ((C.cried?.[me] ?? 0) - (C.cried?.[o] ?? 0)), summonCosts(S) ? 1.5 * ((C.summoned[me] ? 1 : 0) - (C.summoned[o] ? 1 : 0)) : 0, stall(me, o), stall(o, me)],
   };
+}
+/** The fitted evaluation (engine/evalWeights.json, from sim/roth/cube/fiteval.py), without its offset and its "first"
+ *  term: both describe whose decision it was, which a search's view doesn't change. */
+export function fittedWeights(): Record<EvalFeature, number> {
+  const w = { ...HAND_WEIGHTS };
+  for (const k of EVAL_FEATURES) w[k] = (FITTED.weights as Record<string, number>)[k] ?? 0;
+  w.first = 0;
+  return w;
 }
 /** The evaluation in use: HAND_WEIGHTS, or a fitted set (EVAL.weights, when a policy asks for it). */
 export const EVAL = { weights: null as Record<EvalFeature, number> | null, logit: false };
@@ -879,13 +893,14 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
-    const fm = /^(\d+)f(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
+    const fm = /^(\d+)f(L?)(?:\/((?:[bcsn]\d+)+))?$/.exec(at0);
     if (fm) {
       const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
-      for (const [, k, v] of (fm[2] ?? "").matchAll(/([bcsn])(\d+)/g)) {
+      for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsn])(\d+)/g)) {
         if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else o.nodes = Number(v);
       }
-      const p = new SkilledPolicy(false, o.depth, undefined, o);
+      // "skilled@3fL": the same, judging positions with the fitted evaluation
+      const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L");
       p.name = `Skilled@${at0}`;
       return p;
     }
