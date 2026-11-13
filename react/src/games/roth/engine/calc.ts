@@ -11,6 +11,7 @@
 // Nothing here is fitted to outcomes. The one constant, SPREAD (how many turns of margin make a duel a near
 // certainty), is measured: the spread of real duels around the race's prediction.
 import { actorOf, applyDecision, cloneState, fighter, nextDecision, toDeath, type Side, type State } from "./engine";
+import { reuseOf, type SupportDef } from "./cards";
 
 /** What one option does, by the rules: played on a copy of the position. */
 export interface OptionEffect { dealt: number; healed: number; shield: number; paid: number; rest: boolean; draw?: boolean }
@@ -87,16 +88,38 @@ function drawEffect(W: State, d: ReturnType<typeof nextDecision>, i: number, p: 
   return sum;
 }
 
-/** Level 2: what side p can do each turn from here. */
-export interface TurnRate { blow: number; sustain: number; options: number }
+/** Level 2: what side p can do each turn from here.
+ *  blow      its best blow this turn (net of what it pays), from what is ready now or a draw
+ *  sustained what it can keep taking off each turn after that: the best of a draw, and each card beside its fighter
+ *            at its full value spread over its cycle (a Weapon or a Spirit blow every other turn, a Feat every other
+ *            turn with a rest between, an Ally for a card, a Word for 1 Valour), net of that cost
+ *  sustain   the most it gets back in a turn (a heal, or a rest's Shield) */
+export interface TurnRate { blow: number; sustained: number; sustain: number; options: number }
 export function turnRate(S: State, p: Side): TurnRate {
   const ef = optionEffects(S, p);
-  let blow = 0, sustain = 0;
+  let blow = 0, sustain = 0, draw = 0;
   for (const e of ef) {
     blow = Math.max(blow, e.dealt - e.paid);
     sustain = Math.max(sustain, e.healed + e.shield);
+    if (e.draw) draw = e.dealt - e.paid;
   }
-  return { blow, sustain, options: ef.length };
+  let sustained = draw;
+  const W = asActor(S, p);
+  if (W) {
+    const C = W.combat!;
+    for (const sp of [C.hs[p] + 1, C.hs[p] + 2]) {
+      const c = W.board[sp];
+      if (!c || c.def.type !== "support" || c.def.use || !c.def.effects.some((x) => x.type === "strike")) continue;
+      const r = reuseOf(c.def as SupportDef);
+      // its first-use value: on a copy where it is fresh
+      const X = cloneState(W);
+      const u = X.combat!.uses.slice(); u[sp] = 0; X.combat!.uses = u;
+      const best = optionEffects(X, p).reduce((m, e) => Math.max(m, e.dealt), 0);
+      const cycle = 1 + (r.turns ?? 0) + (r.rest ?? 0);
+      sustained = Math.max(sustained, (best - (r.valour ?? 0) - 1.5 * (r.draw ?? 0)) / cycle);
+    }
+  }
+  return { blow, sustained, sustain, options: ef.length };
 }
 
 /** Level 3: the race, from side me's view. */
@@ -110,9 +133,13 @@ export function duelRace(S: State, me: Side): Race | null {
   const rm = turnRate(S, me), ro = turnRate(S, o);
   // effective Valour: Valour, plus the Shield that soaks blows (not a Slúagh's Spirit, which passes it)
   const eff = (p: Side, foe: Side) => C.valour[p] + (fighter(S, C, foe).alignment === "Sluagh" ? 0 : C.shield[p]);
-  // turns a side lasts: its effective Valour over the foe's best blow each turn (sustain is measured beside it, and
-  // the check says whether it belongs in the race). A foe that can't wound it at all needs "for ever": cap at 30.
-  const lasts = (p: Side, foe: Side, foeRate: TurnRate) => (foeRate.blow <= 0 ? 30 : Math.min(30, Math.ceil(Math.max(0, eff(p, foe)) / foeRate.blow)));
+  // turns a side lasts: the foe's best blow first, then what it can keep taking off each turn (sustain is measured
+  // beside it, and the check says whether it belongs in the race); 15 turns stands for "not by blows alone"
+  const lasts = (p: Side, foe: Side, f: TurnRate) => {
+    const E = Math.max(0, eff(p, foe));
+    if (f.blow >= E) return 1;
+    return f.sustained <= 0.05 ? 15 : Math.min(15, 1 + (E - f.blow) / f.sustained);
+  };
   const tMe = lasts(o, me, rm);   // own turns I need to fell the foe
   const tFoe = lasts(me, o, ro);  // its turns it needs to fell me
   // whoever acts next gets its turns in first: a tie goes to it

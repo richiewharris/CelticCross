@@ -774,7 +774,12 @@ function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "
     if (x) { row.duel = DECISIONS.view.combat.duel; row.x = EVAL_FEATURES.map((k) => x[k]); }
     // the calculator's race, from the real position (a sim's measurement)
     const r = DECISIONS.real ? duelRace(DECISIONS.real, d.player) : null;
-    if (r) row.calc = [r.tMe, r.tFoe, r.margin, r.rateMe.blow, r.rateFoe.blow, r.rateMe.sustain, r.rateFoe.sustain];
+    const RC = DECISIONS.real?.combat;
+    if (r && RC) {
+      const me = d.player, fo = 1 - me;
+      row.calc = [r.tMe, r.tFoe, r.margin, r.rateMe.blow, r.rateFoe.blow, r.rateMe.sustain, r.rateFoe.sustain, r.rateMe.sustained, r.rateFoe.sustained,
+        RC.valour[me], RC.valour[fo], RC.shield[me], RC.shield[fo]];
+    }
   }
   DECISIONS.log.push(row);
 }
