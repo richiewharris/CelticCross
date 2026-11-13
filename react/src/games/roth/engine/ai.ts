@@ -10,6 +10,7 @@ import { blockValue,
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
 import FITTED from "./evalWeights.json";
+import { duelRace } from "./calc";
 import { param, settingOf } from "./params";
 import { Rng } from "./rng";
 import { evalBoardCombat, quickSupportValue, solveChoice, stripGuests } from "./solver";
@@ -762,8 +763,8 @@ function fairChoice(V: State, d: Decision, rng: Rng, o: FairOpts): number {
 /** The decision log (sim measurement): for each choice the computer weighed, how many options it had, the value it
  *  gave the best and the second best (in its evaluation's units: "death" is the duel look-ahead, about 3 a Valour
  *  point and 60 a hero; "board" the placement evaluation, a win chance), and which it took. */
-export interface DecisionRow { kind: string; side: number; eval: "death" | "board"; options: number; best: number; second: number; chose: number; duel?: number; x?: number[] }
-export const DECISIONS = { on: false, log: [] as DecisionRow[], /** also record the position's features (the evaluation's training data) */ features: false, view: null as State | null };
+export interface DecisionRow { kind: string; side: number; eval: "death" | "board"; options: number; best: number; second: number; chose: number; duel?: number; x?: number[]; calc?: number[] }
+export const DECISIONS = { on: false, log: [] as DecisionRow[], /** also record the position's features (the evaluation's training data) */ features: false, view: null as State | null, /** the real match, when a sim records the calculator's view of it */ real: null as State | null };
 function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "board") {
   const v = vals.filter((x) => Number.isFinite(x)).sort((a, b) => b - a);
   if (v.length < 2) return;
@@ -771,6 +772,9 @@ function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "
   if (DECISIONS.features && DECISIONS.view?.combat) {
     const x = deathFeatures(DECISIONS.view, d.player);
     if (x) { row.duel = DECISIONS.view.combat.duel; row.x = EVAL_FEATURES.map((k) => x[k]); }
+    // the calculator's race, from the real position (a sim's measurement)
+    const r = DECISIONS.real ? duelRace(DECISIONS.real, d.player) : null;
+    if (r) row.calc = [r.tMe, r.tFoe, r.margin, r.rateMe.blow, r.rateFoe.blow, r.rateMe.sustain, r.rateFoe.sustain];
   }
   DECISIONS.log.push(row);
 }

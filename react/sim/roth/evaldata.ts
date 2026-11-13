@@ -19,7 +19,7 @@ function play(j: Job, i: number): string[] {
   const decks = side === 0 ? [j.a, j.b] : [j.b, j.a];
   const seed = hashSeed(j.seed, `eval-${j.a}-${j.b}`, i);
   const S = newMatch([DECKS[decks[0]], DECKS[decks[1]]], {}, seed);
-  DECISIONS.on = true; DECISIONS.features = true; DECISIONS.log = [];
+  DECISIONS.on = true; DECISIONS.features = true; DECISIONS.log = []; DECISIONS.real = S;
   playOut(S, [makePolicy(j.level), makePolicy(j.level)] as [Policy, Policy], [new Rng(hashSeed(seed, 1)), new Rng(hashSeed(seed, 2))], false);
   const duels = S.stats!.duels ?? [];
   const out: string[] = [];
@@ -29,7 +29,8 @@ function play(j: Job, i: number): string[] {
     if (!du) continue;
     const me = r.side, o = 1 - me;
     const y = du.felled[o] && !du.felled[me] ? 1 : du.felled[me] && !du.felled[o] ? 0 : 0.5;
-    out.push([decks[me], decks[o], r.duel, ...r.x.map((v) => Math.round(v * 1000) / 1000), y].join(","));
+    const calc = r.calc ?? [NaN, NaN, NaN, NaN, NaN, NaN, NaN];
+    out.push([decks[me], decks[o], r.duel, ...r.x.map((v) => Math.round(v * 1000) / 1000), ...calc.map((v) => Math.round(v * 1000) / 1000), y].join(","));
   }
   return out;
 }
@@ -56,6 +57,6 @@ if (process.argv.includes("--worker")) {
     }
   });
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, gzipSync(["deck,foe,duel," + EVAL_FEATURES.join(",") + ",y", ...rows].join("\n") + "\n"));
+  writeFileSync(out, gzipSync(["deck,foe,duel," + EVAL_FEATURES.join(",") + ",tMe,tFoe,margin,blowMe,blowFoe,sustainMe,sustainFoe,y", ...rows].join("\n") + "\n"));
   console.log(`${rows.length} positions from ${30 * n} matches in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${out}`);
 }
