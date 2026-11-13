@@ -29,7 +29,7 @@ function play(j: Job, i: number): string[] {
     if (!du) continue;
     const me = r.side, o = 1 - me;
     const y = du.felled[o] && !du.felled[me] ? 1 : du.felled[me] && !du.felled[o] ? 0 : 0.5;
-    const calc = r.calc ?? Array(16).fill(NaN);
+    const calc = r.calc ?? Array(24).fill(NaN);
     out.push([decks[me], decks[o], r.duel, ...r.x.map((v) => Math.round(v * 1000) / 1000), ...calc.map((v) => Math.round(v * 1000) / 1000), y].join(","));
   }
   return out;
@@ -57,6 +57,6 @@ if (process.argv.includes("--worker")) {
     }
   });
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, gzipSync(["deck,foe,duel," + EVAL_FEATURES.join(",") + ",tMe,tFoe,margin,blowMe,blowFoe,sustainMe,sustainFoe,sustainedMe,sustainedFoe,vMe,vFoe,shMe,shFoe,rollWin,rollMargin,rollTurns,y", ...rows].join("\n") + "\n"));
+  writeFileSync(out, gzipSync(["deck,foe,duel," + EVAL_FEATURES.join(",") + ",tMe,tFoe,margin,blowMe,blowFoe,sustainMe,sustainFoe,sustainedMe,sustainedFoe,vMe,vFoe,shMe,shFoe,rollWin,rollMargin,rollTurns,fBlowMe,fBlowFoe,fSustainMe,fSustainFoe,fSustainedMe,fSustainedFoe,fRollWin,fRollMargin,y", ...rows].join("\n") + "\n"));
   console.log(`${rows.length} positions from ${30 * n} matches in ${((Date.now() - t0) / 1000).toFixed(0)}s -> ${out}`);
 }

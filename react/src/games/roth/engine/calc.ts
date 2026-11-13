@@ -193,6 +193,8 @@ export function calcEdge(S: State, me: Side, w: Record<CalcTerm, number>): numbe
 /** One of a side's actions, as the rollout keeps it. */
 export interface RollAct {
   kind: "card" | "rest" | "draw" | "once";
+  /** A card's spot (its clock is read from there). */
+  spot?: number;
   /** A host's sacrifice or summon: one of each a duel, whichever monster. */
   group?: string;
   /** Wounds against no Shield; whether Shield soaks them (a Spirit blow or a piercing one passes it). */
@@ -250,7 +252,7 @@ export function repertoire(S: State, p: Side): Repertoire | null {
     if (!e0) continue;
     const e3 = e0.dealt > 0 ? fresh(3) : e0;
     acts.push({
-      kind: "card", dealt: e0.dealt, soaked: !!e3 && e3.dealt < e0.dealt, healed: e0.healed, shield: e0.shield, paid: e0.paid, cards: e0.cards,
+      kind: "card", spot: sp, dealt: e0.dealt, soaked: !!e3 && e3.dealt < e0.dealt, healed: e0.healed, shield: e0.shield, paid: e0.paid, cards: e0.cards,
       wait: r.turns ?? 0, rests: r.rest ?? 0, reValour: r.valour ?? 0, reCards: r.draw ?? 0,
       used: C.uses[sp] > 0, since: C.acts[p] - C.lastUse[sp], restsSince: C.restsSince[sp],
     });
@@ -340,6 +342,99 @@ export function calc2Terms(S: State, me: Side): Record<Calc2Term, number> | null
 }
 export function calc2Edge(S: State, me: Side, w: Record<Calc2Term, number>): number | null {
   const t = calc2Terms(S, me);
+  if (!t) return null;
+  let e = 0;
+  for (const k of CALC2_TERMS) e += (k === "valour" ? 1 : w[k] ?? 0) * t[k];
+  return e;
+}
+
+// ---------------------------------------------------------------- the fast calculator: the tables, looked up
+// What a side's actions do changes far more slowly than the position: within a search the board, the geasa and the
+// duel's standing counters stay put while Valour, Shield and the clocks move every ply. So each side's repertoire is
+// measured by the rules once per standing position (the key below leaves out Valour, Shield, the clocks and the turn)
+// and kept; every other position is arithmetic on it: the clocks read live, the level-3 terms taken from the
+// repertoire instead of played, and the rollout run on it.
+
+/** The standing position, for side p: everything that changes what p's actions do, but not Valour, Shield or clocks. */
+function standingKey(S: State, p: Side): string {
+  const C = S.combat!;
+  const id = (c: { def: { id: string } } | null | undefined) => (c ? c.def.id : "-");
+  const j = (x: unknown) => (Array.isArray(x) ? x.map((v) => (v && typeof v === "object" ? id(v as never) : String(v ?? ""))).join(":") : String(x ?? ""));
+  const Q = S.players[p];
+  return [
+    p, S.rules.setting ?? "", S.board.map(id).join(","), S.quadGeis.map(id).join(","), S.quadOath.map(id).join(","), S.globalGeis.map(id).join(","),
+    S.players.map((P) => P.omens.filter((o) => o.faceUp).map((o) => id(o.card) + "@" + (o.target ?? "")).join(",")).join("/"),
+    C.hostAdj.map((x) => (x ? x.remove.join("+") + ">" + x.add.map((m) => m.id).join("+") : "")).join(","),
+    C.duel, j(C.hs), C.broken, j(C.cap), j(C.focus), j(C.stagger), j(C.armour), j(C.mound), j(C.bleed), j(C.cried), j(C.ebbed), j(C.block),
+    j(C.nextStrike), j(C.cathbad), j(C.kingsDue), j(C.champ), j(C.sacrificed), j(C.summoned), j(C.rested), j(C.init),
+    Math.min(Q.reserve.length + Q.discard.length, 9), Q.reserve.length ? Q.reserve.map((c) => c.def.id).sort().join("+") : "",
+  ].join("|");
+}
+export const FAST = { map: new Map<string, RollAct[]>(), hits: 0, misses: 0, max: 20000 };
+export function clearFast() { FAST.map.clear(); FAST.hits = 0; FAST.misses = 0; }
+
+/** Side p's repertoire: the measured actions of its standing position, with the clocks, Valour and Shield read live. */
+export function fastRepertoire(S: State, p: Side): Repertoire | null {
+  const C = S.combat;
+  if (!C || S.phase !== "combat" || C.stage !== "turns") return null;
+  const k = standingKey(S, p);
+  let acts = FAST.map.get(k);
+  if (acts) FAST.hits++;
+  else {
+    FAST.misses++;
+    const r = repertoire(S, p);
+    if (!r) return null;
+    acts = r.acts;
+    if (FAST.map.size >= FAST.max) FAST.map.clear();
+    FAST.map.set(k, acts);
+  }
+  return {
+    acts: acts.map((a) => (a.kind === "card" && a.spot !== undefined
+      ? { ...a, used: C.uses[a.spot] > 0, since: C.acts[p] - C.lastUse[a.spot], restsSince: C.restsSince[a.spot] }
+      : a)),
+    valour: C.valour[p], shield: C.shield[p], cards: drawable(S, p),
+  };
+}
+/** Is act a ready for side A now (the rollout's own test)? */
+const ready = (a: RollAct, v: number, cards: number) =>
+  !(a.kind === "draw" && cards < 1) && !(a.kind === "card" && a.used && (a.since <= a.wait || a.restsSince < a.rests || v <= a.reValour || cards < a.reCards));
+/** Level 2 from a repertoire: the best blow now against the foe's Shield, what can be kept up, the best sustain. */
+function fastRate(R: Repertoire, foeShield: number): { blow: number; sustained: number; sustain: number } {
+  let blow = 0, sustain = 0, sustained = 0;
+  for (const a of R.acts) {
+    const again = a.kind === "card" && a.used;
+    if (ready(a, R.valour, R.cards) && !(a.kind === "once" && a.used)) {
+      const dealt = a.soaked ? Math.max(0, a.dealt - foeShield) : a.dealt;
+      blow = Math.max(blow, dealt - a.paid - (again ? a.reValour : 0));
+      sustain = Math.max(sustain, a.healed + a.shield);
+    }
+    if (a.kind === "draw") sustained = Math.max(sustained, a.dealt - a.paid);
+    if (a.kind === "card" && a.dealt > 0) sustained = Math.max(sustained, (a.dealt - a.reValour - 1.5 * a.reCards) / (1 + a.wait + a.rests));
+  }
+  return { blow, sustained, sustain };
+}
+/** The fast calculator's parts, from side me's view: each side's rates (level 2) and the rollout, from the kept repertoires. */
+export function calc3Parts(S: State, me: Side): { rm: ReturnType<typeof fastRate>; ro: ReturnType<typeof fastRate>; roll: Roll } | null {
+  const C = S.combat;
+  if (!C || !toDeath(S) || C.stage !== "turns") return null;
+  const o = (1 - me) as Side;
+  const R: [Repertoire | null, Repertoire | null] = [fastRepertoire(S, 0), fastRepertoire(S, 1)];
+  if (!R[0] || !R[1]) return null;
+  return { rm: fastRate(R[me]!, C.shield[o]), ro: fastRate(R[o]!, C.shield[me]), roll: rollout(S, me, R)! };
+}
+/** The fast calculator's terms: those of the table calculator, from the kept repertoires. */
+export function calc3Terms(S: State, me: Side): Record<Calc2Term, number> | null {
+  const P = calc3Parts(S, me);
+  if (!P) return null;
+  const C = S.combat!, o = 1 - me;
+  return {
+    valour: C.valour[me] - C.valour[o], shield: C.shield[me] - C.shield[o],
+    blow: P.rm.blow - P.ro.blow, sustained: P.rm.sustained - P.ro.sustained, sustain: P.rm.sustain - P.ro.sustain,
+    move: actorOf(C) === me ? 1 : -1, rollWin: P.roll.win, rollMargin: P.roll.margin,
+  };
+}
+export function calc3Edge(S: State, me: Side, w: Record<Calc2Term, number>): number | null {
+  const t = calc3Terms(S, me);
   if (!t) return null;
   let e = 0;
   for (const k of CALC2_TERMS) e += (k === "valour" ? 1 : w[k] ?? 0) * t[k];

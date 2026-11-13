@@ -10,9 +10,10 @@ import { blockValue,
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
 import FITTED from "./evalWeights.json";
-import { calc2Edge, calcEdge, duelRace, rollout, type Calc2Term, type CalcTerm } from "./calc";
+import { calc2Edge, calc3Edge, calc3Parts, calcEdge, duelRace, rollout, type Calc2Term, type CalcTerm } from "./calc";
 import CALCW from "./calcWeights.json";
 import CALC2W from "./calc2Weights.json";
+import CALC3W from "./calc3Weights.json";
 import { param, settingOf } from "./params";
 import { cubeable, lineValue, lookup, outValue } from "./cube";
 import { Rng } from "./rng";
@@ -400,7 +401,7 @@ export class SkilledPolicy implements Policy {
   name = "Skilled";
   /** fast: first-duel decisions use the first-duel heuristic leaf instead of searching through the second duel.
    *  depth: look-ahead in whole turns in a duel to the death (unset: DEATH.budget, 2). */
-  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts, public learned = false, public calc = false, public table = false) {}
+  constructor(public fast = false, public depth?: number, public nodes?: number, public fair?: FairOpts, public learned = false, public calc = false, public table: false | "table" | "fast" = false) {}
 
   choose(V: State, d: Decision, rng: Rng): number {
     if (d.options.length === 1) return 0;
@@ -438,7 +439,7 @@ export class SkilledPolicy implements Policy {
           if (this.fast) return new CasualPolicy().choose(V, d, rng);
           if (this.table) {
             const was = EVAL.table;
-            EVAL.table = true;
+            EVAL.table = this.table;
             try { return this.fair ? fairChoice(V, d, rng, this.fair) : deathChoice(V, d, rng); } finally { EVAL.table = was; }
           }
           if (this.calc) {
@@ -593,7 +594,8 @@ export function fittedWeights(): Record<EvalFeature, number> {
 }
 /** The evaluation in use: HAND_WEIGHTS, or a fitted set (EVAL.weights, when a policy asks for it). */
 export const EVAL = { weights: null as Record<EvalFeature, number> | null, logit: false, /** the duel calculator's edge, in Valour points, in place of the hand-set terms */ calc: false,
-  /** the table calculator's edge (the duel played out on the rules' numbers: calc.ts rollout) */ table: false };
+  /** the table calculator's edge (the duel played out on the rules' numbers: calc.ts rollout); "fast", the same from
+   *  the kept repertoires (calc.ts calc3Terms) */ table: false as false | "table" | "fast" };
 function deathEval(S: State, me: Side): number {
   if (S.result) return S.result.winner === -1 ? 0 : S.result.winner === me ? 1000 : -1000;
   const C = S.combat;
@@ -603,7 +605,7 @@ function deathEval(S: State, me: Side): number {
   for (const f of C.felled) felled += (f[o] ? 1 : 0) - (f[me] ? 1 : 0);
   if (C.stage === "done") return 60 * felled;
   if (EVAL.table) {
-    const e = calc2Edge(S, me, CALC2W.weights as Record<Calc2Term, number>);
+    const e = EVAL.table === "fast" ? calc3Edge(S, me, CALC3W.weights as Record<Calc2Term, number>) : calc2Edge(S, me, CALC2W.weights as Record<Calc2Term, number>);
     if (e !== null) return 60 * felled + 3 * e;
   }
   if (EVAL.calc) {
@@ -842,6 +844,9 @@ function logDecision(d: Decision, vals: number[], chose: number, ev: "death" | "
       // and the table calculator's rollout
       const ro = rollout(DECISIONS.real!, me);
       row.calc.push(ro ? ro.win : NaN, ro ? ro.margin : NaN, ro ? ro.turns : NaN);
+      // and the fast calculator's (the same, from the kept repertoires)
+      const f = calc3Parts(DECISIONS.real!, me);
+      row.calc.push(...(f ? [f.rm.blow, f.ro.blow, f.rm.sustain, f.ro.sustain, f.rm.sustained, f.ro.sustained, f.roll.win, f.roll.margin] : Array(8).fill(NaN)));
     }
   }
   DECISIONS.log.push(row);
@@ -965,14 +970,15 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
-    const fm = /^(\d+)f(L|C|T)?(?:\/((?:[bcsnq]\d+)+))?$/.exec(at0);
+    const fm = /^(\d+)f(L|C|T|F)?(?:\/((?:[bcsnq]\d+)+))?$/.exec(at0);
     if (fm) {
       const o: FairOpts = { ...FAIR_DEFAULT, depth: Number(fm[1]) };
       for (const [, k, v] of (fm[3] ?? "").matchAll(/([bcsnq])(\d+)/g)) {
         if (k === "b") o.beam = Number(v); else if (k === "c") o.chance = Number(v); else if (k === "s") o.samples = Number(v); else if (k === "q") o.q = Number(v); else o.nodes = Number(v);
       }
-      // "skilled@3fL": the same, judging positions with the fitted evaluation; "skilled@3fC": with the duel calculator
-      const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L", fm[2] === "C", fm[2] === "T");
+      // "skilled@3fL": the same, judging positions with the fitted evaluation; "skilled@3fC": with the duel calculator;
+      // "skilled@3fT": the table calculator; "skilled@3fF": the fast calculator
+      const p = new SkilledPolicy(false, o.depth, undefined, o, fm[2] === "L", fm[2] === "C", fm[2] === "T" ? "table" : fm[2] === "F" ? "fast" : false);
       p.name = `Skilled@${at0}`;
       return p;
     }

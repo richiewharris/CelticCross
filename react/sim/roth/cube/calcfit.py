@@ -23,7 +23,12 @@ TERMS = [("valour", "vMe", "vFoe"), ("shield", "shMe", "shFoe"), ("blow", "blowM
 # --table: the table calculator (calc.ts CALC2_TERMS): the duel played out on the rules' numbers; its verdict (who
 # fell) and the Valour margin it ended at, beside the Valour and Shield leads (and the move, the offset)
 TABLE = [("valour", "vMe", "vFoe"), ("shield", "shMe", "shFoe"), ("rollWin", "rollWin", None), ("rollMargin", "rollMargin", None)]
-if "--table" in sys.argv:
+# --fast: the fast calculator (calc.ts calc3Terms): the table calculator's terms from the kept repertoires
+FAST = [("valour", "vMe", "vFoe"), ("shield", "shMe", "shFoe"), ("blow", "fBlowMe", "fBlowFoe"), ("sustained", "fSustainedMe", "fSustainedFoe"),
+        ("sustain", "fSustainMe", "fSustainFoe"), ("rollWin", "fRollWin", None), ("rollMargin", "fRollMargin", None)]
+if "--fast" in sys.argv:
+    TERMS = FAST
+elif "--table" in sys.argv:
     TERMS = TABLE
 elif "--both" in sys.argv:
     TERMS = TERMS + TABLE[2:]
@@ -99,7 +104,7 @@ def main():
     if "--write" in a:
         out = a[a.index("--write") + 1]
         with open(out, "w") as fh:
-            json.dump({"note": ("Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS)" if ("--table" in sys.argv or "--both" in sys.argv) else "Valour-equivalents of the duel calculator's terms") + ", measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
+            json.dump({"note": ("Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS)" if ("--table" in sys.argv or "--both" in sys.argv) else "Valour-equivalents of the fast calculator's terms (calc.ts calc3Terms)" if "--fast" in sys.argv else "Valour-equivalents of the duel calculator's terms") + ", measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
                        "train": group("--train"), "weights": {**{t[0]: round(float(e), 4) for t, e in zip(TERMS, eq)}, "move": round(float(b / w[0]), 4)},
                        "perValourLogit": round(float(w[0]), 5)}, fh, indent=1)
             fh.write("\n")
