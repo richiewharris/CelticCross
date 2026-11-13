@@ -40,9 +40,8 @@ describe("deck-building puzzles", () => {
     const ok = P["k-legends"].choices.map((c) => deckErrors(defsFromIds(swap(DECK_IDS.ulster, "salmon", idOf(c)))).length === 0);
     expect(ok.map((v, i) => (v ? i : -1)).filter((i) => i >= 0)).toEqual(P["k-legends"].answer);
   });
-  it("allegiance: only the Deorad hero keeps two alignments", () => {
-    const base = swap(swap(swap(DECK_IDS.connacht, "fergus", "lugh"), "ailill", "brigid"), "caladbolg", "host"); // keep to two legendaries
-    expect(deckErrors(defsFromIds(base))).toEqual([]);
+  it("allegiance: only the primary people (and an exile beside Ulster or Connacht) leads", () => {
+    const base = swap(DECK_IDS.connacht, "fergus", "goibniu"); // three Connacht heroes; the Sídhe lend Goibniu's forge
     const ok = P["k-allegiance"].choices.map((c) => deckErrors(defsFromIds(swap(base, "cet_spear", idOf(c)))).length === 0);
     expect(ok.map((v, i) => (v ? i : -1)).filter((i) => i >= 0)).toEqual(P["k-allegiance"].answer);
   });

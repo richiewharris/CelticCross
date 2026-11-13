@@ -121,17 +121,19 @@ export function buildDeck(opts: BuildOptions, rng: Rng): CardDef[] {
     }
   };
   let hs: HeroDef[];
-  if (opts.factions.includes("sluagh")) {
+  // the first faction is the primary people: it alone leads (heroes, or hosts and monsters); the second lends the rest
+  const lead = pools.filter((d) => inPool(d, opts.factions[0]));
+  if (opts.factions[0] === "sluagh") {
     // a host deck: the three hosts and six monsters fight in place of heroes and champions
-    pick(pools.filter((d): d is HostDef => d.type === "host"), 3, () => 1);
-    pick(pools.filter((d): d is MonsterDef => d.type === "monster"), 5, (m) => heroScore({ ...(m as unknown as HeroDef), init: 2 + m.init }) - 1);
+    pick(lead.filter((d): d is HostDef => d.type === "host"), 3, () => 1);
+    pick(lead.filter((d): d is MonsterDef => d.type === "monster"), 5, (m) => heroScore({ ...(m as unknown as HeroDef), init: 2 + m.init }) - 1);
     pick(pools.filter((d): d is FighterDef => d.type === "champion"), 2, (c) => heroScore(c as unknown as HeroDef) - 1);
     const hostDefs = deck.filter((d): d is HostDef => d.type === "host");
     const mons = deck.filter((d): d is MonsterDef => d.type === "monster");
     hs = hostDefs.map((h, i) => composeHost(h, mons.slice(i * 2, i * 2 + 2)));
   } else {
-    // heroes from at most two peoples (exiles go with Ulster and Connacht)
-    const heroes = pools.filter((d): d is HeroDef => d.type === "hero");
+    // heroes of the primary people (exiles go with Ulster and Connacht)
+    const heroes = lead.filter((d): d is HeroDef => d.type === "hero");
     pick(heroes, 4, heroScore);
     hs = deck.filter((d): d is HeroDef => d.type === "hero");
     pick(pools.filter((d): d is FighterDef => d.type === "champion"), 2, (c) => heroScore(c as unknown as HeroDef) - 1);

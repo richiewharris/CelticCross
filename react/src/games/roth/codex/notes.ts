@@ -90,7 +90,7 @@ export const BUILDING = {
   rules: [
     "**24 cards**: 4–6 heroes (or 3–6 hosts and 4–6 monsters), 8–12 supports, 2–6 geasa, 4–6 omens, up to 4 oaths, 2 champions and 2 attendants.",
     "Commons up to **two** copies, rares and legendaries **one**, and at most **two** legendaries. Heroes, champions and omens are one of each.",
-    "Cards of at most **two peoples** (exiles go with either), plus the geasa, oaths and omens open to all.",
+    "At most **two peoples**: the first **leads** (every hero or host is of it) and a second may **lend** its supports, champions, geasa, oaths, omens and attendants, never heroes. Exiles lead beside Ulster or Connacht. The geasa, oaths and omens open to all go with anyone.",
   ],
   ways: [
     { title: "Kinship", text: "A support of the hero's own people is **+1** in its hands." },

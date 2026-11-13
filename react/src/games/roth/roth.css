@@ -537,6 +537,7 @@ body.gm-roth .b-k { font-size: .85rem; color: var(--muted); }
 body.gm-roth .b-k small { font-size: .78rem; }
 body.gm-roth .b-people { display: inline-flex; align-items: center; gap: 6px; }
 body.gm-roth .b-people svg { width: 18px; height: 18px; color: var(--al, var(--bronze)); }
+body.gm-roth .b-role { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; opacity: .8; margin-left: 2px; }
 body.gm-roth .b-people.al-Ulaid { --al: var(--al-Ulaid); } body.gm-roth .b-people.al-Connachta { --al: var(--al-Connachta); }
 body.gm-roth .b-people.al-Sidhe { --al: var(--al-Sidhe); } body.gm-roth .b-people.al-Fomoire { --al: var(--al-Fomoire); }
 body.gm-roth .b-people.al-Merrow { --al: var(--al-Merrow); }

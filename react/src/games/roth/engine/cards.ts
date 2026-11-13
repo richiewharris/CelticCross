@@ -841,14 +841,15 @@ export function deckErrors(deck: CardDef[]): string[] {
     if (d.rarity === "legendary") legends += n;
   }
   if (legends > MAX_LEGENDARIES) errs.push(`legendaries ${legends} (max ${MAX_LEGENDARIES})`);
-  const heroAl = new Set<string>();
-  let deorad = false;
-  for (const d of deck) if (d.type === "hero") { if (d.alignment === "Deorad") deorad = true; else heroAl.add(d.alignment); }
-  if (deorad && !heroAl.has("Ulaid") && !heroAl.has("Connachta")) heroAl.add("Deorad");
-  if (heroAl.size > 2) errs.push(`hero alignments ${[...heroAl].join(",")} (max 2)`);
-  else {
-    const al = deckPeoples(deck);
-    if (al.length > 2) errs.push(`peoples ${al.join(",")} (max 2)`);
-  }
+  // a deck draws on at most two peoples: the primary people leads (every hero, host and monster is its own) and a
+  // secondary people may lend the rest (supports, champions, geasa, oaths, omens, attendants). Exiles lead with Ulster
+  // or Connacht.
+  const al = deckPeoples(deck);
+  if (al.length > 2) errs.push(`peoples ${al.join(",")} (max 2)`);
+  const leaders = new Set<string>();
+  let exileLeads = false;
+  for (const d of deck) if (d.type === "hero" || d.type === "host" || d.type === "monster") { const p = peopleOf(d); if (p === "Deorad") exileLeads = true; else if (p) leaders.add(p); }
+  if (leaders.size > 1) errs.push(`heroes of ${[...leaders].join(" and ")}: every hero (or host) is of the primary people`);
+  else if (exileLeads && leaders.size === 1 && !leaders.has("Ulaid") && !leaders.has("Connachta")) errs.push("an exile hero leads only beside Ulster or Connacht heroes");
   return errs;
 }

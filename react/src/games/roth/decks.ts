@@ -70,7 +70,8 @@ export function deckProblems(deck: CardDef[]): string[] {
     if ((m = e.match(/^(heroes|supports|geasa|oaths|champions|omens|attendants|monsters) (\d+) \((\d+)–(\d+)\)/))) return `${m[2]} ${m[1]}: needs ${m[3]}–${m[4]}.`;
     if ((m = e.match(/^(\w+) x(\d+) \(max (\d+)\)/))) return `${ALL_DEFS[m[1]]?.name ?? m[1]}: ${m[2]} copies, at most ${m[3]}.`;
     if ((m = e.match(/^legendaries (\d+)/))) return `${m[1]} legendary cards: at most ${MAX_LEGENDARIES}.`;
-    if ((m = e.match(/^hero alignments (.*) \(max 2\)/))) return `Heroes from ${m[1].split(",").length} peoples: at most 2.`;
+    if (/^heroes of /.test(e)) return "Heroes from more than one people: every hero (or host) must be of the people that leads; a second people only lends its other cards.";
+    if (/^an exile hero/.test(e)) return "An exile hero (Fergus) leads only beside Ulster or Connacht heroes.";
     if ((m = e.match(/^peoples (.*) \(max 2\)/))) return `Cards from ${m[1].split(",").length} peoples: at most 2.`;
     return e;
   });

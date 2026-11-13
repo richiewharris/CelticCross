@@ -27,13 +27,16 @@ describe("deck building", () => {
   it("the five faction decks are legal 24-card decks", () => {
     for (const [k, d] of Object.entries(DECKS)) expect([k, deckErrors(d)]).toEqual([k, []]);
   });
-  it("rejects wrong size, too many copies, and more than two hero alignments", () => {
+  it("rejects wrong size, too many copies, and heroes of more than the primary people", () => {
     expect(deckErrors(ULSTER.slice(1))).toContain("deck has 23 cards, needs 24");
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "thunder"))).join()).toMatch(/thunder x3/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "o_emain"))).join()).toMatch(/o_emain x2/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "cu"))).join()).toMatch(/cu x2/);
     const three = replace(replace(ULSTER_IDS, "emer", "medb"), "conall", "morrigan");
-    expect(deckErrors(defsFromIds(three)).join()).toMatch(/alignments/);
+    expect(deckErrors(defsFromIds(three)).join()).toMatch(/heroes of/);
+    // a second people lends supports (and champions, geasa, oaths, omens, attendants), never heroes
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "medb"))).join()).toMatch(/heroes of/);
+    expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "raven")))).toEqual([]);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "g_hound"))).join()).toMatch(/omens 3/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "o_culann", "v_stone"))).join()).toMatch(/oaths 4|omens 3/);
   });
@@ -42,9 +45,11 @@ describe("deck building", () => {
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "salmon", "spear_assal"))).join()).toMatch(/legendaries 3/);
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "sling", "cathbad")))).toEqual([]);
   });
-  it("a Deorad hero counts as one of your alignments", () => {
+  it("an exile hero leads beside Ulster or Connacht heroes, even in a two-people deck", () => {
     expect(deckErrors(defsFromIds(replace(ULSTER_IDS, "emer", "fergus")))).toEqual([]);
-    expect(deckErrors(defsFromIds(replace(replace(ULSTER_IDS, "emer", "fergus"), "conall", "ailill")))).toEqual([]);
+    expect(deckErrors(defsFromIds(replace(replace(ULSTER_IDS, "emer", "fergus"), "salmon", "raven")))).toEqual([]);
+    expect(deckErrors(defsFromIds(replace(replace(ULSTER_IDS, "emer", "fergus"), "conall", "ailill"))).join()).toMatch(/heroes of/);
+    expect(deckErrors(defsFromIds(replace(DECK_IDS.sidhe, "brigid", "fergus"))).join()).toMatch(/exile/);
   });
 });
 

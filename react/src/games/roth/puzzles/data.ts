@@ -30,9 +30,9 @@ export const DECK_PUZZLES: ChoicePuzzle[] = [
   },
   {
     kind: "choice", id: "k-allegiance", set: "deck", level: "Intermediate", title: "Two allegiances",
-    question: "Your heroes are Medb and Ferdiad (Connachta) and Lugh and Brigid (Sídhe). You cut a Spear of Cet for a fifth hero. Which can join?",
-    choices: ["Cú Chulainn", "Fergus mac Róich", "Balor of the Evil Eye", "Manannán mac Lir"], answer: [1],
-    explain: "A deck's heroes come from at most two alignments, and you already have two. Fergus is Deorad, an Ulster exile who counts as both Ulaid and Connachta, so he joins as one of your Connachta. Cú Chulainn (Ulaid), Balor (Fomóire) and Manannán (Merrow) would each make a third.",
+    question: "Medb, Ferdiad and Ailill lead your Connacht deck, which borrows Goibniu's forge from the Sídhe. You cut a Spear of Cet for a fourth hero. Which can join?",
+    choices: ["Conall Cernach", "Fergus mac Róich", "Brigid", "Bres"], answer: [1],
+    explain: "A deck may draw on two peoples, but only the first, its primary people, leads: every hero is of it. The second lends supports, champions, geasa, oaths, omens and attendants, never heroes, so Brigid can't lead though the Sídhe are your second people. Conall (Ulaid) and Bres (Fomóire) are of other peoples altogether. Fergus is an exile of Ulster who fights for Connacht: an exile leads beside Ulster or Connacht heroes.",
   },
   {
     kind: "choice", id: "k-unwilling", set: "deck", level: "Intermediate", title: "Old enemies",

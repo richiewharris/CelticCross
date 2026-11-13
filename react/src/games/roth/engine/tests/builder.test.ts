@@ -51,7 +51,7 @@ describe("the computer's deck builder", () => {
     }
   });
   it("fills round cards already chosen", () => {
-    const start = [ALL_DEFS.lugh, ALL_DEFS.cu, ALL_DEFS.dagda_club];
+    const start = [ALL_DEFS.cu, ALL_DEFS.dagda_club]; // Ulster leads; the Sídhe lend a support
     const deck = buildDeck({ factions: ["ulster", "sidhe"], noise: 0, start }, new Rng(1));
     expect(deck.length).toBe(24);
     for (const d of start) expect(deck).toContain(d);

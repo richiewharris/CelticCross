@@ -9,6 +9,8 @@ import { CardFace, Token } from "./components/Card";
 import { Emblem, Icon } from "./components/Icons";
 import { Bars } from "./codex/Codex";
 import { DECKS_KEY, RANGES, cannotAdd, deckProblems, defsOf, maxCopies, newDeckId, starterIds, useSavedDecks, type SavedDeck } from "./decks";
+/** The cards only the primary people may bring: those who lead its bands. */
+const LEADS = new Set<string>(["hero", "host", "monster"]);
 import { FACTION_TITLE } from "./text";
 import { DEFAULT_SETUP, type Setup } from "./useMatch";
 
@@ -18,7 +20,7 @@ type StepId = "peoples" | "heroes" | "monsters" | "champions" | "supports" | "ge
 interface Step { id: StepId; title: string; types: Exclude<CardDef["type"], "unknown">[]; blurb: string; tip: string }
 /** The guided order. The Slúagh step for monsters shows only when the Slúagh are one of your peoples. */
 const STEPS: Step[] = [
-  { id: "peoples", title: "Peoples", types: [], blurb: "Choose one or two peoples. Their pools, the unaligned cards and the geasa, oaths and omens open to everyone are what you build from.", tip: "Two peoples widen the pool, but each people's supports get +1 kinship only with its own heroes." },
+  { id: "peoples", title: "Peoples", types: [], blurb: "Choose one or two peoples. The first leads: every hero (or host) is of it. A second people lends the rest of its cards (supports, champions, geasa, oaths, omens, attendants), never heroes. The unaligned cards and the geasa, oaths and omens open to everyone are yours too.", tip: "Each people's supports get +1 kinship only with its own heroes." },
   { id: "heroes", title: "Heroes", types: ["hero", "host"], blurb: "Your fighters. Four of them go on the wheel and fight the duels; the others wait as guests who can heal 1, or in the Reserve.", tip: "Take 4 to 6. Valour keeps a hero standing; Initiative decides who strikes first. Mind their weaknesses." },
   { id: "monsters", title: "Monsters", types: ["monster"], blurb: "A Slúagh host rides with the monsters you join to it, adding their Valour, Initiative and qualities.", tip: "Take 4 to 6 monsters for your hosts." },
   { id: "champions", title: "Champions", types: ["champion"], blurb: "Called from your hand to stand in for a hero about to fall, at their own full Valour. If the champion falls, so does the hero.", tip: "0 to 2. Two champions means you'll usually hold one after the Muster." },
@@ -57,8 +59,9 @@ export function DeckBuilder({ setFocus, onPlay }: { setFocus: (d: CardDef) => vo
   const deck = useMemo(() => defsOf(draft.ids).sort(sortDefs), [draft.ids]);
   const problems = deckProblems(deck);
   const counts = useMemo(() => { const m = new Map<string, number>(); for (const id of draft.ids) m.set(id, (m.get(id) ?? 0) + 1); return m; }, [draft.ids]);
-  const pool = useMemo(() => Object.values(ALL_DEFS).filter((d) => draft.factions.some((f) => inPool(d, f))).sort(sortDefs), [draft.factions]);
-  const steps = STEPS.filter((x) => x.id !== "monsters" || draft.factions.includes("sluagh"));
+  // the primary people (the first) leads: heroes, hosts and monsters come from it alone; a second people lends the rest
+  const pool = useMemo(() => Object.values(ALL_DEFS).filter((d) => (LEADS.has(d.type) ? inPool(d, draft.factions[0]) : draft.factions.some((f) => inPool(d, f)))).sort(sortDefs), [draft.factions]);
+  const steps = STEPS.filter((x) => x.id !== "monsters" || draft.factions[0] === "sluagh");
   const step = steps.find((x) => x.id === stepId) ?? steps[0];
   const at = steps.indexOf(step);
   const go = (k: number) => { setStepId(steps[Math.max(0, Math.min(steps.length - 1, k))].id); setNote(null); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
@@ -81,16 +84,16 @@ export function DeckBuilder({ setFocus, onPlay }: { setFocus: (d: CardDef) => vo
     set({ ids: [...draft.ids, d.id] });
   };
   const remove = (id: string) => { const i = draft.ids.lastIndexOf(id); if (i >= 0) set({ ids: draft.ids.filter((_, j) => j !== i) }); };
-  const togglePeople = (f: Faction) => {
-    let fs = draft.factions.includes(f) ? draft.factions.filter((x) => x !== f) : [...draft.factions, f];
-    if (fs.length > 2) fs = fs.slice(-2);
+  const setPeoples = (fs: Faction[]) => {
     if (!fs.length) return;
-    // cards outside the new pools leave the deck
-    const keep = draft.ids.filter((id) => fs.some((x) => inPool(ALL_DEFS[id], x)));
+    // cards outside the new pools leave the deck (and heroes not of the primary people)
+    const keep = draft.ids.filter((id) => { const d = ALL_DEFS[id]; return LEADS.has(d.type) ? inPool(d, fs[0]) : fs.some((x) => inPool(d, x)); });
     const gone = draft.ids.length - keep.length;
     setDraft({ ...draft, factions: fs, ids: keep });
     setNote(gone ? `${gone} card${gone === 1 ? "" : "s"} outside the chosen peoples left the deck.` : null);
   };
+  // a first choice leads; a second lends; choosing a third replaces the lender
+  const togglePeople = (f: Faction) => setPeoples(draft.factions.includes(f) ? draft.factions.filter((x) => x !== f) : draft.factions.length >= 2 ? [draft.factions[0], f] : [...draft.factions, f]);
   const fill = () => {
     const d = buildDeck({ factions: draft.factions, noise: 0.3, start: defsOf(draft.ids) }, new Rng(Date.now() >>> 0));
     set({ ids: d.map((x) => x.id) });
@@ -154,14 +157,16 @@ export function DeckBuilder({ setFocus, onPlay }: { setFocus: (d: CardDef) => vo
                 {FACTIONS.map((f) => (
                   <button key={f} type="button" className={`b-people al-${PEOPLE[f]}${draft.factions.includes(f) ? " cur" : ""}`} aria-pressed={draft.factions.includes(f)} onClick={() => togglePeople(f)}>
                     <svg viewBox="0 0 100 100" aria-hidden="true"><Emblem alignment={PEOPLE[f]} /></svg>{FACTION_TITLE[f]}
+                    {draft.factions[0] === f ? <small className="b-role">leads</small> : draft.factions[1] === f ? <small className="b-role">lends</small> : null}
                   </button>
                 ))}
               </nav>
             </div>
+            {draft.factions.length === 2 ? <p className="b-hint">{FACTION_TITLE[draft.factions[0]]} leads; {FACTION_TITLE[draft.factions[1]]} lends. <button type="button" className="btn small" onClick={() => setPeoples([draft.factions[1], draft.factions[0]])}>Let {FACTION_TITLE[draft.factions[1]]} lead</button></p> : null}
             <div className="b-tools">
               <span className="b-k">Start from</span>
               <button type="button" className="btn" onClick={() => set({ ids: [] })}>An empty deck</button>
-              {draft.factions.map((f) => <button key={f} type="button" className="btn" onClick={() => set({ ids: starterIds(f).filter((id) => draft.factions.some((x) => inPool(ALL_DEFS[id], x))) })}>The {FACTION_TITLE[f]} starter</button>)}
+              <button type="button" className="btn" onClick={() => set({ ids: starterIds(draft.factions[0]) })}>The {FACTION_TITLE[draft.factions[0]]} starter</button>
               <button type="button" className="btn" onClick={fill} disabled={deck.length >= 24}>Fill the rest for me</button>
             </div>
           </div>
