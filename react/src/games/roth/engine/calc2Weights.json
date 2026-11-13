@@ -1,0 +1,4 @@
+{
+ "note": "Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS), measured by sim/roth/cube/calcfit.py --table. Don't edit by hand.",
+ "weights": { "valour": 1, "shield": 0.19, "move": 1, "rollWin": 3, "rollMargin": 0.5 }
+}

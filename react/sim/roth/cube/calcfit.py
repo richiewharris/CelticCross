@@ -20,6 +20,13 @@ import numpy as np
 HAND = {"vdiff": 3, "race": 6, "rest": 1, "mound": 1, "cry": -1, "summon": -1, "stall": 1}
 TERMS = [("valour", "vMe", "vFoe"), ("shield", "shMe", "shFoe"), ("blow", "blowMe", "blowFoe"), ("sustained", "sustainedMe", "sustainedFoe"),
          ("sustain", "sustainMe", "sustainFoe")]
+# --table: the table calculator (calc.ts CALC2_TERMS): the duel played out on the rules' numbers; its verdict (who
+# fell) and the Valour margin it ended at, beside the Valour and Shield leads (and the move, the offset)
+TABLE = [("valour", "vMe", "vFoe"), ("shield", "shMe", "shFoe"), ("rollWin", "rollWin", None), ("rollMargin", "rollMargin", None)]
+if "--table" in sys.argv:
+    TERMS = TABLE
+elif "--both" in sys.argv:
+    TERMS = TERMS + TABLE[2:]
 
 
 def load(paths):
@@ -27,9 +34,9 @@ def load(paths):
     for p in paths:
         with gzip.open(p, "rt") as fh:
             for x in csv.DictReader(fh):
-                if x["y"] != "0.5" and x.get("vMe") not in (None, "", "NaN", "nan"):
+                if x["y"] != "0.5" and x.get("vMe") not in (None, "", "NaN", "nan") and all(x.get(a) not in (None, "", "NaN", "nan") for _, a, _b in TERMS):
                     rows.append(x)
-    X = np.array([[float(x[a]) - float(x[b]) for _, a, b in TERMS] for x in rows])
+    X = np.array([[float(x[a]) - (float(x[b]) if b else 0) for _, a, b in TERMS] for x in rows])
     y = np.array([float(x["y"]) for x in rows])
     H = np.array([sum(v * float(x[k]) for k, v in HAND.items()) for x in rows])
     return X, y, H, rows
@@ -92,7 +99,7 @@ def main():
     if "--write" in a:
         out = a[a.index("--write") + 1]
         with open(out, "w") as fh:
-            json.dump({"note": "Valour-equivalents of the duel calculator's terms, measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
+            json.dump({"note": ("Valour-equivalents of the table calculator's terms (calc.ts CALC2_TERMS)" if "--table" in sys.argv else "Valour-equivalents of the duel calculator's terms") + ", measured by sim/roth/cube/calcfit.py. Don't edit by hand.",
                        "train": group("--train"), "weights": {**{t[0]: round(float(e), 4) for t, e in zip(TERMS, eq)}, "move": round(float(b / w[0]), 4)},
                        "perValourLogit": round(float(w[0]), 5)}, fh, indent=1)
             fh.write("\n")

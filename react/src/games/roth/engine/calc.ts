@@ -10,7 +10,7 @@
 //
 // Nothing here is fitted to outcomes. The one constant, SPREAD (how many turns of margin make a duel a near
 // certainty), is measured: the spread of real duels around the race's prediction.
-import { actorOf, applyDecision, cloneState, fighter, nextDecision, toDeath, type Side, type State } from "./engine";
+import { actorOf, applyDecision, cloneState, drawable, fighter, nextDecision, toDeath, type Side, type State } from "./engine";
 import { reuseOf, type SupportDef } from "./cards";
 
 /** What one option does, by the rules: played on a copy of the position. */
@@ -178,5 +178,169 @@ export function calcEdge(S: State, me: Side, w: Record<CalcTerm, number>): numbe
   if (!t) return null;
   let e = 0;
   for (const k of CALC_TERMS) e += (k === "valour" ? 1 : w[k]) * t[k];
+  return e;
+}
+
+// ---------------------------------------------------------------- Level 4: the duel played out on the tables
+// The rules cubes found the duel nearly additive: an action's outcome from a position is its outcome from the static
+// position (the primary cube) changed by what the previous actions left behind (the secondary cube): a card waiting
+// to come back, a rest's Shield soaking the next blow, Valour paid; and only 3% of what two actions leave behind
+// together isn't the sum of each (the tertiary cube), almost all of it a blow that fells or is capped by what Valour
+// is left. So the duel can be played out on numbers alone: each side's actions measured once by the rules, from
+// this position (level 1), then a run of turns kept in arithmetic: Valour, Shield (soaked and spent), each card's
+// clock (own turns to wait, rests needed, the price of using it again), cards left to draw, and the fell.
+
+/** One of a side's actions, as the rollout keeps it. */
+export interface RollAct {
+  kind: "card" | "rest" | "draw" | "once";
+  /** A host's sacrifice or summon: one of each a duel, whichever monster. */
+  group?: string;
+  /** Wounds against no Shield; whether Shield soaks them (a Spirit blow or a piercing one passes it). */
+  dealt: number; soaked: boolean;
+  /** What it gives the side itself, and what it costs it (Valour, Reserve cards). */
+  healed: number; shield: number; paid: number; cards: number;
+  /** Its clock: own turns to wait after a use, rests needed, the price of using it again (Valour, cards). */
+  wait: number; rests: number; reValour: number; reCards: number;
+  /** Where it stands now: used before, own actions since, rests since. */
+  used: boolean; since: number; restsSince: number;
+}
+export interface Repertoire { acts: RollAct[]; valour: number; shield: number; cards: number }
+
+/** Play option i of W (side p to act) on a copy: what it did. */
+function effectOf(W: State, d: NonNullable<ReturnType<typeof nextDecision>>, i: number, p: Side): OptionEffect {
+  const X = cloneState(W);
+  const C0 = X.combat!;
+  const o = (1 - p) as Side;
+  const v0 = [C0.valour[0], C0.valour[1]], s0 = C0.shield[p], duel0 = C0.duel, r0 = X.players[p].reserve.length + X.players[p].discard.length;
+  applyDecision(X, d, i, false);
+  const same = C0.duel === duel0 && C0.stage === "turns";
+  const vo = same ? C0.valour[o] : C0.endValour[duel0][o];
+  const vp = same ? C0.valour[p] : C0.endValour[duel0][p];
+  const dv = vp - v0[p];
+  const e: OptionEffect & { cards?: number } = { dealt: Math.max(0, v0[o] - Math.max(0, vo)), healed: Math.max(0, dv), paid: Math.max(0, -dv), shield: same ? Math.max(0, C0.shield[p] - s0) : 0, rest: false };
+  e.cards = Math.max(0, r0 - (X.players[p].reserve.length + X.players[p].discard.length));
+  return e;
+}
+
+/** Level 1 for the rollout: side p's actions from this position, each measured by the rules once. */
+export function repertoire(S: State, p: Side): Repertoire | null {
+  const W = asActor(S, p);
+  if (!W) return null;
+  const C = W.combat!;
+  const o = (1 - p) as Side;
+  const acts: RollAct[] = [];
+  const blank = { healed: 0, shield: 0, paid: 0, cards: 0, wait: 0, rests: 0, reValour: 0, reCards: 0, used: false, since: 99, restsSince: 99 };
+  // each card beside the fighter, as it is when fresh (its clock kept apart), against no Shield and against Shield 3
+  for (const sp of [C.hs[p] + 1, C.hs[p] + 2]) {
+    const c = W.board[sp];
+    if (!c || c.def.type !== "support" || c.def.use) continue;
+    const r = reuseOf(c.def as SupportDef);
+    const fresh = (shield: number) => {
+      const X = cloneState(W);
+      const Cx = X.combat!;
+      const u = Cx.uses.slice(); u[sp] = 0; Cx.uses = u;
+      const sh = Cx.shield.slice(); sh[o] = shield; Cx.shield = sh;
+      const d = nextDecision(X);
+      if (!d || d.kind !== "duel") return null;
+      let i = d.options.findIndex((x) => x.t === "duel" && x.act === "use" && x.spot === sp && x.guest < 0 && !x.cry && x.mode === "normal");
+      if (i < 0) i = d.options.findIndex((x) => x.t === "duel" && x.act === "use" && x.spot === sp && x.guest < 0 && !x.cry);
+      return i < 0 ? null : (effectOf(X, d, i, p) as OptionEffect & { cards: number });
+    };
+    const e0 = fresh(0);
+    if (!e0) continue;
+    const e3 = e0.dealt > 0 ? fresh(3) : e0;
+    acts.push({
+      kind: "card", dealt: e0.dealt, soaked: !!e3 && e3.dealt < e0.dealt, healed: e0.healed, shield: e0.shield, paid: e0.paid, cards: e0.cards,
+      wait: r.turns ?? 0, rests: r.rest ?? 0, reValour: r.valour ?? 0, reCards: r.draw ?? 0,
+      used: C.uses[sp] > 0, since: C.acts[p] - C.lastUse[sp], restsSince: C.restsSince[sp],
+    });
+  }
+  // a rest, a draw, and a host's sacrifice and summon (once each), as they are now
+  const d = nextDecision(W);
+  if (d && d.kind === "duel") d.options.forEach((x, i) => {
+    if (x.t === "duel" && x.act === "rest" && x.mode === "normal") {
+      const e = effectOf(W, d, i, p);
+      acts.push({ ...blank, kind: "rest", dealt: 0, soaked: false, healed: e.healed, shield: e.shield, paid: e.paid });
+    } else if (x.t === "draw") {
+      const e = drawEffect(W, d, i, p);
+      if (e) acts.push({ ...blank, kind: "draw", dealt: e.dealt, soaked: true, healed: e.healed, shield: e.shield, paid: e.paid, cards: 1 });
+    } else if (x.t === "sacrifice" || x.t === "summon") {
+      const e = effectOf(W, d, i, p) as OptionEffect & { cards: number };
+      acts.push({ ...blank, kind: "once", group: x.t, dealt: e.dealt, soaked: true, healed: e.healed, shield: e.shield, paid: e.paid, cards: e.cards });
+    }
+  });
+  return { acts, valour: C.valour[p], shield: C.shield[p], cards: drawable(W, p) };
+}
+
+/** The rollout's result from side me's view: who fell (1 the foe, -1 me, 0 neither within the horizon), the Valour
+ *  margin at the end (a felled side counted at 0), and the own turns it took. */
+export interface Roll { win: number; margin: number; turns: number }
+export const ROLL = { horizon: 12, cardWorth: 0.5, shieldWorth: 0.19 };
+export function rollout(S: State, me: Side, reps?: [Repertoire | null, Repertoire | null]): Roll | null {
+  const C = S.combat;
+  if (!C || !toDeath(S) || C.stage !== "turns") return null;
+  const R = reps ?? [repertoire(S, 0), repertoire(S, 1)];
+  if (!R[0] || !R[1]) return null;
+  const st = R.map((r) => ({
+    v: r!.valour, sh: r!.shield, cards: r!.cards, acts: 0,
+    clock: r!.acts.map((a) => ({ used: a.used, since: a.since, rs: a.restsSince, done: false })),
+  }));
+  let side = actorOf(C) as Side;
+  let fell = -1, plies = 0;
+  for (; plies < 2 * ROLL.horizon && fell < 0; plies++) {
+    const A = st[side], F = st[1 - side], acts = R[side]!.acts;
+    let best = -1, bs = -Infinity;
+    acts.forEach((a, k) => {
+      const ck = A.clock[k];
+      if (a.kind === "once" && ck.done) return;
+      if (a.kind === "draw" && A.cards < 1) return;
+      if (a.kind === "card" && ck.used && (ck.since <= a.wait || ck.rs < a.rests || A.v <= a.reValour || A.cards < a.reCards)) return;
+      const dealt = a.soaked ? Math.max(0, a.dealt - F.sh) : a.dealt;
+      const paid = a.paid + (a.kind === "card" && ck.used ? a.reValour : 0), cards = a.cards + (a.kind === "card" && ck.used ? a.reCards : 0);
+      if (paid >= A.v) return;
+      let s = dealt - paid - ROLL.cardWorth * cards + a.healed + ROLL.shieldWorth * a.shield;
+      if (dealt >= F.v) s += 1000;
+      // a rest also brings back the cards that wait on it
+      if (a.kind === "rest") s += 0.25 * acts.filter((b, j) => b.kind === "card" && A.clock[j].used && A.clock[j].rs < b.rests).length;
+      if (s > bs) { bs = s; best = k; }
+    });
+    if (best >= 0) {
+      const a = acts[best], ck = A.clock[best];
+      const dealt = a.soaked ? Math.max(0, a.dealt - F.sh) : a.dealt;
+      if (a.soaked) F.sh = Math.max(0, F.sh - a.dealt);
+      F.v -= dealt;
+      A.v += a.healed - a.paid - (a.kind === "card" && ck.used ? a.reValour : 0);
+      A.sh += a.shield;
+      A.cards -= a.cards + (a.kind === "card" && ck.used ? a.reCards : 0);
+      if (a.kind === "card") { ck.used = true; ck.since = 0; ck.rs = 0; }
+      if (a.kind === "once") acts.forEach((b, j) => { if (b.group === a.group) A.clock[j].done = true; });
+      if (a.kind === "rest") for (const c of A.clock) c.rs++;
+    }
+    A.acts++;
+    for (const c of A.clock) c.since++;
+    if (F.v <= 0) fell = 1 - side;
+    else if (A.v <= 0) fell = side;
+    side = (1 - side) as Side;
+  }
+  const o = 1 - me;
+  return { win: fell < 0 ? 0 : fell === o ? 1 : -1, margin: Math.max(0, st[me].v) - Math.max(0, st[o].v), turns: Math.ceil(plies / 2) };
+}
+
+/** The table calculator's terms: the additive ones (Valour, Shield, the move) and the rollout's verdict. */
+export const CALC2_TERMS = ["valour", "shield", "move", "rollWin", "rollMargin"] as const;
+export type Calc2Term = (typeof CALC2_TERMS)[number];
+export function calc2Terms(S: State, me: Side): Record<Calc2Term, number> | null {
+  const C = S.combat;
+  if (!C || !toDeath(S) || C.stage !== "turns") return null;
+  const r = rollout(S, me);
+  if (!r) return null;
+  const o = (1 - me) as Side;
+  return { valour: C.valour[me] - C.valour[o], shield: C.shield[me] - C.shield[o], move: actorOf(C) === me ? 1 : -1, rollWin: r.win, rollMargin: r.margin };
+}
+export function calc2Edge(S: State, me: Side, w: Record<Calc2Term, number>): number | null {
+  const t = calc2Terms(S, me);
+  if (!t) return null;
+  let e = 0;
+  for (const k of CALC2_TERMS) e += (k === "valour" ? 1 : w[k] ?? 0) * t[k];
   return e;
 }
