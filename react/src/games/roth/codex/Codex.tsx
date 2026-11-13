@@ -1,12 +1,14 @@
-// The rules told through the cards, on two pages. "Cards": an annotated sample of each kind of card, with what it
-// does and when it's played, then the icons and how a blow's number is worked out. "Decks": the five decks.
+// The rules told through the cards, on three pages. "Cards": an annotated sample of each kind of card, with what it
+// does and when it's played, then the icons and how a blow's number is worked out. "Decks": the six peoples, their
+// leanings, elements and own rules (no card-by-card advice: players find the pairings). "Deck building": what a deck
+// holds and how cards add up, with two worked examples.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import { ALL_DEFS, DECK_IDS, FACTIONS, peopleOf, poolOf, type MonsterDef, type CardDef, type Faction, type FighterDef, type SupportDef } from "../engine/cards";
 import { CardFace, Rich, Token } from "../components/Card";
 import { Emblem, Icon } from "../components/Icons";
 import { FACTION_TITLE } from "../text";
-import { DECK_NOTES, TYPE_NOTES } from "./notes";
+import { BUILDING, DECK_NOTES, TYPE_NOTES, type DeckNote } from "./notes";
 
 /** A row of tags; the current one is lit. */
 function Tags<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
@@ -27,6 +29,51 @@ export function CardsGuide({ setFocus }: { setFocus: (d: CardDef) => void }) {
       <Icons />
       <Blow />
     </div>
+  );
+}
+
+export function BuildingGuide({ setFocus }: { setFocus: (d: CardDef) => void }) {
+  const B = BUILDING;
+  return (
+    <div className="codex">
+      <section id="cx-building" className="cx-section">
+        <h2>Building a deck</h2>
+        <p className="cx-lede"><Rich text={B.intro} /></p>
+        <div className="cx-deck-grid" style={{ alignItems: "start" }}>
+          <div className="cx-panel">
+            <h4>What a deck holds</h4>
+            <ul>{B.rules.map((r, i) => <li key={i}><Rich text={r} /></li>)}</ul>
+          </div>
+          <div className="cx-panel">
+            <h4>How cards add up</h4>
+            <dl className="cx-ways">{B.ways.map((w) => <div key={w.title}><dt>{w.title}</dt><dd><Rich text={w.text} /></dd></div>)}</dl>
+          </div>
+        </div>
+        {B.examples.map((x) => (
+          <div key={x.title} className="cx-panel cx-example">
+            <h3>{x.title}</h3>
+            <div className="cx-ex-cards hand">{x.cards.map((id) => <CardFace key={id} def={ALL_DEFS[id]} owner="mine" onFocusCard={setFocus} />)}</div>
+            <p><Rich text={x.text} /></p>
+          </div>
+        ))}
+        <p className="cx-small"><Rich text={B.close} /></p>
+      </section>
+    </div>
+  );
+}
+
+const LEAN_WORD = ["", "Light", "Middling", "Strong"] as const;
+function Leans({ note }: { note: DeckNote }) {
+  const rows = [["Attack", note.leans.attack, note.why.attack], ["Healing", note.leans.healing, note.why.healing], ["Defence", note.leans.defence, note.why.defence]] as const;
+  return (
+    <dl className="cx-leans">
+      {rows.map(([k, n, why]) => (
+        <div key={k}>
+          <dt>{k} <span className="cx-pips" role="img" aria-label={`${LEAN_WORD[n]} (${n} of 3)`}>{[1, 2, 3].map((i) => <i key={i} className={i <= n ? "on" : ""} />)}</span> <span className="cx-lean-word">{LEAN_WORD[n]}</span></dt>
+          <dd>{why}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -382,29 +429,32 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
           <div>
             <h3>{FACTION_TITLE[faction]}</h3>
             <p className="cx-people">{note.people}</p>
-            <p className="cx-motto"><Rich text={note.motto} /></p>
+            <p className="cx-motto"><Rich text={note.story} /></p>
           </div>
         </header>
 
         <div className="cx-deck-grid">
           <div className="cx-panel">
-            <h4>How it plays</h4>
-            <ul>{note.plan.map((p, i) => <li key={i}><Rich text={p} /></li>)}</ul>
+            <h4>Leanings</h4>
+            <Leans note={note} />
           </div>
           <div className="cx-panel">
-            <h4>Watch for</h4>
-            <ul>{note.watch.map((p, i) => <li key={i}><Rich text={p} /></li>)}</ul>
-            <h4>The supports</h4>
-            <Bars label="Element" rows={ELS.map((e) => ({ key: e, icon: e, n: sups.filter((s) => s.element === e).length }))} total={sups.length} />
+            <h4>Elements</h4>
+            <Bars label="Supports" rows={ELS.map((e) => ({ key: e, icon: e, n: sups.filter((s) => s.element === e).length }))} total={sups.length} />
             <Bars label="Kind" rows={KINDS.map((k) => ({ key: k, icon: k, n: sups.filter((s) => s.kind === k).length }))} total={sups.length} />
+            <p className="cx-small">{elementLine(fighters, sups)}</p>
             <p className="cx-small">{sums(sups)}</p>
           </div>
+        </div>
+        <div className="cx-panel cx-ways-panel">
+          <h4>Ways of the {PEOPLE_OF[faction] === "Sluagh" ? "dead" : "people"}</h4>
+          <ul>{note.ways.map((p, i) => <li key={i}><Rich text={p} /></li>)}</ul>
         </div>
 
         <div className="cx-table-wrap">
           <table className="cx-table">
             <caption>Fighters</caption>
-            <thead><tr><th scope="col">Name</th><th scope="col">Valour</th><th scope="col">Init.</th><th scope="col">Focus</th><th scope="col">Weak to</th><th scope="col">Geis</th><th scope="col">Role</th></tr></thead>
+            <thead><tr><th scope="col">Name</th><th scope="col">Valour</th><th scope="col">Init.</th><th scope="col">Focus</th><th scope="col">Weak to</th><th scope="col">Geis</th></tr></thead>
             <tbody>
               {fighters.map((h) => (
                 <tr key={h.id} tabIndex={0} onFocus={() => setFocus(h)} onMouseEnter={() => setFocus(h)}>
@@ -414,7 +464,6 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
                   <td>{h.type === "monster" ? <span className="cx-dash">host's</span> : <span className="cx-fw"><Icon name={h.focus ?? ""} />{h.focus}</span>}</td>
                   <td><span className="cx-fw"><Icon name={h.weakness ?? ""} />{h.weakness}</span></td>
                   <td>{("tag" in h ? h.tag : null) ?? <span className="cx-dash">—</span>}</td>
-                  <td>{note.roles[h.id] ?? ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -430,7 +479,6 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
           return (
             <div key={g.type} className="cx-group">
               <h4><Icon name={g.type} /> {g.title} <span className="cx-count">{n}</span></h4>
-              {note.groups[g.type as keyof typeof note.groups] ? <p><Rich text={note.groups[g.type as keyof typeof note.groups]!} /></p> : null}
               <div className="hand">
                 {cards.map((d) => <CardFace key={d.id} def={d} owner="mine" onFocusCard={setFocus} badge={(copies.get(d.id) ?? 1) > 1 ? `×${copies.get(d.id)}` : undefined} />)}
               </div>
@@ -453,6 +501,15 @@ function Decks({ setFocus }: { setFocus: (d: CardDef) => void }) {
       </article>
     </section>
   );
+}
+
+/** Which elements the deck's heroes lean on and fear, and the supports' spread, in words. */
+function elementLine(fighters: (FighterDef | MonsterDef)[], sups: SupportDef[]): string {
+  const tally = (xs: (string | null | undefined)[]) => { const m = new Map<string, number>(); for (const x of xs) if (x && (ELS as readonly string[]).includes(x)) m.set(x, (m.get(x) ?? 0) + 1); return [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k); };
+  const heroes = fighters.filter((f) => f.type !== "champion");
+  const most = tally(sups.map((s) => s.element)).slice(0, 2), weak = tally(heroes.map((h) => h.weakness)), focus = tally(heroes.map((h) => ("focus" in h ? h.focus : undefined)));
+  const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "none");
+  return `Mostly ${list(most)}.${focus.length ? ` Heroes focused on ${list(focus)}.` : ""} Heroes weak to ${list(weak)}.`;
 }
 
 function sums(sups: SupportDef[]): string {

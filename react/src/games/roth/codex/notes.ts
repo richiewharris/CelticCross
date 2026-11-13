@@ -4,181 +4,115 @@ import type { Faction } from "../engine/cards";
 
 export interface DeckNote {
   people: string;
-  motto: string;
-  plan: string[];
-  watch: string[];
-  roles: Record<string, string>;
-  groups: Partial<Record<"hero" | "champion" | "support" | "geis" | "oath" | "omen", string>>;
+  /** Who they are and how they fight, as a story: no card-by-card advice (players find the pairings themselves). */
+  story: string;
+  /** Leanings against the other starter decks: 1 light, 2 middling, 3 strong. */
+  leans: { attack: 1 | 2 | 3; healing: 1 | 2 | 3; defence: 1 | 2 | 3 };
+  /** One line on each leaning, plain facts. */
+  why: { attack: string; healing: string; defence: string };
+  /** The people's own rules: what is true of them in a duel to the death. Rules only, no advice. */
+  ways: string[];
 }
 
 export const DECK_NOTES: Record<Faction, DeckNote> = {
-  sluagh: {
-    people: "The host of the unquiet dead, that rides the night wind from the west",
-    motto: "A monster deck. No heroes: **hosts** of two or three monsters fight as one, and their blows are **Spirit**, which no Shield or Block stops and which feeds the host. They walk in the enemy's dreams: every rest the enemy takes heals them.",
-    plan: [
-      "Place a **host** on a hero spot and join **2 or 3 monsters** from your hand to it. The host fights as one: its Valour is the monsters' added together, less one (a host of the dead is a ragged thing), its Initiative the host's plus theirs, and it is weak to the **host's own** element, plus any **monster weakness that two of them share** (a lone monster's weakness is covered by the rest).",
-      "Two monsters make a quick, lean host; three make a big one with more Valour and more weaknesses. The **Hunt** opens hard, the **Prey** turns the first blow, the **Taboo** is a curse that spoils the enemy's Heals.",
-      "Each host type has a weakness of its own: the Hunt fears **Fire** (torches), the Prey **Earth** (the cold grave), the Taboo **Water** (it cannot cross running water).",
-      "{Spirit} **Spirit** supports ignore Shield and **steal 1** when they wound. Every host's Focus is Spirit, so they get **+1** too. But the dead cannot cross running water: a **Merrow** hero's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**.",
-      "In a duel to the death, {Spirit} Spirit blows can't be **Blocked** either: Block cards do nothing against them. Armour, the mound and giant-kin still do.",
-      "**The dead-flesh aura**: in a duel to the death no blow wounds a host for more than **half its full Valour** (its monsters together, plus the setting's Valour), but never less than **5**. Hacking at dead flesh does them little harm: it blunts the great blows of Ulster and the Fomóire.",
-      "**Dream-walking**: in a duel to the death, whenever the enemy **rests**, the host fighting it **heals 1**. Every rest the enemy takes feeds you, so it rests less and braces less. Not at the **western crossing**, though: there the dead drain those who don't rest instead.",
-      "**The dead do not sleep**: omens can't lower a host's Initiative (Druid's sleep does nothing to it). A geis still can.",
-      "The supports are weak, and turned against the enemy: the enemy's next Strike **−1**, the enemy **loses Valour** outright, Heals spoiled.",
-      "Some monsters carry **hybrid** damage, the element opposite their weakness. Each Spirit blow is a choice: as **Spirit** it passes Shield and steals 1 (never more than 1 a Strike); as the **hybrid** element it gets the element wheel and weakness bonuses, but Shield soaks it and nothing is stolen. The Dullahan burns as {Fire} Fire, the Fear Dearg blows as {Wind} Wind (and makes a striker pay 1 Valour for wounding his host), the Bean Nighe strikes as {Earth} Earth, the Dearg-due runs as {Water} Water.",
-      "A deck holds at most **6** of the 9 monsters. A host placed with fewer than two monsters in hand takes the rest from the Reserve.",
-      "In a duel a host may **sacrifice** one of its monsters (once a duel): the monster's Valour comes back to the host, and its weakness and quality leave with it.",
-      "Once a match a host may **summon** a monster from your other host: its Valour, weakness and quality join the one fighting now, and the other host fights without it. In a duel to the death the summoning **spends the top card of your Reserve** (and needs one to spend).",
-    ],
-    watch: [
-      "Big hosts carry many weaknesses: an enemy who brings the right element hits them for **+1** again and again.",
-      "Hosts count as printed with their combined Valour: the tathlum, Scáthach's teaching and the Geis of the giant's portion all bite.",
-      "The Aos Sídhe and the Slúagh are **Unwilling**: neither will use the other's supports.",
-    ],
-    roles: {},
-    groups: {
-      support: "Spirit blows that steal, and curses that weaken the enemy's next Strike or take Valour outright.",
-    },
-  },
   ulster: {
     people: "The Red Branch of Emain Macha",
-    motto: "Fast, fiery and hard to stop. Ulster hits **through Shield** and tries to win each duel before the enemy settles.",
-    plan: [
-      "Put Cú Chulainn in front of his Fire feats. Thunder feat and the warp-spasm are {Fire} Fire and Ulaid, so each gets **+1 kinship** and **+1 Focus**: Thunder feat's printed Strike 3 lands as 5 before any matchup bonus, and Ríastrad adds **+1** more.",
-      "Gáe Bolga is **Strike 4** in Cú Chulainn's hands and, like Thunder feat, **ignores Shield**. Shield-heavy decks (Merrow, the Fomóire's tower) pay for it.",
-      "Conall Cernach is the avenger: **+1** against big heroes (printed Valour 5+), and **+1 more** in the second duel if your first hero fell. He belongs on a second-duel spot (4 or 10).",
-      "Conchobar and Emer are slow Word heroes in a deck with no Words, so they fight on kinship. Conchobar's King's due lets him **borrow** an unused support from your other quadrant; Emer **heals 2** when she rests.",
-      "The warp-spasm is **Strike 4** but costs your hero **1 Valour**. Save it for the blow that fells.",
-      "**The Samhain watch**: in a duel to the death, an Ulster hero's Strikes are **+1 against the dead** (a fighter whose Focus is Spirit: the Slúagh hosts). The Ulaid kept watch at Samhain, when the host of the dead rides.",
-      "**The Hound's cry**: in a duel to the death, once a duel, an Ulster blow that ignores Shield (Thunder feat, Gáe Bolga) may spend the **top card of your Reserve** to go through a giant's hide: the Fomóire take it in full instead of half. Save it for the biggest blow.",
+    story: "The Hound of Ulster and his companions ride out from Emain Macha with fire in their blood. Their feats burn through any shield, and they mean to finish a duel before the enemy settles in.",
+    leans: { attack: 3, healing: 1, defence: 1 },
+    why: { attack: "The most Strike in its supports, and three blows that ignore Shield.", healing: "A little: a hero who heals on rest and a few Heals.", defence: "Thin: one Block card and a champion with Shield 1." },
+    ways: [
+      "**The Samhain watch**: an Ulster hero's Strikes are **+1** against the dead (a fighter whose Focus is Spirit).",
+      "**The Hound's cry**: once a duel, a blow that ignores Shield may spend the **top card of your Reserve** to land on a giant in full.",
     ],
-    watch: [
-      "Cú Chulainn and Conall are **weak to {Wind} Wind**: the Sídhe's Wind weapons and the Merrow's Riptide and Scuabtuinne hit them harder.",
-      "Connacht's **Geis of the hound** forbids Feats and costs a hero whose geis is **Hound** (Cú Chulainn) **2 Valour** at the start of his duel. Gáe Bolga, a Weapon, still works.",
-      "The **Truce of Samhain** (Connacht) caps every Strike at 3, which blunts Gáe Bolga and the warp-spasm.",
-      "Connacht supports are **Unwilling** for Ulster heroes, and Ulster's for Connacht's: they do nothing at all.",
-    ],
-    roles: { cu: "Striker", conall: "Avenger", conchobar: "King: borrows supports", emer: "Healer on rest", loegaire: "Opening blow", fiacha: "Shielded stand-in" },
-    groups: {
-      hero: "Two quick strikers (Cú Chulainn, Conall) and two steady Word heroes.",
-      champion: "Lóegaire opens with **+1** on his first Strike; Fiacha steps in behind **Shield 1** with Valour 5.",
-      support: "Fire and Wind feats and weapons, three that **ignore Shield**, and a little healing (Láeg, the Brown Bull).",
-      geis: "The hosting forbids rest to **every** hero (Emer too), the hearth strips Fire, and the giant's portion punishes big heroes.",
-      oath: "Both oaths trade resting (and, for the Blood-oath, Heals) for **Strikes**. They suit Cú Chulainn, who wants the duel short anyway; the Blood-oath's vow clashes with Láeg and the Brown Bull.",
-      omen: "Emain's ward makes your heroes **ignore every geis**; the Muster of the Red Branch gives your **Feats +1**.",
-    },
   },
   connacht: {
     people: "Queen Medb's host from Cruachan",
-    motto: "Earth weapons, healing and patience. Connacht **wears the enemy down** and keeps its own heroes standing.",
-    plan: [
-      "**Bleed**: in a duel to the death, every Connacht blow that wounds makes the enemy's Heals **−1** until the end of its next turn. It doesn't stack (two hits are still −1), but every hit renews it, so steady small blows keep a healer down.",
-      "Every Connacht hero is **Swift** or has a **Riposte**, never both. **Swift** (Medb, Lóch, Nad Crantail): a blow that wounds for **1 or less** strikes **again** at once. **Riposte** (Ferdiad, Ailill): when their {shield} Shield takes a blow, a free **Strike 1** back, without spending a turn. Each hit that wounds bleeds.",
-      "Medb's kinship is **+2**, not +1, and her Focus is {Earth} Earth: a Spear of Cet in her hands is Strike 2 **+2 +1 = 5**.",
-      "Ferdiad and Fergus have **Focus Weapon**, so the spears, Caladbolg and the horn-shield all get +1. Fergus is an exile (Deorad): **Ulster and Connacht supports are both kin to him**. Caladbolg is Deorad too, so it is kin to every Connacht hero.",
-      "Ferdiad starts each duel with **Shield 2**. Add the Oath of the shield-wall (Shield 2) and the ráth of Cruachan (Shield 1) and he opens behind **Shield 5**.",
-      "Heals come from the host of Cruachan, Medb's war-chariot and Finnbennach, with Ailill's Pillow-talk and Cruachan's plenty each adding **+1**. A hero can't be healed more than **2 above** the Valour it started the duel with.",
-      "Fedelm's prophecy and Medb's war-chariot make your **next Strike +1**: follow them with a spear.",
+    story: "Medb's host marches from Cruachan with spears of earth and a long memory. They come at the enemy again and again, and every wound they open is slow to close.",
+    leans: { attack: 2, healing: 3, defence: 2 },
+    why: { attack: "Steady Earth weapons rather than one great blow; quick follow-up strikes and returned blows.", healing: "The most Heals of any deck, and its blows make the enemy's Heals smaller.", defence: "A shield-wall hero and blows returned off Shield, but little Shield in the supports." },
+    ways: [
+      "**Bleed**: a Connacht blow that wounds makes the enemy's Heals **−1** until the end of its next turn. It doesn't stack; each hit renews it.",
+      "**Swift** (Medb, Lóch, Nad Crantail): a blow that wounds for **1 or less** strikes **again** at once.",
+      "**Riposte** (Ferdiad, Ailill): when their Shield takes a blow, a free **Strike 1** back.",
     ],
-    watch: [
-      "Medb and Ferdiad are **weak to {Water} Water**: the Merrow and the Sídhe's tathlum.",
-      "The Fomóire's **Geis of Samhain night** and the **Morrígan's crow** (in the Sídhe's pool) shut off the Heals the deck leans on.",
-      "Ulster supports are **Unwilling** for Connacht heroes (but not for Fergus).",
-    ],
-    roles: { medb: "Kin-queen", ferdiad: "Shield-wall", fergus: "Exile bruiser", ailill: "Healer", loch: "Striker", nadcrantail: "Opening blow" },
-    groups: {
-      hero: "Two Weapon fighters, a queen who makes kinship count double, and a healer.",
-      champion: "Lóch's Strikes are **+1** all duel; Nad Crantail's first Strike is **+1**.",
-      support: "Earth weapons and allies, three Heals, two next-Strike setups, and Caladbolg (**Strike 3**).",
-      geis: "The hound strips Feats and costs a **Hound** hero 2 Valour; the slow hand forbids Wind and takes **3 Initiative**, so your slow heroes strike first. The hosting forbids rest to every hero.",
-      oath: "Both are defensive: **Shield 2** (no Feats), or **+1 Valour and Shield 1** (no Fire). Connacht has no Feats and only one Fire card, so the vows cost little.",
-      omen: "The hero's light gives one hero **Strikes +1**; the Truce of Samhain caps every Strike at **3**; Cruachan's plenty and the ráth make heals and Shield bigger.",
-    },
   },
   sidhe: {
     people: "The Tuatha Dé Danann of the mounds",
-    motto: "Many-skilled, quick and hard to pin down. **Wind weapons, Words and healing.**",
-    plan: [
-      "**Otherworldly**: in a duel to the death every {Spirit} Spirit blow against a Sídhe fighter is **−2**. The dead have no hold on those who never died.",
-      "**Masters of geasa**: in a duel to the death a Sídhe hero pays only **1 Valour** to break a geis, each time, instead of 2.",
-      "**The mound**: the Aos Sídhe fight from their mound. Like {armour} Armour it takes **1** off every Strike against a Sídhe fighter, until it has soaked **5** in all over the whole match. Nothing pierces it, not even blows that ignore Shield and Armour.",
-      "**Veiled**: the first Strike against an Aos Sídhe fighter each duel is **−1**, but so is their own first Strike: they are hard to hit and hard to aim.",
-      "**Charm** (Glamour, the music of the mounds, Aengus's kisses): a light blow that **goes through Shield**, takes the enemy's {shield} Shield for your own, and can dull the enemy's next Strike. Against a shield wall their turn is never wasted.",
-      "Lugh has the **highest Initiative** in the game (6), and every support counts as his Focus: everything he uses gets **+1**.",
-      "The Dagda is the tank: **Valour 6**, Initiative 1, and resting **heals him 2**. Dian Cécht's well and the druid's oath keep him topped up.",
-      "The Morrígan hits hard: **Valour 4** and **Strikes +1**, and once per match she may change her Focus to any element at the start of her duel.",
-      "Brigid's Heals are **+1**; her Focus is {Fire} Fire, so Goibniu's forge and Raven's war-cry suit her.",
-      "Fragarach **ignores Shield**; the tathlum is **Strike 3** against any hero printed with Valour 5 or more (Balor, Ferdiad, Conchobar, the Coomara).",
+    story: "The people of the mounds are many-skilled and hard to pin down: quick, veiled, and never quite where the blow lands. They fight from the edge of the Otherworld, and the dead have no hold on them.",
+    leans: { attack: 2, healing: 2, defence: 3 },
+    why: { attack: "Wind weapons and Words, one blow that ignores Shield; the quickest hero in the game.", healing: "Heals spread across heroes and supports.", defence: "The mound, the veil and the Otherworld all take something off the blows against them." },
+    ways: [
+      "**Otherworldly**: every {Spirit} Spirit blow against a Sídhe fighter is **−2**.",
+      "**Masters of geasa**: a Sídhe hero pays only **1 Valour** to break a geis.",
+      "**The mound**: takes **1** off every Strike against a Sídhe fighter until it has soaked **5** over the match. Nothing pierces it.",
+      "**Veiled**: the first Strike against a Sídhe fighter each duel is **−1**; so is their own first Strike.",
     ],
-    watch: [
-      "Lugh and the Dagda are **weak to {Fire} Fire** (Ulster's feats, Balor's gaze); the Morrígan is weak to {Earth} Earth.",
-      "The Fomóire's **Blight** invokes **Forge** (Brigid) and their **tribute** invokes **Plenty** (the Dagda): each costs that hero **2 Valour**.",
-      "Your own **Geis of the hosting** forbids rest to every hero, the Dagda included. Lay it when it costs the enemy more.",
-      "Fomóire supports are **Unwilling** for Sídhe heroes.",
-    ],
-    roles: { lugh: "Quick all-rounder", dagda: "Tank", morrigan: "Striker", brigid: "Healer", nuada: "Shielded stand-in", ogma: "Opening blow" },
-    groups: {
-      hero: "The quickest hero, the biggest, a battle-crow, and a healer.",
-      champion: "Nuada steps in behind **Shield 1** with Valour 5; Ogma's first Strike is **+1**.",
-      support: "Wind and Fire weapons and words, a legendary **Strike 3** spear, one that ignores Shield, and Heals.",
-      geis: "The open door forbids rest and costs a **Hospitality** hero 2 Valour (Emer, Bres); the giant's portion forbids Allies and costs a big hero 2 Valour.",
-      oath: "The druid's oath (**Heals +1, Shield 1**, no Weapons) suits the Dagda and Brigid; the champion's oath (**Strikes +1**, never rest) suits Lugh and the Morrígan.",
-      omen: "Mist of the druids lets your hero **strike first** in the first duel; Druid's sleep takes **3 Initiative** from one hero; Keening takes **1** off one enemy hero's Strikes; Lugh's protection softens the first blow.",
-    },
   },
   fomoire: {
     people: "The giants from under the sea",
-    motto: "Huge, slow and blighting. Fomóire heroes **hit hard once** and starve the enemy of healing.",
-    plan: [
-      "**Giant-kin**: in a duel to the death the Fomóire take **half** the wounds of every Strike (rounded up), except one of their **weaknesses**, which lands in full (no +1). A geis or a Curse attendant can lay more weaknesses on them: that is how to bring a giant down.",
-      "Balor's first Strike each duel is **+1**, and the gaze of Balor is **Strike 3** in his hands. With kinship and Focus {Fire} Fire, that opening blow is **3 +1 +1 +1 = 6**.",
-      "Balor and Indech are slow (Initiative 1 and 2). The **Night of the Fomóire** turns that round: in the first duel, the lower Initiative strikes first. **Druid's sleep** takes 3 Initiative from one enemy hero.",
-      "Indech the sea-giant can't be hit for **more than 4** at once; behind Conand's tower (**Shield 3**) he soaks blow after blow.",
-      "Cethlenn, Tethra and the stones of Octriallach **drain**: when the Strike wounds, Heal 1.",
-      "Bres makes the enemy's Heals **−1**, and the **Geis of Samhain night** forbids Heals for everyone. The Fomóire barely heal, so it costs you little.",
+    story: "The Fomóire rise from under the sea, huge and slow and hard to wound. Their blows fall seldom but heavily, and where they walk the land forgets how to heal.",
+    leans: { attack: 3, healing: 1, defence: 3 },
+    why: { attack: "Heavy blows, and the deck's big Strikes fall early.", healing: "Almost none of their own; they deny the enemy's instead.", defence: "Giant-kin halves the wounds of most blows, and the supports hold the most Shield after Merrow's." },
+    ways: [
+      "**Giant-kin**: a Fomóire fighter takes **half** the wounds of every Strike (rounded up), except a Strike of one of its **weaknesses**, which lands in full.",
     ],
-    watch: [
-      "Balor is **weak to {Water} Water**; Bres and Indech are **weak to {Wind} Wind**.",
-      "The Oath on the stone forbids **Fire**, which locks Balor out of his own gaze.",
-      "Sídhe supports are **Unwilling** for Fomóire heroes.",
-    ],
-    roles: { balor: "Opening blow", bres: "Heal-breaker", cethlenn: "Glass cannon, drains", indech: "Tank", elatha: "Plain giant", tethra: "Drains" },
-    groups: {
-      hero: "A one-blow giant, a tank, a fragile drainer, and a king who spoils enemy Heals.",
-      champion: "Elatha is simply big (**Valour 5**); Tethra heals 1 when his Strike wounds.",
-      support: "Water feats, Earth weapons and allies, **Shield 3**, and two Words that invoke **Sídhe** geis tags.",
-      geis: "The hearth strips Fire; Samhain night forbids Heals to **every** hero; the slow hand forbids Wind and takes **3 Initiative**.",
-      oath: "The Blood-oath (**Strikes +2**; no Heals, never rest) costs Fomóire almost nothing; the Oath on the stone adds Valour and Shield but forbids Fire.",
-      omen: "The Night of the Fomóire flips Initiative in the **first duel**; Samhain tribute gives your second-duel hero **Strikes +1**; Tory's tower gives **Shield 1**.",
-    },
   },
   merrow: {
     people: "The sea-folk under the waves",
-    motto: "Water, Shields and slippery defence. Merrow **outlasts** the enemy and strikes back with the tide.",
-    plan: [
-      "**Flowing water**: in a duel to the death every {Spirit} Spirit blow against a Merrow fighter is **−1**, a Merrow's Shield holds against Spirit, and Merrow {Water} Water Strikes against a host are **+1**. The dead cannot cross running water.",
-      "**Water can't be pierced**: in a duel to the death, a blow that ignores Shield (Thunder feat, Gáe Bolga) still meets a Merrow's **Block**. Keep Sealskin up against Ulster.",
-      "Manannán's first incoming Strike each duel **misses**. Lí Ban gains **Shield 2** when she rests. The Coomara is **Valour 6** and heals 1 when his Strike wounds.",
-      "Fand is the glass cannon: **Valour 3**, Initiative 5, **Strikes +1**.",
-      "Most supports are {Water} Water, Manannán's and Lí Ban's Focus, and the blessing of the ford gives **every Water support +1**. Water beats Fire, so Undertow and Clíodhna's wave punish Fire-Focus heroes (Cú Chulainn, Brigid, Balor).",
-      "Merrow carries **no Weapons**, so the **Geis of the king's peace** (no hero may use Weapons) costs you nothing while it takes the spears from Ulster, Connacht and the Sídhe. The druid's oath (no Weapons) is free for the same reason.",
-      "Sealskin (**Shield 3**), the cohuleen druith (**Shield 2 and Heal 1**) and the flood tide (**Heals +1**) keep heroes up through a long duel.",
+    story: "The sea-folk slip beneath the blow and let the tide do the work. They outlast the enemy behind sealskin and spray, then strike back as the water turns.",
+    leans: { attack: 1, healing: 2, defence: 3 },
+    why: { attack: "The least Strike of the hero decks; mostly Water.", healing: "A few Heals and Shields that heal.", defence: "The most Shield in any deck, and heroes that evade or shield themselves." },
+    ways: [
+      "**Flowing water**: every {Spirit} Spirit blow against a Merrow fighter is **−1**, a Merrow's Shield holds against Spirit, and Merrow {Water} Water Strikes against the dead are **+1**.",
+      "**Water can't be pierced**: a blow that ignores Shield still meets a Merrow's **Block**.",
     ],
-    watch: [
-      "Shield is no use against **Gáe Bolga, Thunder feat, Fragarach** and Clíodhna's own wave: they ignore it.",
-      "Manannán is **weak to {Earth} Earth** (Connacht), Lí Ban to {Wind} Wind, and Fand and the Coomara to {Fire} Fire.",
-      "The **Oath of the shield-wall** forbids Feats, and most of Merrow's Strikes are Feats. Swear it on a hero whose quadrant holds Words and Allies.",
-    ],
-    roles: { manannan: "Evasive", fand: "Glass cannon", liban: "Shield on rest", coomara: "Tank, drains", roane: "Shielded stand-in", muirdris: "Blow-capped tank" },
-    groups: {
-      hero: "An evasive legend, a fragile striker, a shield-maiden and a giant who drains.",
-      champion: "The Roane steps in behind **Shield 1**; the Muirdris can't be hit for **more than 3**.",
-      support: "Water feats and words, two big Shields, a Strike that **ignores Shield**, and a drain.",
-      geis: "The king's peace forbids Weapons to **every** hero and costs you nothing; the open door and the giant's portion punish Hospitality and big heroes.",
-      oath: "The druid's oath is free (no Weapons in the deck); the shield-wall's vow bites, since most of the deck's Strikes are Feats.",
-      omen: "The blessing of the ford gives **Water +1**, the flood tide **Heals +1**, the fog softens the first blow, and Keening takes **1** off one enemy hero's Strikes.",
-    },
   },
+  sluagh: {
+    people: "The host of the unquiet dead, that rides the night wind from the west",
+    story: "The Slúagh have no heroes: hosts of the restless dead gather and fight as one. Their touch passes through shield and steel and takes a little life with it, and every time their enemy sleeps, they feed.",
+    leans: { attack: 2, healing: 2, defence: 2 },
+    why: { attack: "Light blows that pass Shield and Block, and supports that weaken the enemy rather than wound.", healing: "No Heals: they steal Valour with their blows and feed on the enemy's rests.", defence: "No Shield, but no great blow wounds dead flesh for long." },
+    ways: [
+      "**Hosts**: a host goes on a hero spot with **2 or 3 monsters** joined to it from your hand. Its Valour is the monsters' together, **less one**; its Initiative the host's plus theirs. It is weak to the host's own element and to any weakness **two of its monsters share**.",
+      "{Spirit} **Spirit**: Spirit blows ignore Shield and Block and **steal 1** when they wound. A monster with a **hybrid** element may strike as that element instead (the element wheel and weakness count; Shield soaks it; nothing is stolen).",
+      "**The dead-flesh aura**: no blow wounds a host for more than **half its full Valour**, but never less than **5**.",
+      "**Dream-walking**: whenever the enemy **rests**, the host fighting it **heals 1** (not at the western crossing).",
+      "**The dead do not sleep**: omens can't lower a host's Initiative.",
+      "Once a duel a host may **sacrifice** a monster (its Valour returns to the host); once a match it may **summon** one from your other host, spending the top card of your Reserve.",
+      "A deck holds at most **6** monsters.",
+    ],
+  },
+};
+
+/** The deck-building guide: how cards work together, with a worked example or two. Players find the rest. */
+export const BUILDING = {
+  intro: "A deck is 24 cards from one or two peoples. What makes it strong is less the size of its numbers than how its cards add to one another.",
+  rules: [
+    "**24 cards**: 4–6 heroes (or 3–6 hosts and 4–6 monsters), 8–12 supports, 2–6 geasa, 4–6 omens, up to 4 oaths, 2 champions and 2 attendants.",
+    "Commons up to **two** copies, rares and legendaries **one**, and at most **two** legendaries. Heroes, champions and omens are one of each.",
+    "Cards of at most **two peoples** (exiles go with either), plus the geasa, oaths and omens open to all.",
+  ],
+  ways: [
+    { title: "Kinship", text: "A support of the hero's own people is **+1** in its hands." },
+    { title: "Focus", text: "A support of the hero's Focus, an element or a kind, is **+1** more." },
+    { title: "The wheel", text: "{Fire} Fire beats {Wind} Wind beats {Earth} Earth beats {Water} Water beats {Fire} Fire: a blow whose element beats the enemy hero's Focus is **+1**." },
+    { title: "Weakness", text: "A blow of the element the enemy is weak to is **+1**. Your own heroes' weaknesses are worth covering too." },
+    { title: "Vows and taboos", text: "A geis or oath forbids something. One that forbids what your deck never uses costs you nothing." },
+    { title: "Unwilling", text: "Ulaid and Connachta, Sídhe and Fomóire, Sídhe and Slúagh won't use each other's supports: such a card does nothing in their hands." },
+  ],
+  examples: [
+    {
+      title: "Bonuses that stack",
+      cards: ["medb", "cet_spear"],
+      text: "Medb's kinship counts double and her Focus is {Earth} Earth. The Spear of Cet is a Connacht Earth weapon, printed **Strike 2**: in her hands it is **2 +2 +1 = 5** before the enemy is even counted. The same card behind a hero of another people with another Focus is Strike 2.",
+    },
+    {
+      title: "A taboo that only binds the enemy",
+      cards: ["g_peace"],
+      text: "A global geis binds every hero, yours too. The Geis of the king's peace forbids Weapons; a deck with no Weapons can lay it for nothing while the enemy's spears fall silent.",
+    },
+  ],
+  close: "The rest is yours to find: which heroes want which supports, which omen answers which deck, which oath a quadrant never needed.",
 };
 
 /** What each type of card is, when it's played, and how it works with the rest. */

@@ -10,15 +10,15 @@ import { useNarrow } from "./components/DuelView";
 import { Inspector, LogPanel, ResultDialog, RulesPanel, SetupPanel } from "./components/Panels";
 import { Table, type Sel } from "./components/Table";
 import { Puzzles } from "./Puzzles";
-import { CardsGuide, DecksGuide } from "./codex/Codex";
+import { BuildingGuide, CardsGuide, DecksGuide } from "./codex/Codex";
 import { DeckBuilder } from "./DeckBuilder";
 import { Walkthrough } from "./walkthrough/Walkthrough";
 import { FACTION_TITLE } from "./text";
 import { useMatch } from "./useMatch";
 
 type Tab = "play" | "build" | "guide";
-type Guide = "walk" | "puzzles" | "cards" | "decks";
-const OLD_GUIDE: Record<string, Guide> = { walk: "walk", puzzles: "puzzles", cards: "cards", decks: "decks" };
+type Guide = "walk" | "puzzles" | "cards" | "decks" | "building";
+const OLD_GUIDE: Record<string, Guide> = { walk: "walk", puzzles: "puzzles", cards: "cards", decks: "decks", building: "building" };
 
 export function RothGame() {
   const [stored, setTab] = useStoredState<string>("roth-react-tab", "play");
@@ -39,14 +39,14 @@ export function RothGame() {
           options={[{ value: "play", label: "Play" }, { value: "build", label: "Build a deck" }, { value: "guide", label: "Game guide" }] as { value: Tab; label: string }[]} />
         {tab === "guide" ? (
           <Segmented label="Game guide" value={guide} onChange={goGuide} className="tabs sub"
-            options={[{ value: "walk", label: "Guided game" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }] as { value: Guide; label: string }[]} />
+            options={[{ value: "walk", label: "Guided game" }, { value: "puzzles", label: "Puzzles" }, { value: "cards", label: "Cards" }, { value: "decks", label: "Decks" }, { value: "building", label: "Deck building" }] as { value: Guide; label: string }[]} />
         ) : null}
       </nav>
       {tab === "play" ? <CardFocusProvider><Match focus={focus} setFocus={setFocus} /></CardFocusProvider>
         : tab === "build" ? <DeckBuilder setFocus={setFocus} onPlay={() => setTab("play")} />
         : guide === "walk" ? <CardFocusProvider><Walkthrough focus={focus} setFocus={setFocus} /></CardFocusProvider>
         : guide === "puzzles" ? <CardFocusProvider><Puzzles focus={focus} setFocus={setFocus} /></CardFocusProvider>
-        : guide === "cards" ? <CardsGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
+        : guide === "cards" ? <CardsGuide setFocus={setFocus} /> : guide === "building" ? <BuildingGuide setFocus={setFocus} /> : <DecksGuide setFocus={setFocus} />}
     </div>
   );
 }

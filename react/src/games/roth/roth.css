@@ -479,6 +479,17 @@ body.gm-roth .cx-deck-head h3 { font-size: 1.7rem; margin: 0; }
 body.gm-roth .cx-sigil { width: 76px; height: 76px; flex: none; color: var(--al); background: var(--night-3); border: 2px solid var(--al); border-radius: 50%; padding: 6px; }
 body.gm-roth .cx-people { color: var(--muted); font-style: italic; margin: 0 0 4px; }
 body.gm-roth .cx-motto { font-size: 1.05rem; margin: 0; }
+body.gm-roth .cx-leans { margin: 0; display: grid; gap: 10px; }
+body.gm-roth .cx-leans dt { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+body.gm-roth .cx-leans dd { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+body.gm-roth .cx-pips { display: inline-flex; gap: 3px; }
+body.gm-roth .cx-pips i { width: 18px; height: 6px; border-radius: 3px; background: var(--night-3); border: 1px solid var(--line); }
+body.gm-roth .cx-pips i.on { background: var(--al, var(--bronze)); border-color: var(--al, var(--bronze)); }
+body.gm-roth .cx-lean-word { font-weight: 400; font-size: .82rem; color: var(--muted); }
+body.gm-roth .cx-ways-panel ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+body.gm-roth .cx-ways { margin: 0; display: grid; gap: 8px; }
+body.gm-roth .cx-ways dt { font-weight: 600; color: var(--bronze-hi); }
+body.gm-roth .cx-ways dd { margin: 0; }
 body.gm-roth .cx-deck-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
 body.gm-roth .cx-deck-grid h4:first-child { margin-top: 0; }
 @media (max-width: 760px) { body.gm-roth .cx-deck-grid { grid-template-columns: minmax(0, 1fr); } body.gm-roth .cx-deck { padding: 14px 12px; } }
