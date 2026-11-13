@@ -976,6 +976,13 @@ export function makePolicy(level0: string, opts: { N?: number; K?: number } = {}
   // "skilled@3": Skilled with a look-ahead of 3 turns in duels to the death (the depth ladder); "skilled@3:200000"
   // also sets the search's node limit per decision (default 20000, which depth 3 runs into)
   const [level, at0] = level0.split("@");
+  // "expert@16x3": Expert with N rollouts per candidate and K candidates (the game's own is 16x3)
+  if (at0 !== undefined && level.toLowerCase() === "expert") {
+    const [n, k] = at0.split("x").map(Number);
+    const p = new ExpertPolicy(n, k);
+    p.name = `Expert@${at0}`;
+    return p;
+  }
   if (at0 !== undefined) {
     if (level.toLowerCase() !== "skilled") throw new Error(`a depth only applies to skilled: ${level0}`);
     // "skilled@3f": the fair search to depth 3; "skilled@3f/b4c3s2n80000" sets its beam, draws followed, samples, nodes
