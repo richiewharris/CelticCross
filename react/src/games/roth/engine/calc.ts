@@ -367,10 +367,12 @@ function standingKey(S: State, p: Side): string {
     C.hostAdj.map((x) => (x ? x.remove.join("+") + ">" + x.add.map((m) => m.id).join("+") : "")).join(","),
     C.duel, j(C.hs), C.broken, j(C.cap), j(C.focus), j(C.stagger), j(C.armour), j(C.mound), j(C.bleed), j(C.cried), j(C.ebbed), j(C.block),
     j(C.nextStrike), j(C.cathbad), j(C.kingsDue), j(C.champ), j(C.sacrificed), j(C.summoned), j(C.rested), j(C.init),
-    Math.min(Q.reserve.length + Q.discard.length, 9), Q.reserve.length ? Q.reserve.map((c) => c.def.id).sort().join("+") : "",
+    // the draw is kept as first measured (its expectation over the pile then): what is left in the Reserve changes with
+    // every draw a search samples, and keying on it would measure again at nearly every one
+    Math.min(Q.reserve.length + Q.discard.length, 3),
   ].join("|");
 }
-export const FAST = { map: new Map<string, RollAct[]>(), hits: 0, misses: 0, max: 20000 };
+export const FAST = { map: new Map<string, RollAct[]>(), hits: 0, misses: 0, max: 200000 };
 export function clearFast() { FAST.map.clear(); FAST.hits = 0; FAST.misses = 0; }
 
 /** Side p's repertoire: the measured actions of its standing position, with the clocks, Valour and Shield read live. */

@@ -42,3 +42,26 @@ for (const k of CALC2_TERMS) {
   const r = (n * sab - sa * sb) / Math.sqrt((n * saa - sa * sa) * (n * sbb - sb * sb));
   console.log(`  ${k.padEnd(11)} equal ${((100 * same) / n).toFixed(1)}%  correlation ${r.toFixed(3)}`);
 }
+// --decide a,b,c: the time each policy takes per duel decision over the same positions (and how often it agrees with the first)
+const di = args.indexOf("--decide");
+if (di >= 0) {
+  const levels = args[di + 1].split(",");
+  const picks: number[][] = [];
+  for (const lv of levels) {
+    clearFast();
+    const P = makePolicy(lv);
+    const rng = new Rng(7);
+    const t0 = performance.now();
+    picks.push(pos.map((S) => { const d = nextDecision(S)!; return P.choose(cloneState(S), d, rng); }));
+    const ms = (performance.now() - t0) / pos.length;
+    const agree = picks[0].filter((x, i) => x === picks[picks.length - 1][i]).length / pos.length;
+    console.log(`  ${lv.padEnd(14)} ${ms.toFixed(1)} ms per decision; same choice as ${levels[0]} ${(100 * agree).toFixed(0)}%${FAST.hits + FAST.misses ? `; repertoires measured ${FAST.misses}, kept ${FAST.hits}` : ""}`);
+  }
+}
+// --keys: which parts of the standing key make the kept repertoires miss (how many entries would merge without each)
+if (args.includes("--keys")) {
+  const keys = [...FAST.map.keys()].map((k) => k.split("|"));
+  const names = "p setting board qgeis qoath ggeis omens hostAdj duel hs broken cap focus stagger armour mound bleed cried ebbed block nextStrike cathbad kingsDue champ sacrificed summoned rested init pile".split(" ");
+  console.log(`${keys.length} kept entries; merged without each part:`);
+  for (let i = 0; i < names.length; i++) { const s = new Set(keys.map((k) => k.filter((_, j) => j !== i).join("|"))); const m = keys.length - s.size; if (m) console.log(`  ${names[i].padEnd(11)} ${m}`); }
+}
