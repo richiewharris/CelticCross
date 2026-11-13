@@ -1,6 +1,6 @@
 // The pending decision as a prompt and a list of buttons (filtered by the card or spot you picked).
-import { useEffect, useMemo } from "react";
-import { applyDecision, cloneState, nextDecision, NARRATE, toDeath, type Decision, type Option, type State } from "../engine/engine";
+import { useEffect } from "react";
+import { toDeath, type Decision, type Option, type State } from "../engine/engine";
 import { optionLabel, seatName } from "../text";
 
 export function prompt(S: State, d: Decision): string {
@@ -33,23 +33,6 @@ export function prompt(S: State, d: Decision): string {
   }
 }
 
-/** What a duel choice would do, from the rules' own arithmetic: "Ailill 5 → 2 · Shield 3 → 0". Drawing is left
- *  alone (the card is unknown until drawn). */
-export function previewOf(S: State, d: Decision, i: number): string | null {
-  const o = d.options[i];
-  if ((d.kind !== "duel" && d.kind !== "drawn" && d.kind !== "block") || o.t === "draw" || (o.t === "drawn" && o.how !== "play")) return null;
-  const T = cloneState(S);
-  const lines: string[] = [];
-  NARRATE.lines = lines;
-  try {
-    applyDecision(T, d, i, false);
-    // a blow the enemy could block: preview it as taken
-    for (let k = 0; k < 3 && T.combat?.pending; k++) { const d2 = nextDecision(T)!; applyDecision(T, d2, d2.options.length - 1, false); }
-  } catch { return null; } finally { NARRATE.lines = null; }
-  const sum = summarize(lines);
-  return d.kind === "block" && sum === "no change" ? "no wounds: it stops the blow" : sum;
-}
-
 /** The changes in a move's arithmetic, briefly: "Ailill 5 → 2 · Shield 3 → 0". Null if nothing changed hands. */
 export function summarize(lines: string[]): string | null {
   const bits = lines.join(" ").split(/(?<=\.)\s+/).filter((x) => x.includes("→")).map((x) => x.replace(/\.$/, "").replace(/^\d+ wounds?: /, "").replace(/^0 wounds: /, ""));
@@ -68,7 +51,6 @@ export function summarize(lines: string[]): string | null {
 export function Choices(props: { S: State; d: Decision; filter: ((o: Option) => boolean) | null; onPick: (i: number) => void; onClear: () => void }) {
   const { S, d } = props;
   const items = d.options.map((o, i) => ({ o, i })).filter(({ o }) => !props.filter || props.filter(o));
-  const previews = useMemo(() => d.options.map((_, i) => previewOf(S, d, i)), [S, d]);
   // 1–9 pick the first nine choices shown
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -86,7 +68,7 @@ export function Choices(props: { S: State; d: Decision; filter: ((o: Option) => 
         {items.map(({ o, i }) => (
           <button key={i} type="button" className={`btn choice${o.t === "hold" ? " quiet" : ""}`} onClick={() => props.onPick(i)}>
             {items.indexOf(items.find((x) => x.i === i)!) < 9 ? <kbd className="choice-key" aria-hidden="true">{items.findIndex((x) => x.i === i) + 1}</kbd> : null}
-            <span className="choice-txt">{optionLabel(S, d, o)}{previews[i] ? <small className="choice-preview">{previews[i]}</small> : null}</span>
+            <span className="choice-txt">{optionLabel(S, d, o)}</span>
           </button>
         ))}
         {props.filter ? <button type="button" className="btn quiet" onClick={props.onClear}>Show every choice</button> : null}

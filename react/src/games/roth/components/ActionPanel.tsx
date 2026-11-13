@@ -5,7 +5,7 @@ import { useEffect, useMemo } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import { cardName, optionLabel, seatName } from "../text";
 import { ownerOfSpot, type Decision, type Option, type State } from "../engine/engine";
-import { previewOf, prompt } from "./Choices";
+import { prompt } from "./Choices";
 
 export interface Pick { key: string | null; target: number | null; guest: number }
 export const NO_PICK: Pick = { key: null, target: null, guest: -1 };
@@ -96,7 +96,7 @@ export function ActionPanel(props: {
   const targets = sel ? [...new Set(sel.variants.map((v) => v.target))].filter((t): t is number => t !== undefined) : [];
   const previewFor = (a: Act) => {
     const i = resolvePick(acts, { key: a.key, target: a === sel ? pick.target : null, guest: pick.guest });
-    return i === null ? (targets.length > 1 && a === sel ? "choose a target" : null) : previewOf(S, d, i);
+    return i === null && targets.length > 1 && a === sel ? "choose a target" : null;
   };
   const choose = (a: Act) => {
     if (a.key === pick.key && resolved !== null) { props.onCommit(resolved); return; } // a second tap commits
