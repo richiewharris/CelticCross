@@ -1,9 +1,9 @@
 // Two-people decks: how strong can a deck drawn from two peoples get?
 //   npx tsx sim/roth/mixed.ts --screen [--n 10]
-//       builds the best deck the deck builder finds for each of the 15 pairs of peoples (and, for comparison, for each
+//       builds the best deck the deck builder finds for each of the 30 pairs of peoples (the first leads, the second lends) (and, for comparison, for each
 //       people alone), and plays each against the six starter decks at Skilled, seats swapped evenly.
 //   npx tsx sim/roth/mixed.ts --tune ulster,sidhe [--steps 20] [--n 10]
-//       hill-climbs that pair's deck from the union of both pools (swap one card at a time; keep a swap only when it
+//       hill-climbs that pair's deck (ulster leading, the Sídhe lending) from the cards the rule allows (swap one card at a time; keep a swap only when it
 //       scores better on the same seeds and again on fresh ones), against the six starter decks.
 // Results go to sim/roth/mixed-decks.json (never to the computer's own decks).
 import { fork } from "node:child_process";
@@ -63,7 +63,8 @@ if (process.argv.includes("--worker")) {
 
   if (args.includes("--screen")) {
     const r = new Rng(23);
-    const sets: Faction[][] = [...FACTIONS.map((f) => [f]), ...FACTIONS.flatMap((a, i) => FACTIONS.slice(i + 1).map((b) => [a, b]))];
+    // the first people leads, the second lends: every ordered pair
+    const sets: Faction[][] = [...FACTIONS.map((f) => [f]), ...FACTIONS.flatMap((a) => FACTIONS.filter((b) => b !== a).map((b) => [a, b]))];
     const decks = sets.map((fs) => buildDeck({ factions: fs, noise: 0 }, r).map((d) => d.id));
     decks.forEach((d, i) => { const e = deckErrors(d.map((x) => ALL_DEFS[x] as CardDef)); if (e.length) console.log(`${key(sets[i])}: not legal (${e.join("; ")})`); });
     console.log(`Each built deck against the six starter decks, ${n} matches each (seats swapped): score, then by starter deck.`);
@@ -77,7 +78,8 @@ if (process.argv.includes("--worker")) {
   const ti = args.indexOf("--tune");
   if (ti >= 0) {
     const fs = args[ti + 1].split(",") as Faction[];
-    const pool = [...new Map(fs.flatMap((f) => poolOf(f)).map((d) => [d.id, d])).values()];
+    const leads = new Set(["hero", "host", "monster"]);
+    const pool = [...new Map(fs.flatMap((f, k) => poolOf(f).filter((d) => k === 0 || !leads.has(d.type))).map((d) => [d.id, d])).values()];
     const r = new Rng(hashSeed(31, key(fs)));
     let best = saved[key(fs)]?.ids ?? buildDeck({ factions: fs, noise: 0 }, r).map((d) => d.id);
     const mutate = (ids: string[]): string[] | null => {
