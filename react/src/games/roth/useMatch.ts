@@ -8,10 +8,10 @@ import { computerDeck } from "./engine/computerDecks";
 import { Rng } from "./engine/rng";
 import { loadSavedDecks, resolveDeck } from "./decks";
 import { FACTION_TITLE } from "./text";
-import { applyDecision, cloneState, fighter, needsSetting, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
+import { applyDecision, cloneState, facedSpot, fighter, needsSetting, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
 import { summarize } from "./components/Choices";
 import { cancelComputer, computerChoice } from "./aiClient";
-import { logLine, reckonedLine } from "./text";
+import { logLine, reckonedLine, seatName } from "./text";
 import { recordGameEnd, recordGameStart } from "../../online/analytics";
 import { recordMatch } from "../../online/telemetry";
 
@@ -146,7 +146,16 @@ export function useMatch() {
       ? { title: "The Reckoning", lines: [reckonedLine(S, saved.me, saved.me), reckonedLine(S, (1 - saved.me) as Side, saved.me)], next: "The Winnow begins." } : null;
     const end = duelEnd(saved.S, S, saved.me) ?? reck;
     const endLines = end ? [`${end.title}. ${end.lines.join(" ")}`, ...(end.next ? [end.next] : [])] : [];
-    const log = [...saved.log, line, ...endLines, ...(after !== before ? [`§ ${after}`] : []), ...(resultLine ? [resultLine] : [])].slice(-240);
+    // the wheel turns in the Winnow: say so, and what comes round to you next
+    const turned: string[] = [];
+    if (saved.S.phase === "play" && (S.phase !== "play" || S.step > saved.S.step)) {
+      const k = saved.S.step;
+      if (S.phase === "play" && S.step <= 6) {
+        const nx = facedSpot(S.step, saved.me, S.reversed), c = S.board[nx];
+        turned.push(`The wheel turns: step ${k} of 6 done. Before you now: ${c ? c.def.name : "an empty seat"}, ${seatName(S, nx, saved.me)}.`);
+      } else turned.push(`The wheel turns: the ${S.reversed ? "backwards round" : "Winnow"} is done.`);
+    }
+    const log = [...saved.log, line, ...turned, ...endLines, ...(after !== before ? [`§ ${after}`] : []), ...(resultLine ? [resultLine] : [])].slice(-240);
     // stop between duels (not after the last: the result says it), so the player sees how the duel ended
     const pause = end && next ? end : undefined;
     // your own moves can be taken back; the Muster's are quick enough to keep out of the way

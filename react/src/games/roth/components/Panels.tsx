@@ -109,7 +109,8 @@ export function Legend() {
   );
 }
 
-export function LogPanel({ log }: { log: string[] }) {
+/** Pointing at (or focusing) a move lights the cards it names on the wheel. */
+export function LogPanel({ log, onLight }: { log: string[]; onLight?: (line: string | null) => void }) {
   // follow the newest move
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => { const el = ref.current; if (el) el.scrollTop = el.scrollHeight; }, [log.length]);
@@ -117,7 +118,8 @@ export function LogPanel({ log }: { log: string[] }) {
     <div className="panel">
       <p className="label">Moves</p>
       <ol className="log" aria-live="polite" ref={ref}>
-        {log.slice(-60).map((l, i) => (l.startsWith("§ ") ? <li key={i} className="log-sec">{l.slice(2)}</li> : <li key={i}>{l}</li>))}
+        {log.slice(-60).map((l, i) => (l.startsWith("§ ") ? <li key={i} className="log-sec">{l.slice(2)}</li>
+          : <li key={i} tabIndex={onLight ? 0 : undefined} onMouseEnter={() => onLight?.(l)} onMouseLeave={() => onLight?.(null)} onFocus={() => onLight?.(l)} onBlur={() => onLight?.(null)}>{l}</li>))}
       </ol>
     </div>
   );

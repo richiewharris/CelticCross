@@ -8,7 +8,7 @@ import { CardFace } from "./Card";
 import { Icon } from "./Icons";
 import { seatName, seatShort } from "../text";
 
-export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen" | "next";
+export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen" | "next" | "lit";
 
 /** Where a spot's Valour stands now: the duel under way, a finished duel, or still to come. */
 export function spotValour(S: State, spot: number): { v: number; shield: number; felled: boolean; live: boolean } | null {

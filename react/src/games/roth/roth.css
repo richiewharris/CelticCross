@@ -340,7 +340,7 @@ body.gm-roth .tag.omen { border-color: #4f6b8a; color: #b7cbe0; }
 body.gm-roth .tag.champ { border-color: #e9d39d; color: #e9d39d; }
 body.gm-roth .valour { font-size: .95em; font-weight: 700; color: #f2c6bd; background: #3a1d19; border-radius: .4em; padding: 0 .35em; }
 body.gm-roth .valour.live { background: #5c231c; color: #fff; }
-body.gm-roth .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 30%; display: grid; gap: .4em; justify-items: center; text-align: center; background: #17120e; border-radius: 12px; padding: .6em .4em; z-index: 1; }
+body.gm-roth .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 22%; display: grid; gap: .4em; justify-items: center; text-align: center; background: #17120e; border-radius: 12px; padding: .6em .4em; z-index: 1; }
 body.gm-roth .wheel-center .phase { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.5em; line-height: 1.15; }
 body.gm-roth .wheel-center .tag { font-size: 1em; }
 
@@ -944,7 +944,7 @@ body.gm-roth .game > .match-bar { grid-column: 1 / -1; margin-bottom: 0; }
 /* ---- the wheel as the table: bands shaded by owner, labelled; the hub says where the match is */
 body.gm-roth .wheel-bg .band.mine { fill: rgba(201, 74, 61, .10); }
 body.gm-roth .wheel-bg .band.theirs { fill: rgba(138, 119, 192, .10); }
-body.gm-roth .band-label { position: absolute; transform: translate(-50%, -50%); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; text-align: center; line-height: 1.2; pointer-events: none; display: grid; }
+body.gm-roth .band-label { position: absolute; z-index: 2; background: #17120e; padding: 2px 6px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; text-align: center; line-height: 1.2; pointer-events: none; display: grid; }
 body.gm-roth .band-label.mine { color: #d9897e; }
 body.gm-roth .band-label.theirs { color: #a99bd6; }
 body.gm-roth .band-label small { text-transform: none; letter-spacing: 0; font-size: .8rem; color: var(--muted); }
@@ -954,3 +954,5 @@ body.gm-roth .wheel-center .steps i.done { background: var(--bronze); }
 body.gm-roth .wheel-center .steps i.now { background: var(--bronze-hi); border-color: var(--bronze-hi); box-shadow: 0 0 6px rgba(220, 187, 128, .6); }
 body.gm-roth .wheel-center .hub-note { color: var(--muted); font-size: .85em; }
 body.gm-roth .spot.m-next .card, body.gm-roth .spot.m-next .empty-spot { outline: 2px dashed #6fa5b3; outline-offset: 4px; }
+body.gm-roth .spot.m-lit .card, body.gm-roth .lane-spot.m-lit .card { box-shadow: var(--fs), 0 0 0 .25em #6fa5b3, 0 0 1.2em rgba(111, 165, 179, .6); }
+body.gm-roth .log li[tabindex]:hover, body.gm-roth .log li[tabindex]:focus { color: var(--bronze-hi); outline: none; cursor: default; }

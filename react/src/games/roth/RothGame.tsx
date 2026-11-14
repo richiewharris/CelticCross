@@ -59,6 +59,8 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [ending, setEnding] = useState(false);
   /** In a match the page header and the section tabs step aside; Menu brings them back. */
   const [menu, setMenu] = useState(false);
+  /** The move pointed at in the log: its cards light up on the wheel. */
+  const [litLine, setLitLine] = useState<string | null>(null);
   /** The drafting slider opens from the open slot's "+" (or a card in hand). */
   const [placeOpen, setPlaceOpen] = useState(false);
   const narrow = useNarrow(1100);
@@ -128,6 +130,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       <section className="stage" aria-label="Roth Catha table">
         <Table S={S} me={m.me} d={d} sel={tableSel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} last={m.last}
+          lit={litLine ? S.board.flatMap((c, i) => (c && c.def.type !== "unknown" && litLine.includes(c.def.name.split(",")[0]) ? [i] : [])) : undefined}
           afterWheel={m.myTurn && d && d.kind === "place" ? (
             placeOpen ? (
               <div className="place-sheet" role="dialog" aria-modal="false" aria-label={`Choose a card for ${seatName(S, d.spot!, m.me)}`}>
@@ -147,7 +150,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       <aside>
         {narrow ? null : panel}
         <Inspector def={focus} />
-        <LogPanel log={m.log} />
+        <LogPanel log={m.log} onLight={setLitLine} />
         <details className="panel-fold" open={m.over || undefined}>
           <summary>New match</summary>
           <SetupPanel setup={m.setup} onChange={m.setSetup} onStart={m.start} inMatch record={m.record} />

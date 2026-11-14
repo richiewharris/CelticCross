@@ -79,6 +79,8 @@ export function Table(props: {
   afterWheel?: ReactNode;
   /** Recent moves, for the duel's ticker and to pulse the support just used. */
   last?: MoveEvent[];
+  /** Seats to light (a move pointed at in the log). */
+  lit?: number[];
 }) {
   const { S, me, d, sel } = props;
   const [wide, setWide] = useState(false);
@@ -104,6 +106,7 @@ export function Table(props: {
     }
     if (sel?.spot !== undefined) marks.set(sel.spot, "chosen");
   }
+  for (const s of props.lit ?? []) marks.set(s, "lit");
   const focus = focusSpot(S, me, d);
   const duel = S.phase === "combat" && !!S.combat;
   // the next seat to come round to you
