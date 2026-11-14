@@ -5,7 +5,7 @@ import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, needsSetting, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { settingDef } from "../engine/settings";
 import { CardFace } from "./Card";
-import { DuelView, MoveTicker, useNarrow } from "./DuelView";
+import { DuelView, useNarrow } from "./DuelView";
 import type { MoveEvent } from "../useMatch";
 import { MusterView } from "./MusterView";
 import { FordLane } from "./FordLane";
@@ -154,8 +154,7 @@ export function Table(props: {
         <MusterView S={S} me={me} d={d} onPick={props.onPick} onFocusCard={props.onFocusCard} />
       ) : duel && !wide ? (
         <>
-          {props.last?.length ? <MoveTicker last={props.last} /> : null}
-          <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
+          <DuelView S={S} me={me} last={props.last} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
             lastSpot={(() => { const e = props.last?.[props.last.length - 1]; return e && e.spot !== undefined ? { spot: e.spot, n: e.n } : undefined; })()} />
         </>
       ) : !showWheel && focus !== null ? (

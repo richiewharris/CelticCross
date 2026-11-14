@@ -95,11 +95,12 @@ export function DuelView(props: {
   S: State; me: Side; usable?: Set<number>; chosen?: number; onSpot?: (spot: number) => void; onFocusCard?: (d: CardDef) => void;
   /** The support used by the last move, to pulse it. */
   lastSpot?: { spot: number; n: number };
+  /** Recent moves, shown beside the duel. */
+  last?: MoveEvent[];
 }) {
   const { S, me } = props;
   const C = S.combat;
   const floats = useFloats(S);
-  const narrow = useNarrow();
   if (!C) return null;
   const death = toDeath(S);
   const side = (p: Side) => {
@@ -119,10 +120,11 @@ export function DuelView(props: {
         {floats.filter((x) => x.p === p).map((x) => <span key={x.id} className={`float ${x.kind}`} aria-hidden="true">{x.text}</span>)}
         <div className="duel-fighter">
           <div className="duel-portrait">
-            <CardFace def={f} owner={hero.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} onFocusCard={props.onFocusCard} label={`${f.name}, ${mine ? "your" : "the enemy's"} fighter: Valour ${v}${sh ? `, Shield ${sh}` : ""}`} />
+            <CardFace def={f} owner={hero.owner === me ? "mine" : "theirs"} variant="compact" onFocusCard={props.onFocusCard} label={`${f.name}, ${mine ? "your" : "the enemy's"} fighter: Valour ${v}${sh ? `, Shield ${sh}` : ""}`} />
           </div>
           <div className="duel-info">
-            <p className="duel-name"><b>{f.name}</b> <small>{mine ? "you" : "the enemy"} · Initiative {C.init[p]}{felled ? " · felled" : ""}</small></p>
+            <p className="duel-name"><b>{f.name}</b> <small>Initiative {C.init[p]}{!done && actorOf(C) === p ? " · acting" : ""}{felled ? " · felled" : ""}</small></p>
+            <p className="duel-sub">{C.champ[p] ? `standing in for ${hero.def.name}` : `${mine ? "your" : "their"} ${q % 2 === 0 ? "first" : "second"} band`}</p>
             <ValourBar v={v} start={C.startV[C.duel]?.[p] || v} cap={C.cap[p]} shield={sh} />
             {death && hasMound(S, p) ? (
               <p className="duel-mound" title="The mound shelters the Aos Sídhe like Armour: every Strike against an Aos Sídhe fighter 1 less (even one that ignores Shield and Armour), until it has soaked 5 in all over the match.">
@@ -160,7 +162,8 @@ export function DuelView(props: {
             const turned = eff !== sd ? `counts as ${[eff.element !== sd.element ? eff.element : null, eff.kind !== sd.kind ? eff.kind : null].filter(Boolean).join(" ")}${(eff.channel ?? 0) + (eff.attuned ?? 0) ? `, +${(eff.channel ?? 0) + (eff.attuned ?? 0)}` : ""}` : null;
             return (
               <div key={props.lastSpot?.spot === s ? `${s}-${props.lastSpot.n}` : s} className={`sup-wrap${props.lastSpot?.spot === s ? " pulse" : ""}`}>
-              <CardFace def={c.def} owner={c.owner === me ? "mine" : "theirs"} variant={narrow ? "compact" : "full"} dim={used} playable={can} selected={props.chosen === s}
+              <span className="sup-seat">{s === hs + 1 ? "west flank" : "east flank"}</span>
+              <CardFace def={c.def} owner={c.owner === me ? "mine" : "theirs"} variant="compact" dim={used} playable={can} selected={props.chosen === s}
                 badge={death ? [again, c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined
                   : used ? "used" : [c.owner !== ownerOfSpot(s) ? "supplanted in" : null, turned].filter(Boolean).join(" · ") || undefined}
                 onFocusCard={props.onFocusCard} onClick={can && props.onSpot ? () => props.onSpot!(s) : undefined} />
@@ -171,7 +174,27 @@ export function DuelView(props: {
       </div>
     );
   };
+  const bench = C.champs[me] ?? [];
   return (
+    <div className="duel-layout">
+    <div className="duel-left">
+      {props.last?.length ? <><p className="zone-label">Last moves</p><MoveTicker last={props.last} /></> : null}
+      {bench.length ? (
+        <>
+          <p className="zone-label">Champions on the bench</p>
+          <ul className="bench">
+            {bench.map((c) => (
+              <li key={c.uid}>
+                <button type="button" className="ms-row" onClick={() => props.onFocusCard?.(c.def)}>
+                  <b>{c.def.name}</b><span>{c.def.type === "champion" ? `Valour ${c.def.valour}` : c.def.type}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="ms-note">One champion a side in each duel; calling one uses your turn.</p>
+        </>
+      ) : null}
+    </div>
     <div className="duel" role="group" aria-label={`Duel ${C.duel + 1}`}>
       {side((1 - me) as Side)}
       <div className="duel-ford" aria-hidden="true"><span>the ford · {C.duel === 2 ? "the final duel" : `duel ${C.duel + 1}`}{C.stage === "done" ? "" : death ? ` · turn ${C.turn + 1}` : ` · turn ${Math.min(C.turn + 1, 4)} of 4`}</span></div>
@@ -182,6 +205,7 @@ export function DuelView(props: {
         </div>
       ) : null}
       {side(me)}
+    </div>
     </div>
   );
 }

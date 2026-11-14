@@ -994,3 +994,37 @@ body.gm-roth .ms-row span { max-width: 100%; text-align: left; white-space: norm
   body.gm-roth .ms-drawn .muster-card { width: 150px; flex-basis: 150px; }
 }
 body.gm-roth .ms-drawn .muster-draw { margin-top: 18px; }
+
+/* ---- the duel: last moves and the bench beside it; each side a row: west flank, the fighter, east flank */
+body.gm-roth .duel-layout { display: grid; grid-template-columns: minmax(170px, 210px) minmax(0, 1fr); gap: 16px; align-items: start; width: 100%; }
+body.gm-roth .duel-left { display: grid; gap: 8px; align-content: start; }
+body.gm-roth .duel-left .zone-label { margin: 0; }
+body.gm-roth .duel-left .ticker { display: grid; gap: 6px; }
+body.gm-roth .duel-left .bench { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+body.gm-roth .duel-layout .duel { max-width: none; }
+body.gm-roth .duel-layout .duel-side { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); column-gap: 12px; align-items: start; flex-direction: initial !important; }
+body.gm-roth .duel-layout .duel-supports { display: contents !important; }
+body.gm-roth .duel-layout .duel-supports > :first-child { grid-column: 1; grid-row: 1; }
+body.gm-roth .duel-layout .duel-fighter { display: grid !important; grid-column: 2; grid-row: 1; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 10px; font-size: 11px; }
+body.gm-roth .duel-layout .duel-supports > :last-child { grid-column: 3; grid-row: 1; }
+body.gm-roth .duel-layout .duel-portrait { width: auto; grid-row: auto; }
+body.gm-roth .duel-layout .duel-supports .card.compact { width: 100%; font-size: 11px; }
+body.gm-roth .duel-layout .duel-supports .empty-spot { width: auto; aspect-ratio: auto; min-height: 5em; }
+body.gm-roth .duel-layout .duel-name b { font-family: var(--font-display); font-size: 1.35rem; font-weight: 400; }
+body.gm-roth .duel-sub { margin: -4px 0 0; color: var(--muted); font-size: .85rem; }
+body.gm-roth .sup-seat { display: block; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+@media (max-width: 760px) {
+  body.gm-roth .duel-layout { grid-template-columns: minmax(0, 1fr); }
+  body.gm-roth .duel-left { order: 2; }
+  body.gm-roth .duel-layout .duel-side { grid-template-columns: 1fr 1fr; row-gap: 8px; }
+  body.gm-roth .duel-layout .duel-fighter { grid-column: 1 / -1; grid-row: 1; grid-template-columns: 6rem minmax(0, 1fr); }
+  body.gm-roth .duel-layout .duel-supports > :first-child { grid-column: 1; grid-row: 2; }
+  body.gm-roth .duel-layout .duel-supports > :last-child { grid-column: 2; grid-row: 2; }
+  body.gm-roth .duel-layout .duel-side.mine .duel-fighter { grid-row: 2; }
+  body.gm-roth .duel-layout .duel-side.mine .duel-supports > * { grid-row: 1 !important; }
+}
+@media (min-width: 761px) {
+  body.gm-roth .duel-layout .duel-side { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr); }
+  body.gm-roth .duel-layout .duel-fighter { grid-template-columns: 6rem minmax(0, 1fr); }
+  body.gm-roth .duel-layout .duel-name b { font-size: 1.2rem; }
+}
