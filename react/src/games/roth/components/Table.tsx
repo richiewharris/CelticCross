@@ -189,7 +189,7 @@ export function Table(props: {
           </div>
         </div>
       ) : null}
-      <div className="zone mine" aria-label="Your omens and hand">
+      {S.phase === "muster" ? null : <div className="zone mine" aria-label="Your omens and hand">
         {P.omens.length ? <><span className="zone-label">{props.names?.[0] ?? "You"}: omens</span><div className="omens">{omenRow(me)}</div></> : null}
         {P.hand.length ? (
           <span className="zone-label">Hand · {P.hand.length} <small className="hint">swipe a card down to read it in full</small>
@@ -203,7 +203,7 @@ export function Table(props: {
               onClick={playable.has(c.uid) ? () => props.onCard!(c.uid) : undefined} />
           ))}
         </div>
-      </div>
+      </div>}
       {S.phase === "muster" ? null : <details className="all-cards">
         <summary>Every card on the wheel</summary>
         {[0, 1, 2, 3].map((q) => (

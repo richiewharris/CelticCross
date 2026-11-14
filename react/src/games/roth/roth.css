@@ -956,3 +956,41 @@ body.gm-roth .wheel-center .hub-note { color: var(--muted); font-size: .85em; }
 body.gm-roth .spot.m-next .card, body.gm-roth .spot.m-next .empty-spot { outline: 2px dashed #6fa5b3; outline-offset: 4px; }
 body.gm-roth .spot.m-lit .card, body.gm-roth .lane-spot.m-lit .card { box-shadow: var(--fs), 0 0 0 .25em #6fa5b3, 0 0 1.2em rgba(111, 165, 179, .6); }
 body.gm-roth .log li[tabindex]:hover, body.gm-roth .log li[tabindex]:focus { color: var(--bronze-hi); outline: none; cursor: default; }
+
+/* ---- the Muster: hand | drawn | Reserve and omens */
+body.gm-roth .muster { grid-template-columns: minmax(180px, 1fr) minmax(0, 2.6fr) minmax(170px, 1fr); align-items: start; gap: 18px; }
+body.gm-roth .ms-col h3 { font-family: var(--font-display); color: var(--bronze-hi); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+body.gm-roth .ms-col h3 small { font-family: inherit; color: var(--muted); font-size: .8rem; }
+body.gm-roth .ms-side h3 + .ms-note { margin-top: 0; }
+body.gm-roth .ms-col ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+body.gm-roth .ms-row { width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / .03); color: inherit; font: inherit; font-size: .85rem; cursor: pointer; }
+body.gm-roth .ms-row b { font-weight: 600; }
+body.gm-roth .ms-row span { color: var(--muted); font-size: .78rem; text-align: right; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.gm-roth .ms-glabel { margin: 6px 0 4px; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+body.gm-roth .ms-glabel .short { color: #d9897e; }
+body.gm-roth .ms-glabel .met { color: #8fc48a; }
+body.gm-roth .ms-bar { display: block; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: 6px; overflow: hidden; }
+body.gm-roth .ms-bar i { display: block; height: 100%; background: #c94a3d; }
+body.gm-roth .ms-bar i.met { background: #6b9c66; }
+body.gm-roth .ms-note { color: var(--muted); font-size: .82rem; margin: 4px 0 10px; }
+body.gm-roth .ms-omens .ms-empty { border: 1px dashed var(--line); border-radius: 8px; padding: 6px 9px; color: var(--muted); font-size: .8rem; }
+body.gm-roth .muster-card .muster-actions { margin-top: 10px; display: grid; gap: 6px; }
+body.gm-roth .muster-next { display: block; text-align: center; color: var(--muted); font-size: .75rem; margin-top: 6px; }
+@media (max-width: 900px) {
+  body.gm-roth .muster { grid-template-columns: minmax(0, 1fr); }
+  body.gm-roth .ms-drawn { order: -1; }
+}
+body.gm-roth .muster { grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); grid-template-areas: "hand drawn" "side drawn"; }
+body.gm-roth .ms-hand { grid-area: hand; }
+body.gm-roth .ms-drawn { grid-area: drawn; }
+body.gm-roth .ms-side { grid-area: side; }
+body.gm-roth .ms-drawn .muster-draw { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+body.gm-roth .ms-drawn .muster-card { width: 170px; flex: 0 0 170px; }
+body.gm-roth .ms-row { flex-wrap: wrap; }
+body.gm-roth .ms-row span { max-width: 100%; text-align: left; white-space: normal; }
+@media (max-width: 900px) {
+  body.gm-roth .muster { grid-template-columns: minmax(0, 1fr); grid-template-areas: "drawn" "hand" "side"; }
+  body.gm-roth .ms-drawn .muster-draw { flex-wrap: nowrap; overflow-x: auto; }
+  body.gm-roth .ms-drawn .muster-card { width: 150px; flex-basis: 150px; }
+}
+body.gm-roth .ms-drawn .muster-draw { margin-top: 18px; }
