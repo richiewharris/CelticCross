@@ -177,8 +177,10 @@ export function ActionPanel(props: {
         {ends.map((a) => <button key={a.key} type="button" className="btn quiet" onClick={() => props.onCommit(a.variants[0].i)}>{a.label}</button>)}
         <button type="button" className="btn primary act-go" disabled={resolved === null} onClick={() => resolved !== null && props.onCommit(resolved)}>
           {resolved !== null ? optionLabel(S, d, d.options[resolved]) : sel ? "Choose a target" : "Choose an action"}
+          {resolved !== null ? <kbd className="keycap" aria-hidden="true">Enter</kbd> : null}
         </button>
       </div>
+      <p className="act-keys" aria-hidden="true"><kbd className="keycap">1</kbd>–<kbd className="keycap">9</kbd> pick · {groups.length > 1 ? <><kbd className="keycap">←</kbd><kbd className="keycap">→</kbd> kinds · </> : null}<kbd className="keycap">Enter</kbd> do it · <kbd className="keycap">Esc</kbd> clear</p>
     </div>
   );
 }

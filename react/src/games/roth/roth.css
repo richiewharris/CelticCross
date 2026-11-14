@@ -1028,3 +1028,7 @@ body.gm-roth .sup-seat { display: block; font-size: .7rem; letter-spacing: .06em
   body.gm-roth .duel-layout .duel-fighter { grid-template-columns: 6rem minmax(0, 1fr); }
   body.gm-roth .duel-layout .duel-name b { font-size: 1.2rem; }
 }
+body.gm-roth .keycap { display: inline-flex; align-items: center; justify-content: center; min-width: 1.4em; height: 1.4em; padding: 0 .3em; margin: 0 .15em; border-radius: 4px; border: 1px solid #5a4b3a; font: inherit; font-size: .72em; color: var(--muted); background: transparent; vertical-align: middle; }
+body.gm-roth .act-go .keycap { margin-left: .6em; color: inherit; border-color: currentColor; opacity: .7; }
+body.gm-roth .act-keys { margin: 4px 0 0; font-size: .78rem; color: var(--muted); }
+@media (hover: none) { body.gm-roth .act-keys { display: none; } }
