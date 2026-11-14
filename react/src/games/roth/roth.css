@@ -912,3 +912,10 @@ body.gm-roth .tag.rested { background: rgb(110 170 110 / .2); color: #cfe9c8; }
 body.gm-roth .tag.bleed { background: rgb(190 60 60 / .22); color: #f0c4c4; }
 body.gm-roth .legend .ink-armour { color: #b9c9db; } body.gm-roth .legend .ink-block { color: #8fb3e0; } body.gm-roth .legend .ink-rest { color: #a9d39a; }
 body.gm-roth .ink-armour { color: #5f7187; } body.gm-roth .ink-block { color: #3f6d9c; }
+
+/* a duel's end: play waits until the player has seen it */
+.duel-end { border: 2px solid var(--bronze); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+.duel-end h3 { margin: 0 0 6px; font-size: 1.05rem; font-family: var(--font-display); color: var(--bronze-hi); }
+.duel-end p { margin: 4px 0; }
+.duel-end .duel-end-next { margin-top: 8px; font-weight: 600; }
+.duel-end .btn { margin-top: 10px; }
