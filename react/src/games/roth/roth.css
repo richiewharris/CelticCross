@@ -340,7 +340,7 @@ body.gm-roth .tag.omen { border-color: #4f6b8a; color: #b7cbe0; }
 body.gm-roth .tag.champ { border-color: #e9d39d; color: #e9d39d; }
 body.gm-roth .valour { font-size: .95em; font-weight: 700; color: #f2c6bd; background: #3a1d19; border-radius: .4em; padding: 0 .35em; }
 body.gm-roth .valour.live { background: #5c231c; color: #fff; }
-body.gm-roth .wheel-center { position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); width: 46%; display: grid; gap: .4em; justify-items: center; text-align: center; }
+body.gm-roth .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 30%; display: grid; gap: .4em; justify-items: center; text-align: center; background: #17120e; border-radius: 12px; padding: .6em .4em; z-index: 1; }
 body.gm-roth .wheel-center .phase { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.5em; line-height: 1.15; }
 body.gm-roth .wheel-center .tag { font-size: 1em; }
 
@@ -919,3 +919,38 @@ body.gm-roth .ink-armour { color: #5f7187; } body.gm-roth .ink-block { color: #3
 .duel-end p { margin: 4px 0; }
 .duel-end .duel-end-next { margin-top: 8px; font-weight: 600; }
 .duel-end .btn { margin-top: 10px; }
+
+/* ---- the match bar: in a match it stands in for the page header */
+body.roth-in-match.gm-roth:not(.roth-menu) .wrap > header,
+body.roth-in-match.gm-roth:not(.roth-menu) .roth-nav { display: none; }
+body.gm-roth .match-bar { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+body.gm-roth .mb-top { display: flex; align-items: center; gap: 14px; padding: 8px 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+body.gm-roth .mb-title { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.25rem; white-space: nowrap; }
+body.gm-roth .mb-track { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; list-style: none; margin: 0; padding: 0; flex: 1 1 auto; font-size: .82rem; }
+body.gm-roth .mb-track li { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+body.gm-roth .mb-track li + li::before { content: none; }
+body.gm-roth .mb-track li.done { color: #8fc48a; border-color: #3b5a38; }
+body.gm-roth .mb-track li.now { background: var(--bronze-hi); border-color: var(--bronze-hi); color: #22180f; font-weight: 600; }
+body.gm-roth .mb-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+body.gm-roth .mb-goal { display: flex; align-items: baseline; gap: 16px; padding: 10px 14px; }
+body.gm-roth .mb-who { font-family: var(--font-display); color: var(--bronze-hi); font-size: 1.05rem; white-space: nowrap; }
+body.gm-roth .mb-goal p { margin: 0; line-height: 1.4; }
+@media (max-width: 700px) {
+  body.gm-roth .mb-track { order: 3; flex-basis: 100%; font-size: .75rem; }
+  body.gm-roth .mb-goal { flex-direction: column; gap: 2px; padding: 8px 10px; }
+}
+body.gm-roth .game > .match-bar { grid-column: 1 / -1; margin-bottom: 0; }
+
+/* ---- the wheel as the table: bands shaded by owner, labelled; the hub says where the match is */
+body.gm-roth .wheel-bg .band.mine { fill: rgba(201, 74, 61, .10); }
+body.gm-roth .wheel-bg .band.theirs { fill: rgba(138, 119, 192, .10); }
+body.gm-roth .band-label { position: absolute; transform: translate(-50%, -50%); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; text-align: center; line-height: 1.2; pointer-events: none; display: grid; }
+body.gm-roth .band-label.mine { color: #d9897e; }
+body.gm-roth .band-label.theirs { color: #a99bd6; }
+body.gm-roth .band-label small { text-transform: none; letter-spacing: 0; font-size: .8rem; color: var(--muted); }
+body.gm-roth .wheel-center .steps { display: flex; gap: 6px; }
+body.gm-roth .wheel-center .steps i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--bronze); display: block; }
+body.gm-roth .wheel-center .steps i.done { background: var(--bronze); }
+body.gm-roth .wheel-center .steps i.now { background: var(--bronze-hi); border-color: var(--bronze-hi); box-shadow: 0 0 6px rgba(220, 187, 128, .6); }
+body.gm-roth .wheel-center .hub-note { color: var(--muted); font-size: .85em; }
+body.gm-roth .spot.m-next .card, body.gm-roth .spot.m-next .empty-spot { outline: 2px dashed #6fa5b3; outline-offset: 4px; }

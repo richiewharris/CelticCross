@@ -15,6 +15,7 @@ import { DeckBuilder } from "./DeckBuilder";
 import { Walkthrough } from "./walkthrough/Walkthrough";
 import { FACTION_TITLE, seatName, shownTo } from "./text";
 import { useMatch } from "./useMatch";
+import { MatchBar } from "./components/MatchBar";
 
 type Tab = "play" | "build" | "guide";
 type Guide = "walk" | "puzzles" | "cards" | "decks" | "building";
@@ -56,14 +57,17 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
   const [sel, setSel] = useState<Sel>(null);
   const [join, setJoin] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  /** In a match the page header and the section tabs step aside; Menu brings them back. */
+  const [menu, setMenu] = useState(false);
   /** The drafting slider opens from the open slot's "+" (or a card in hand). */
   const [placeOpen, setPlaceOpen] = useState(false);
   const narrow = useNarrow(1100);
   // while a match is on, the page header steps back
   useEffect(() => {
     document.body.classList.toggle("roth-in-match", !!m.S && !m.over);
-    return () => document.body.classList.remove("roth-in-match");
-  }, [m.S, m.over]);
+    document.body.classList.toggle("roth-menu", menu);
+    return () => { document.body.classList.remove("roth-in-match"); document.body.classList.remove("roth-menu"); };
+  }, [m.S, m.over, menu]);
   const [showResult, setShowResult] = useState(true);
   const [act, setAct] = useState<Pick>(NO_PICK);
   const [group, setGroup] = useState<string | null>(null);
@@ -117,22 +121,11 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
     </div>
   ) : m.myTurn && d && d.kind !== "muster" && d.kind !== "place"
     ? <ActionPanel S={S} d={d} pick={act} group={group} onPick={setAct} onGroup={setGroup} onCommit={pick} /> : null;
-  const status = m.over && S.result ? `The match is over: ${S.result.winner === -1 ? "a draw" : S.result.winner === m.me ? "you win" : "the computer wins"} (heroes felled: you ${S.result.felled[1 - m.me]}, the computer ${S.result.felled[m.me]}).` : m.over ? "The match is over." : m.pause ? `${m.pause.title}.` : m.myTurn ? "Your move." : m.thinking ? "The computer is thinking…" : "…";
   return (
-    <div className="game">
+    <div className="game in-match">
+      <MatchBar S={S} d={d} me={m.me} myTurn={m.myTurn} thinking={m.thinking} over={m.over} pause={m.pause}
+        canUndo={m.canUndo} onUndo={m.undo} ending={ending} setEnding={setEnding} onQuit={m.quit} onMenu={() => setMenu(!menu)} />
       <section className="stage" aria-label="Roth Catha table">
-        <div className="status-bar">
-          <div className="status" role="status" aria-live="polite">{status}</div>
-          <div className="status-tools">
-            <button type="button" className="btn small" disabled={!m.canUndo} onClick={() => { setEnding(false); m.undo(); }} title="Take back your last move (and the computer's reply)">↶ Take back</button>
-            {m.over ? null : ending ? (
-              <>
-                <button type="button" className="btn small danger" onClick={() => { setEnding(false); m.quit(); }}>End it, no result</button>
-                <button type="button" className="btn small" onClick={() => setEnding(false)}>Keep playing</button>
-              </>
-            ) : <button type="button" className="btn small" onClick={() => setEnding(true)}>End match</button>}
-          </div>
-        </div>
         <Table S={S} me={m.me} d={d} sel={tableSel} onCard={m.myTurn ? onCard : undefined} onSpot={m.myTurn ? onSpot : undefined}
           onFocusCard={setFocus} names={["You", `The computer (${m.theirs ? FACTION_TITLE[m.theirs] : ""})`]} onPick={m.myTurn ? pick : undefined} last={m.last}
           afterWheel={m.myTurn && d && d.kind === "place" ? (

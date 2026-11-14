@@ -5,7 +5,7 @@ import type { CardDef } from "../engine/cards";
 import { draftSpot, facedSpot, needsSetting, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { settingDef } from "../engine/settings";
 import { CardFace } from "./Card";
-import { DuelView, MoveTicker } from "./DuelView";
+import { DuelView, MoveTicker, useNarrow } from "./DuelView";
 import type { MoveEvent } from "../useMatch";
 import { MusterView } from "./MusterView";
 import { FordLane } from "./FordLane";
@@ -53,6 +53,23 @@ function phaseText(S: State): string {
   }
 }
 
+/** The hub's title and line: where in the match the wheel is. */
+function hubTitle(S: State): string {
+  if (S.phase === "draft") return "Marshalling";
+  if (S.phase === "reckon") return needsSetting(S) ? "The setting" : "The Reckoning";
+  if (S.phase === "play") return S.reversed ? "Backwards round" : "The Winnow";
+  if (S.phase === "late") return "Last omens";
+  if (S.phase === "combat") return S.combat?.duel === 2 ? "The final duel" : `Duel ${(S.combat?.duel ?? 0) + 1}`;
+  return S.phase === "end" ? "The match is over" : "";
+}
+function hubNote(S: State): string {
+  const where = settingDef(S.rules.setting)?.name ?? "the ford";
+  if (S.phase === "draft") return `${6 - S.step} more after this, then ${needsSetting(S) ? "the setting" : "the Reckoning"}`;
+  if (S.phase === "reckon") return needsSetting(S) ? "every hero is on the wheel" : "each side may swap two of its own cards";
+  if (S.phase === "play") return S.step >= 6 ? `then the duels, at ${where.replace(/^The /, "the ")}` : `${6 - S.step} more turns of the wheel, then ${where.replace(/^The /, "the ")}`;
+  return where;
+}
+
 export function Table(props: {
   S: State; me: Side; d: Decision | null; sel: Sel; onCard?: (uid: number) => void; onSpot?: (spot: number) => void;
   onFocusCard?: (d: CardDef) => void; names?: [string, string];
@@ -89,6 +106,12 @@ export function Table(props: {
   }
   const focus = focusSpot(S, me, d);
   const duel = S.phase === "combat" && !!S.combat;
+  // the next seat to come round to you
+  if (S.phase === "play" && S.step < 6) { const nx = facedSpot(S.step + 1, me, S.reversed); if (!marks.has(nx)) marks.set(nx, "next"); }
+  if (S.phase === "draft" && S.step < 6) { const nx = draftSpot(S.step + 1, me); if (!marks.has(nx)) marks.set(nx, "next"); }
+  // on a wide screen the whole wheel is the table, with a close-up behind a toggle; on a narrow one, the other way round
+  const narrow = useNarrow(1100);
+  const showWheel = duel ? wide : narrow ? wide || focus === null : !wide;
   const usable = new Set<number>();
   if (mineToAct && d?.kind === "duel") for (const o of d.options) if (o.t === "duel" && o.act === "use") usable.add(o.spot);
   const them = (1 - me) as Side;
@@ -120,7 +143,7 @@ export function Table(props: {
         </details>
         {focus !== null || duel ? (
           <button type="button" className="btn quiet small" aria-pressed={wide} onClick={() => setWide(!wide)}>
-            {wide ? (duel ? "Back to the duel" : "Close up") : "Whole wheel"}
+            {duel ? (wide ? "Back to the duel" : "Whole wheel") : showWheel ? "Close up" : "Whole wheel"}
           </button>
         ) : null}
       </div>
@@ -132,7 +155,7 @@ export function Table(props: {
           <DuelView S={S} me={me} usable={usable} chosen={sel?.spot} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
             lastSpot={(() => { const e = props.last?.[props.last.length - 1]; return e && e.spot !== undefined ? { spot: e.spot, n: e.n } : undefined; })()} />
         </>
-      ) : !wide && focus !== null ? (
+      ) : !showWheel && focus !== null ? (
         <FordLane S={S} me={me} mine={ownerOfSpot(focus) === me ? quadOf(focus) : (quadOf(focus) + 2) % 4} marks={marks} onSpot={props.onSpot} onFocusCard={props.onFocusCard}
           ghost={d?.kind === "place" && d.player === me && sel?.uid !== undefined ? (() => { const c = P.hand.find((x) => x.uid === sel.uid); return c ? { spot: d.spot!, def: c.def } : null; })() : null} />
       ) : (
@@ -143,6 +166,13 @@ export function Table(props: {
           chord={focus !== null && S.phase === "play" ? [focus, (focus + 6) % 12] : undefined}
           center={(
             <>
+              <span className="phase">{hubTitle(S)}</span>
+              {S.phase === "draft" || S.phase === "play" ? (
+                <span className="steps" aria-label={`Step ${Math.min(S.step, 6)} of 6`}>
+                  {[1, 2, 3, 4, 5, 6].map((k) => <i key={k} className={k < S.step ? "done" : k === S.step ? "now" : ""} />)}
+                </span>
+              ) : null}
+              <small className="hub-note">{hubNote(S)}</small>
               {globalGeasa(S, me).map((g) => <span key={g.key} className="tag geis global" title={g.text}><Icon name="global" /> {g.text}</span>)}
             </>
           )} />

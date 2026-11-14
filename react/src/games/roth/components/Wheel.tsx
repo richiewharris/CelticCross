@@ -8,7 +8,7 @@ import { CardFace } from "./Card";
 import { Icon } from "./Icons";
 import { seatName, seatShort } from "../text";
 
-export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen";
+export type Mark = "faced" | "target" | "duel" | "choosable" | "chosen" | "next";
 
 /** Where a spot's Valour stands now: the duel under way, a finished duel, or still to come. */
 export function spotValour(S: State, spot: number): { v: number; shield: number; felled: boolean; live: boolean } | null {
@@ -61,6 +61,13 @@ export function Wheel(props: {
         <div className="wheel-rot" style={{ transform: `rotate(${rot}deg)` }}>
           <svg className="wheel-bg" viewBox="-50 -50 100 100" aria-hidden="true">
             <circle r="48" className="rim" />
+            {/* the four bands, shaded by owner: band q spans the arc of its three seats */}
+            {[0, 1, 2, 3].map((q) => {
+              const a0 = ((90 * q + turn) * Math.PI) / 180, a1 = ((90 * q + 90 + turn) * Math.PI) / 180;
+              const P = (r: number, a: number) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+              return <path key={q} className={`band ${ownerOfSpot(q * 3) === me ? "mine" : "theirs"}`}
+                d={`M ${P(31, a0)} L ${P(47.6, a0)} A 47.6 47.6 0 0 1 ${P(47.6, a1)} L ${P(31, a1)} A 31 31 0 0 0 ${P(31, a0)} Z`} />;
+            })}
             <circle r="31" className="hub" />
             {[0, 1, 2, 3].map((q) => {
               const a = ((30 * (3 * q) + turn) * Math.PI) / 180;
@@ -112,6 +119,16 @@ export function Wheel(props: {
             );
           })}
         </div>
+        {!zoom ? [0, 1, 2, 3].map((q) => {
+          const a = ((90 * q + 45 + turn + rot) * Math.PI) / 180;
+          const mine = ownerOfSpot(q * 3) === me;
+          const hero = S.board[q * 3];
+          return (
+            <span key={q} className={`band-label ${mine ? "mine" : "theirs"}`} style={{ left: `${50 + 21 * Math.cos(a)}%`, top: `${50 + 21 * Math.sin(a)}%` }}>
+              {mine ? "Your" : "Their"} {q % 2 === 0 ? "first" : "second"} band{hero && hero.def.type !== "unknown" ? <small>{hero.def.name.split(/[ ,]/)[0] === "The" ? hero.def.name.split(",")[0] : hero.def.name.split(" ")[0]}</small> : null}
+            </span>
+          );
+        }) : null}
         {!zoom ? <div className="wheel-center">{props.center}</div> : null}
       </div>
       {zoom ? (() => {
