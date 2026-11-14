@@ -103,8 +103,8 @@ describe("the second player's setting", () => {
   it("is the best measured setting for its people against the first player's, while the insights are fresh", () => {
     expect(INSIGHTS_FRESH).toBe(true);
     const row = (SET_INSIGHTS.secondPlayer as Record<string, Record<string, Record<string, number>>>).ulster.fomoire;
-    const best = Object.entries(row).sort((a, b) => b[1] - a[1])[0][0];
-    expect(pickSettingId(SET_DECKS.ulster, SET_DECKS.fomoire)).toBe(best);
+    const best = Math.max(...Object.values(row));
+    expect(row[pickSettingId(SET_DECKS.ulster, SET_DECKS.fomoire)]).toBe(best); // any of the best, if they tie
   });
 });
 

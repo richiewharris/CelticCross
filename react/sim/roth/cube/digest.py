@@ -12,7 +12,7 @@ Each matchup cell has only ~20 matches per setting, so it is pulled toward the d
 the whole field (a shrinkage of k matches' weight). The file also keeps the settings as they were when measured; the
 game ignores the scores if the settings have changed since (and falls back to its own estimate).
 
-Usage: python3 sim/roth/cube/digest.py [--k 20] [--out src/games/roth/engine/insights.json]
+Usage: python3 sim/roth/cube/digest.py [--k 20] [--out src/games/roth/engine/insights.json] [--runs ford=<id>,tower=<id>,...]
 """
 import json
 import os
@@ -32,7 +32,14 @@ def main():
     out = args[args.index("--out") + 1] if "--out" in args else os.path.join(REACT, "src/games/roth/engine/insights.json")
     # the latest run for each fixed setting
     sweep = {}
-    for m in cube.metas():
+    # --runs ford=<id>,tower=<id>,...: take these runs instead (e.g. trial runs under the rules that have since become the
+    # defaults; a run on a --base counts in full when its --touch reached every match)
+    if "--runs" in args:
+        by_id = {m["id"]: m for m in cube.metas()}
+        for pair in args[args.index("--runs") + 1].split(","):
+            s, rid = pair.split("=")
+            sweep[s] = by_id[rid]
+    for m in ([] if sweep else cube.metas()):
         s = (m.get("rules") or {}).get("setting")
         if s and not m.get("base") and set(m["rules"]) == {"setting"}:
             sweep[s] = m

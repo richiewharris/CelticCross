@@ -19,8 +19,9 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The Red Branch of Emain Macha",
     story: "The Hound of Ulster and his companions ride out from Emain Macha with fire in their blood. Their feats burn through any shield, and they mean to finish a duel before the enemy settles in.",
     leans: { attack: 3, healing: 1, defence: 1 },
-    why: { attack: "The most Strike in its supports, and three blows that ignore Shield.", healing: "A little: a hero who heals on rest and a few Heals.", defence: "Thin: one Block card and a champion with Shield 1." },
+    why: { attack: "The most Strike in its supports, three blows that ignore Shield, and they hit harder when hurt.", healing: "A little: a hero who heals on rest and a few Heals.", defence: "Thin: one Block card and a champion with Shield 1." },
     ways: [
+      "**Battle-fury**: an Ulster hero at **half its starting Valour** or less Strikes **+1**.",
       "**The Samhain watch**: an Ulster hero's Strikes are **+1** against the dead (a fighter whose Focus is Spirit).",
       "**The Hound's cry**: once a duel, a blow that ignores Shield may spend the **top card of your Reserve** to land on a giant in full.",
     ],
@@ -54,7 +55,7 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     leans: { attack: 3, healing: 1, defence: 3 },
     why: { attack: "Heavy blows, and the deck's big Strikes fall early.", healing: "Almost none of their own; they deny the enemy's instead.", defence: "Giant-kin halves the wounds of most blows, and the supports hold the most Shield after Merrow's." },
     ways: [
-      "**Giant-kin**: a Fomóire fighter takes **half** the wounds of every Strike (rounded up), except a Strike of one of its **weaknesses**, which lands in full.",
+      "**Giant-kin**: a Fomóire fighter takes **half** the wounds of every Strike (rounded down), except a Strike of one of its **weaknesses**, which lands in full.",
     ],
   },
   merrow: {
@@ -71,12 +72,11 @@ export const DECK_NOTES: Record<Faction, DeckNote> = {
     people: "The host of the unquiet dead, that rides the night wind from the west",
     story: "The Slúagh have no heroes: hosts of the restless dead gather and fight as one. Their touch passes through shield and steel and takes a little life with it, and every time their enemy sleeps, they feed.",
     leans: { attack: 2, healing: 2, defence: 2 },
-    why: { attack: "Light blows that pass Shield and Block, and supports that weaken the enemy rather than wound.", healing: "No Heals: they steal Valour with their blows and feed on the enemy's rests.", defence: "No Shield, but no great blow wounds dead flesh for long." },
+    why: { attack: "Light blows that pass Shield and Block, and supports that weaken the enemy rather than wound.", healing: "No Heals: they steal Valour with their blows.", defence: "No Shield, but no great blow wounds dead flesh for long." },
     ways: [
       "**Hosts**: a host takes a hero's seat with **2 or 3 monsters** joined to it from your hand. Its Valour is the monsters' together, **less one**; its Initiative the host's plus theirs. It is weak to the host's own element and to any weakness **two of its monsters share**.",
       "{Spirit} **Spirit**: Spirit blows ignore Shield and Block and **steal 1** when they wound. A monster with a **hybrid** element may strike as that element instead (the element wheel and weakness count; Shield soaks it; nothing is stolen).",
       "**The dead-flesh aura**: no blow wounds a host for more than **half its full Valour**, but never less than **5**.",
-      "**Dream-walking**: whenever the enemy **rests**, the host fighting it **heals 1** (not at the western crossing).",
       "**The dead do not sleep**: omens can't lower a host's Initiative.",
       "Once a duel a host may **sacrifice** a monster (its Valour returns to the host); once a match it may **summon** one from your other host, spending the top card of your Reserve.",
       "A deck holds at most **6** monsters.",

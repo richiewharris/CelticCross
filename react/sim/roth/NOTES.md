@@ -208,3 +208,22 @@ positions with their titles and explanations, tidies them (drafting: no omens; c
 write a puzzle whose answer isn't the single best choice. The rule each puzzle assumes is shown on the page:
 drafting, nobody acts in the Playing turn; Playing turn, everyone holds afterwards; combat, both sides play
 perfectly without guests or champions. `src/games/roth/puzzles/puzzles.test.ts` re-proves every answer.
+
+## November balance (adopted)
+
+Measured at Skilled vs Skilled, 40 matches per pairing at each of the 8 settings (starter decks, mirrors excluded).
+
+| Deck | Before | After |
+|---|---|---|
+| Ulster | 44.3 | 50.6 |
+| Connacht | 51.4 | 48.4 |
+| Sídhe | 54.1 | 50.8 |
+| Fomóire | 44.5 | 52.0 |
+| Merrow | 49.3 | 47.2 |
+| Slúagh | 56.3 | 51.0 |
+
+Every matchup now within 41–59 (before: Connacht over Fomóire 66.6, Slúagh over Connacht and Merrow 60.3). The changes,
+all in engine/params.ts: Ulster battle-fury (Strikes +1 at half starting Valour or less), the Slúagh no longer walk in
+dreams, giant-kin rounds halved wounds down. Tried and left out: Connacht's Swift reading the unhalved blow (with the
+others it swung Connacht–Fomóire to 34.7), the hero's light (Ulster to 55.9). Runs: trial_combo2 (2026-11-14-fe3fa886
+and the rest, listed in engine/insights.json).

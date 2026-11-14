@@ -28,7 +28,7 @@ export const SETTINGS: SettingDef[] = [
   { id: "ford", name: "The ford", valour: 3, text: "Valour +3." },
   { id: "tower", name: "Conand's tower", valour: 2, shield: 1, text: "Valour +2; every fighter starts each duel with Shield 1." },
   { id: "bog", name: "The Bog of Allen", valour: 3, el: { Earth: 1, Wind: -1 }, text: "Valour +3; Earth Strikes +1, Wind Strikes −1." },
-  { id: "crossing", name: "The western crossing", valour: 3, heal: -1, drain: 1, text: "Valour +3; Heals −1; the dead drain those who fight them: at the end of each turn a fighter facing a Slúagh host that didn't rest loses 1 Valour to the host, while it is above half its starting Valour. The dead don't walk in dreams here." },
+  { id: "crossing", name: "The western crossing", valour: 3, heal: -1, drain: 1, text: "Valour +3; Heals −1; the dead drain those who fight them: at the end of each turn a fighter facing a Slúagh host that didn't rest loses 1 Valour to the host, while it is above half its starting Valour." },
   { id: "brugh", name: "Brú na Bóinne", valour: 3, kind: { Word: 1 }, mound: 7, text: "Valour +3; Word Strikes +1; the mound soaks 7 in all." },
   { id: "loughs", name: "The loughs", valour: 3, el: { Water: 1, Fire: -1 }, text: "Valour +3; Water Strikes +1, Fire Strikes −1." },
   { id: "emain", name: "Emain Macha", valour: 3, kind: { Feat: 1 }, text: "Valour +3; Feat Strikes +1." },

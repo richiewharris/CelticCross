@@ -1294,7 +1294,7 @@ export const spiritResistOf = (S: State, al: string) => (al === "Sidhe" ? param(
  *  ("tide", a Water blow that wounds a Merrow heals it 1, was tried and left out: it overshot against the Fomóire.) */
 export const MERROW_DEFAULT = "water";
 /** Dream-walking: what the Slúagh heal when their enemy rests. */
-export const DREAMS = 1;
+export const DREAMS = 0;
 const NO_CAP = 1000;
 export const REST_SHIELD = 1;
 /** Valour lost at the end of each turn of a long duel: 1 after the 20th turn, 2 after the 40th. */

@@ -62,8 +62,8 @@ export const PARAMS = {
   "people.sluagh.auraMin": 5,
   /** ...rounded up (1) or down (0). */
   "people.sluagh.auraRoundUp": 0,
-  /** Slúagh: dream-walking, they heal n whenever their enemy rests. */
-  "people.sluagh.dreams": 1,
+  /** Slúagh: dream-walking, they heal n whenever their enemy rests (off since the November balance: 0). */
+  "people.sluagh.dreams": 0,
   /** Slúagh: Spirit blows can't be Blocked (1 = on). */
   "people.sluagh.spiritUnblock": 1,
   /** Slúagh: a summon spends the top card of the Reserve (1 = on). */
@@ -74,8 +74,8 @@ export const PARAMS = {
   "people.ulster.samhainWatch": 1,
   /** Ulster trial (off): the hero's light, first Strike each duel +n. */
   "people.ulster.light": 0,
-  /** Ulster trial (off): battle-fury, Strikes +n at half Valour or less. */
-  "people.ulster.fury": 0,
+  /** Ulster: battle-fury, Strikes +n at half Valour or less. */
+  "people.ulster.fury": 1,
   /** Ulster trial (off): a felled Ulster hero strikes once more, Strike n. */
   "people.ulster.stand": 0,
   /** Ulster trial (off): staggering blows, a blow over half the enemy's starting Valour staggers it (+n to wounds). */
@@ -89,7 +89,7 @@ export const PARAMS = {
   /** Fomóire: giant-kin, half the wounds of any blow but their weakness (1 = on). */
   "people.fomoire.giantKin": 1,
   /** Fomóire: giant-kin rounds the halved wounds down (1) instead of up (0). */
-  "people.fomoire.roundDown": 0,
+  "people.fomoire.roundDown": 1,
 
   // ---- measurement (sims only; off in play)
   /** Every fighter, not just a target dummy, rises again when felled, so every duel runs its full turn limit. */

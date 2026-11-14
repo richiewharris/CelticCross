@@ -364,13 +364,14 @@ export function faceLines(d: CardDef): FaceLine[] {
       if (d.ab.followUp) push("text", "**Swift**: a blow of theirs that wounds for **1 or less** strikes **again** at once.");
       if (d.ab.riposte) push("text", `**Riposte**: when their {shield} Shield takes a blow, a free **Strike ${d.ab.riposte}** back (no action).`);
       if (d.alignment === "Connachta") push("text", "**Bleed**: every blow of theirs that wounds makes the enemy's Heals **−1** until the end of its next turn (it doesn't stack: two hits are still −1).");
+      if (d.alignment === "Ulaid") push("text", "**Battle-fury**: at half its starting Valour or less, its Strikes are **+1**.");
       if (d.alignment === "Ulaid") push("text", "**The Samhain watch**: their Strikes are +1 against the dead (a Spirit Focus).");
       if (d.alignment === "Ulaid") push("text", "**The Hound's cry**: once a duel, a blow of theirs that ignores Shield may spend the top card of the Reserve to go through a giant's hide (no halving).");
-      if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike, except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
+      if (d.alignment === "Fomoire") push("text", `**Giant-kin**: takes **half** the wounds of every Strike (rounded down), except of its weakness, {${d.weakness}} **${d.weakness}** (or one laid on it), which lands in full.`);
       break;
     case "host":
       push("ability", d.kind === "hunt" ? "The ride" : d.kind === "prey" ? "Scatter" : "The curse");
-      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. **Dream-walking**: when the enemy rests, the host heals **1** (not at the western crossing). Its {Spirit} Spirit blows can't be **Blocked**. **Dead flesh**: no blow wounds it for more than half its full Valour (never less than 5). Running water: a Merrow's Shield holds against its Spirit.`);
+      push("text", `${abLine(d.ab)}${d.valourEach ? ` **+${d.valourEach} Valour** for each monster.` : ""} Weak to {${d.weakness}} **${d.weakness}**. The dead do not sleep: omens can't lower its Initiative. Its {Spirit} Spirit blows can't be **Blocked**. **Dead flesh**: no blow wounds it for more than half its full Valour (never less than 5). Running water: a Merrow's Shield holds against its Spirit.`);
       push("rule", "Takes a hero's seat with **2 or 3 monsters** joined from your hand. They fight as one. In a duel it may **sacrifice** a monster (once a duel) or **summon** one from your other host (once a match).");
       push("lore", f.lore); break;
     case "monster":
