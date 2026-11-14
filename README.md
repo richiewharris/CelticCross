@@ -1,7 +1,8 @@
 # Celtic Cross
 
 Small browser games with a Celtic theme, built with React and TypeScript. The site at the root of
-this repo (`index.html` and `assets/`) is the built app; its source is in [`react/`](react/).
+this repo (`index.html` and `assets/`) is the built app; its source is in
+[CelticCrossSource](https://github.com/richiewharris/CelticCrossSource).
 
 | Game | Address on the site |
 |------|---------------------|
@@ -23,15 +24,16 @@ GitHub Pages serves the `main` branch from the root folder. The old addresses (`
 `/celtic-cross-lock/v1/`, `/next/` and the rest) are small pages that redirect to the new ones, so
 existing links keep working.
 
-To change a game, work in [`react/`](react/) (see [`react/README.md`](react/README.md)), then run
-`npm run publish-site` there: it type-checks, builds, and copies the result to `index.html` and `assets/`.
+To change a game, work in [CelticCrossSource](https://github.com/richiewharris/CelticCrossSource), then run `npm run publish-site` there: it
+type-checks, builds, copies the result to `index.html` and `assets/` in a checkout of this repo, commits and pushes.
+Nothing else here is built: `images/`, the redirect pages and `classic/` are edited by hand.
 
 **Online play and statistics.** Monsiv, Cnoc and Fidchell can be played with a friend by invite link,
 using Firebase (project `celtic-cross-games`): anonymous or Google sign-in, one Firestore document per
-game, every move checked by both players' browsers. `firestore.rules` holds the database rules;
-paste it into the Firebase console (Firestore → Rules) after any change. The home page shows how many
+game, every move checked by both players' browsers. The database rules (`firestore.rules`, in the source repo)
+are pasted into the Firebase console (Firestore → Rules) after any change. The home page shows how many
 times each game has been played; Google Analytics runs only for visitors who allow it. Details in
-[`react/ONLINE.md`](react/ONLINE.md).
+[ONLINE.md](https://github.com/richiewharris/CelticCrossSource/blob/main/ONLINE.md).
 
 The first single-file versions of every game are kept, unchanged, in [`classic/`](classic/).
 The notes below describe the games; they apply to both versions.
@@ -70,7 +72,7 @@ The **Cheat** button makes the cover see-through, rings every loose end in red, 
 
 ### Tuning
 
-These values control the feel. In the React edition they live in `react/src/games/lock/engine/` (`knot.ts` and `dial.ts`); in the classic page, in its script:
+These values control the feel. In the React edition they live in `src/games/lock/engine/` in the source repo (`knot.ts` and `dial.ts`); in the classic page, in its script:
 
 - `TIERS`: rings, stones per ring and stones turned for each tier.
 - `spareTurns`: how many spare turns skill buys.

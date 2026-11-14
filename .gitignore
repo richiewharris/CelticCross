@@ -1,3 +1,2 @@
-
-# the rules cube: rebuilt in minutes by sim/roth/rulescube.ts (60+ MB a build)
-react/sim/roth/cube/rules/*.csv.gz
+# the source lives in CelticCrossSource; a leftover local copy here is ignored
+react/
