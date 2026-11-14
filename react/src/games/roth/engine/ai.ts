@@ -899,7 +899,7 @@ export function determinize(V: State, me: Side, rng: Rng): State {
   const mk = (def: CardDef): Card => ({ uid: D.nextUid++, def, owner: o });
   for (let s = 0; s < 12; s++) {
     const c = D.board[s];
-    if (c && c.def.type === "unknown") D.board[s] = mk(take((x) => x.type === "hero") ?? take((x) => x.type !== "omen")!);
+    if (c && c.def.type === "unknown") D.board[s] = mk((isHeroSpot(s) ? take((x) => x.type === "hero") : take((x) => x.type === "support")) ?? take((x) => x.type !== "omen")!);
   }
   O.omens = O.omens.map((s) => (s.faceUp ? s : { card: mk(take((x) => x.type === "omen") ?? take(() => true)!), faceUp: false }));
   const handN = O.hand.length;

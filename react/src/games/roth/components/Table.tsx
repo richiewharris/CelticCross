@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { useStoredState } from "../../../kit/useStoredState";
 import type { CardDef } from "../engine/cards";
-import { draftSpot, facedSpot, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
+import { draftSpot, facedSpot, needsSetting, ownerOfSpot, quadOf, type Decision, type Option, type Side, type State } from "../engine/engine";
 import { settingDef } from "../engine/settings";
 import { CardFace } from "./Card";
 import { DuelView, MoveTicker } from "./DuelView";
@@ -45,7 +45,7 @@ function phaseText(S: State): string {
   switch (S.phase) {
     case "muster": return "The Muster";
     case "draft": return `Marshalling · step ${S.step}`;
-    case "reckon": return "The Reckoning";
+    case "reckon": return needsSetting(S) ? "The setting" : "The Reckoning";
     case "play": return `${S.reversed ? "Backwards round" : "The Winnow"} · step ${Math.min(S.step, 6)}`;
     case "late": return "Omens before combat";
     case "combat": return S.combat ? `${settingDef(S.rules.setting)?.name ?? "The Ford"} · ${S.combat.duel === 2 ? "the final duel" : `duel ${S.combat.duel + 1}`}${S.combat.stage === "done" ? "" : ` · turn ${S.combat.turn + 1}`}` : "The Ford";

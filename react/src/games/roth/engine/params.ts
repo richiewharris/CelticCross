@@ -19,6 +19,10 @@ export const PARAMS = {
   /** A geis costs its break every time it is broken, instead of breaking once (1 = on in duels to the death). */
   "geis.eachTime": 1,
 
+  // ---- what is seen when
+  /** Supports go down face down in the Marshalling and turn up as the Winnow begins (1 = on). */
+  "rule.supportsFaceDown": 1,
+
   // ---- the Reckoning
   /** After the Marshalling each side may swap two of its own cards of a kind, chosen in secret (1 = on). */
   "rule.reckoning": 1,
@@ -26,6 +30,8 @@ export const PARAMS = {
   // ---- the setting
   /** The second player chooses the setting (0 = everyone fights at the ford). */
   "setting.choose": 1,
+  /** ...once the Marshalling is over, every hero on the wheel (1), or before the Muster (0). */
+  "setting.afterMarshalling": 1,
   /** Settings change Heals (the crossing's −1, Cruachan's +1): 1 = as printed, 0 = not at all. */
   "setting.heals": 1,
   /** The western crossing's drain heals a Slúagh host it feeds (1) or not (0). */

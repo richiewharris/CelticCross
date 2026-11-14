@@ -132,15 +132,34 @@ describe("muster", () => {
 });
 
 describe("the setting", () => {
-  it("in a duel to the death the second player chooses it first, before the Muster; it sets the ford's Valour", () => {
+  it("in a duel to the death the second player chooses it once the Marshalling is over, seeing every hero but no support", () => {
     const S = newMatch([ULSTER, CONNACHT], {}, 1);
-    const d = nextDecision(S)!;
-    expect(d.kind).toBe("setting");
+    const P = new CasualPolicy(), R = new Rng(2);
+    expect(nextDecision(S)!.kind).toBe("muster");
+    let d = nextDecision(S)!;
+    while (d.kind !== "setting") { expect(d.kind === "muster" || d.kind === "musterOmen" || d.kind === "musterReturn" || d.kind === "place").toBe(true); applyDecision(S, d, d.options.length === 1 ? 0 : P.choose(observe(S, d.player), d, R)); d = nextDecision(S)!; }
     expect(d.player).toBe(1);
     expect(legalityError(S, 0, d.options[0])).not.toBeNull(); // not the first player's to choose
+    // every seat is filled: the second player sees the first player's heroes, but its supports are face down
+    const V = observe(S, 1);
+    for (const spot of [0, 3]) expect(V.board[spot]!.def.type).not.toBe("unknown");
+    for (const spot of [1, 2, 4, 5]) expect(V.board[spot]!.def.type).toBe("unknown");
+    for (const spot of [7, 8, 10, 11]) expect(V.board[spot]!.def.type).not.toBe("unknown");
     applyDecision(S, d, d.options.findIndex((o) => o.t === "setting" && o.id === "tower"));
     expect(S.rules.setting).toBe("tower");
     expect(S.rules.fordValour).toBe(2);
+    // then the Reckoning, still with the supports face down; the Winnow turns them up
+    expect(nextDecision(S)!.kind).toBe("reckon");
+    expect(observe(S, 0).board[7]!.def.type).toBe("unknown");
+    for (let k = 0; k < 2; k++) applyDecision(S, nextDecision(S)!, 0);
+    expect(S.phase).toBe("play");
+    expect(observe(S, 0).board[7]!.def.type).not.toBe("unknown");
+  });
+  it("is chosen before the Muster with setting.afterMarshalling off", () => {
+    const S = newMatch([ULSTER, CONNACHT], { params: { "setting.afterMarshalling": 0 } }, 1);
+    const d = nextDecision(S)!;
+    expect(d.kind).toBe("setting");
+    applyDecision(S, d, d.options.findIndex((o) => o.t === "setting" && o.id === "tower"));
     expect(nextDecision(S)!.kind).toBe("muster");
   });
   it("is skipped when the rules give one", () => {

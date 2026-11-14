@@ -13,7 +13,7 @@ import { Puzzles } from "./Puzzles";
 import { BuildingGuide, CardsGuide, DecksGuide } from "./codex/Codex";
 import { DeckBuilder } from "./DeckBuilder";
 import { Walkthrough } from "./walkthrough/Walkthrough";
-import { FACTION_TITLE, seatName } from "./text";
+import { FACTION_TITLE, seatName, shownTo } from "./text";
 import { useMatch } from "./useMatch";
 
 type Tab = "play" | "build" | "guide";
@@ -81,7 +81,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
       </div>
     );
   }
-  const S = m.S, d = m.d;
+  const S = shownTo(m.S, m.me), d = m.d;
   const pick = (i: number) => { setSel(null); setAct((a) => ({ ...NO_PICK, guest: a.guest })); m.play(i); };
   const acts = d && d.kind !== "muster" && d.kind !== "place" ? buildActs(S, d) : [];
   const actNow = acts.find((a) => a.key === act.key) ?? null;

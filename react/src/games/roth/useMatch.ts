@@ -8,7 +8,7 @@ import { computerDeck } from "./engine/computerDecks";
 import { Rng } from "./engine/rng";
 import { loadSavedDecks, resolveDeck } from "./decks";
 import { FACTION_TITLE } from "./text";
-import { applyDecision, cloneState, fighter, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
+import { applyDecision, cloneState, fighter, needsSetting, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
 import { summarize } from "./components/Choices";
 import { cancelComputer, computerChoice } from "./aiClient";
 import { logLine, reckonedLine } from "./text";
@@ -55,6 +55,7 @@ const BACK_MAX = 10;
 function sectionOf(S: State): string {
   if (S.phase === "muster") return "The Muster";
   if (S.phase === "draft") return "Marshalling";
+  if (needsSetting(S)) return "The setting";
   if (S.phase === "reckon") return "The Reckoning";
   if (S.phase === "play" || S.phase === "late") return S.reversed ? "The round run backwards" : "The Winnow";
   if (S.phase === "combat" && S.combat) return S.combat.duel === 2 ? "The final duel" : `Duel ${S.combat.duel + 1}`;

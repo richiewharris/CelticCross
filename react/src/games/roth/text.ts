@@ -3,6 +3,8 @@ import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/
 import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, isHeroSpot, ownerOfSpot, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
 import type { Element, SupportDef } from "./engine/cards";
 import { settingDef } from "./engine/settings";
+import { param } from "./engine/params";
+import { UNKNOWN } from "./engine/cards";
 
 /** The geasa and oaths a move would break, by name: "the Geis of the hosting and the Blood-oath". */
 export function breaksWhat(S: State, p: Side, what: "rest" | SupportDef, as?: Element): string {
@@ -178,7 +180,8 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "setting": return `${who} chose to fight at ${settingDef(o.id)?.name ?? o.id}.`;
     case "swap": return mine ? (o.a < 0 ? "You chose to keep your wheel." : `You chose: ${optionLabel(S, d, o, me).replace(/^Swap/, "swap")}.`) : "The computer chose its change, in secret.";
-    case "place": return `${who} placed ${o.join ? optionLabel(S, d, o, me).replace(/^Place /, "") : cardName(S, o.uid)} as ${seatName(S, d.spot!, me)}.`;
+    case "place": if (!mine && !isHeroSpot(d.spot!) && param(S.rules, "rule.supportsFaceDown") > 0) return `${who} placed a support face down as ${seatName(S, d.spot!, me)}.`;
+      return `${who} placed ${o.join ? optionLabel(S, d, o, me).replace(/^Place /, "") : cardName(S, o.uid)} as ${seatName(S, d.spot!, me)}.`;
     case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${AT(S, o.target, me)}` : ""}.`;
     case "lateDone": return `${who} turned no more omens.`;
     case "bind": return `${who} ${optionLabel(S, d, o, me).replace(/^Bind/, "bound").replace(/^Lay/, "laid")}.`;
@@ -215,4 +218,10 @@ export function reckonedLine(S: State, p: Side, me: Side): string {
   return isHeroSpot(o.a)
     ? `${who} swapped ${p === me ? "your" : "its"} heroes: ${x} now leads ${p === me ? "your" : "its"} ${quadOf(o.a) % 2 === 0 ? "first" : "second"} band, ${y} the ${quadOf(o.b) % 2 === 0 ? "first" : "second"}.`
     : `${who} swapped ${y} and ${x}: ${x} is now ${seatName(S, o.a, me)}, ${y} ${seatName(S, o.b, me)}.`;
+}
+
+/** The match as player me sees it: the enemy's face-down cards on the wheel shown as card backs. */
+export function shownTo(S: State, me: Side): State {
+  if (!S.hiddenSpots.some((x) => S.board[x] && S.board[x]!.owner !== me)) return S;
+  return { ...S, board: S.board.map((c, i) => (c && c.owner !== me && S.hiddenSpots.includes(i) ? { uid: c.uid, def: UNKNOWN, owner: c.owner } : c)) };
 }

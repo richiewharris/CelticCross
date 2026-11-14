@@ -10,7 +10,7 @@ type MusterOpt = Extract<Option, { t: "muster" }>;
 
 export function MusterView(props: { S: State; me: Side; d: Decision | null; onPick?: (i: number) => void; onFocusCard?: (d: CardDef) => void }) {
   const { S, me, d } = props;
-  if (needsSetting(S)) {
+  if (needsSetting(S) && d?.kind === "setting") {
     const mine = !!d && d.kind === "setting" && d.player === me;
     return (
       <section className="muster" aria-label="The setting">

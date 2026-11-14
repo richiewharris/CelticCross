@@ -295,6 +295,8 @@ export interface State {
    *  chosen); once both have chosen, both are made at once and kept in reckoned for all to see. */
   reckon?: (Extract<Option, { t: "swap" }> | undefined)[];
   reckoned?: Extract<Option, { t: "swap" }>[];
+  /** The Marshalling is over and the second player has yet to choose the setting. */
+  settingDue?: boolean;
   tieCoin: [Side, Side];
   combat: CombatState | null;
   result: Result | null;
@@ -644,8 +646,11 @@ function withSetting(R: Rules, id: string): Rules {
 }
 /** Duels to the death: the setting is still to be chosen (by the second player, before the Muster). */
 export const needsSetting = (S: State) => toDeath(S) && !S.rules.setting && param(S.rules, "setting.choose") > 0;
+/** The setting is chosen once the Marshalling is over (every hero on the wheel, supports face down), or, with
+ *  setting.afterMarshalling off, before the Muster. */
+const settingDue = (S: State) => needsSetting(S) && (param(S.rules, "setting.afterMarshalling") > 0 ? !!S.settingDue : S.phase === "muster");
+const settingDecision = (): Decision => ({ kind: "setting", player: 1, options: SETTINGS.map((x) => ({ t: "setting" as const, id: x.id })) });
 function musterStep(S: State): Decision | null {
-  if (needsSetting(S)) return { kind: "setting", player: 1, options: SETTINGS.map((x) => ({ t: "setting" as const, id: x.id })) };
   while (S.phase === "muster") {
     const p = S.musterP;
     const P = S.players[p];
@@ -745,19 +750,22 @@ function applyReckon(S: State, p: Side, o: Extract<Option, { t: "swap" }>) {
     reckonSwap(S, both[q]);
   }
   S.reckoned = both; S.reckon = undefined;
-  S.phase = "play"; S.step = 1; S.sub = 0;
+  // the Winnow begins: every card on the wheel turns face up
+  S.phase = "play"; S.step = 1; S.sub = 0; S.hiddenSpots = [];
 }
 
 function advanceDraft(S: State) {
   if (S.sub === 0) S.sub = 1;
   else {
-    S.hiddenSpots = [];
+    // a blind hero shows once both have placed; face-down supports stay down until the Winnow
+    S.hiddenSpots = S.hiddenSpots.filter((x) => !isHeroSpot(x));
     S.sub = 0;
     S.step++;
     if (S.step > 6) {
       S.step = 1;
+      if (needsSetting(S) && param(S.rules, "setting.afterMarshalling") > 0) S.settingDue = true;
       if (param(S.rules, "rule.reckoning") > 0) { S.phase = "reckon"; S.reckon = [undefined, undefined]; }
-      else S.phase = "play";
+      else { S.phase = "play"; S.hiddenSpots = []; }
     }
   }
 }
@@ -2140,6 +2148,7 @@ export function combatResult(C: CombatState): Result {
 // ---------------------------------------------------------------- main loop
 export function nextDecision(S: State): Decision | null {
   for (;;) {
+    if (settingDue(S)) return settingDecision();
     switch (S.phase) {
       case "muster": { const d = musterStep(S); if (d) return d; break; }
       case "draft": { const d = draftDecision(S); if (d) return d; break; }
@@ -2178,7 +2187,7 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
       if (S.phase !== "reckon" || S.sub !== p) return "not your Reckoning";
       return reckonDecision(S).options.some((x) => sameOption(x, o)) ? null : "swap two of your own cards of a kind";
     case "setting":
-      if (!needsSetting(S) || p !== 1) return "no setting to choose";
+      if (!settingDue(S) || p !== 1) return "no setting to choose";
       return settingDef(o.id) ? null : "no such setting";
     case "muster":
       if (S.phase !== "muster" || S.musterP !== p || S.musterStage !== "draw" || S.pendingOmen) return "no Muster choice pending";
@@ -2351,7 +2360,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
   const P = S.players[p];
   const st = S.stats;
   switch (o.t) {
-    case "setting": S.rules = withSetting(S.rules, o.id); return;
+    case "setting": S.rules = withSetting(S.rules, o.id); S.settingDue = undefined; return;
     case "muster": applyMuster(S, p, o); return;
     case "swap": applyReckon(S, p, o); return;
     case "musterOmen": {
@@ -2386,6 +2395,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
       S.board[spot] = c;
       if (st) st.placed.push({ side: p, id: c.def.id, how: "draft" });
       if (S.rules.blindHeroes && isHeroSpot(spot) && p === 0) S.hiddenSpots.push(spot);
+      if (!isHeroSpot(spot) && param(S.rules, "rule.supportsFaceDown") > 0) S.hiddenSpots.push(spot);
       advanceDraft(S);
       return;
     }
