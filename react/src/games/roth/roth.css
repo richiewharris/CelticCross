@@ -1032,3 +1032,23 @@ body.gm-roth .keycap { display: inline-flex; align-items: center; justify-conten
 body.gm-roth .act-go .keycap { margin-left: .6em; color: inherit; border-color: currentColor; opacity: .7; }
 body.gm-roth .act-keys { margin: 4px 0 0; font-size: .78rem; color: var(--muted); }
 @media (hover: none) { body.gm-roth .act-keys { display: none; } }
+
+/* ---- what just happened in the duel: fixed on screen */
+body.gm-roth .duel-toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 40; width: min(560px, calc(100vw - 20px)); max-height: 45vh; overflow-y: auto;
+  background: #1c1712; border: 1px solid var(--bronze); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .55); padding: 10px 36px 10px 12px; font-size: .9rem; animation: toast-in .2s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+body.gm-roth .duel-toast ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+body.gm-roth .duel-toast li { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 2px; }
+body.gm-roth .duel-toast .who { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; border: 1px solid; align-self: start; }
+body.gm-roth .duel-toast li.mine .who { color: #d9897e; border-color: #7a3a32; }
+body.gm-roth .duel-toast li.theirs .who { color: #a99bd6; border-color: #4d4470; }
+body.gm-roth .duel-toast .fx { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .85rem; color: var(--muted); }
+body.gm-roth .duel-toast .chg.hurt b, body.gm-roth .duel-toast .fell { color: #e0705f; }
+body.gm-roth .duel-toast .chg.heal b { color: #8fc48a; }
+body.gm-roth .duel-toast .chg.shield b { color: #7fb2d6; }
+body.gm-roth .duel-toast .now { margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: .85rem; }
+body.gm-roth .duel-toast .now .mine b { color: #e8a79c; }
+body.gm-roth .duel-toast .now .theirs b { color: #c4b8ec; }
+body.gm-roth .toast-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); font-size: 1rem; cursor: pointer; }
+body.gm-roth .toast-reopen { position: fixed; top: 10px; right: 10px; z-index: 40; }
+@media (prefers-reduced-motion: reduce) { body.gm-roth .duel-toast { animation: none; } }

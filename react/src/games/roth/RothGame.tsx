@@ -16,6 +16,7 @@ import { Walkthrough } from "./walkthrough/Walkthrough";
 import { FACTION_TITLE, seatName, shownTo } from "./text";
 import { useMatch } from "./useMatch";
 import { MatchBar } from "./components/MatchBar";
+import { DuelToast } from "./components/DuelToast";
 
 type Tab = "play" | "build" | "guide";
 type Guide = "walk" | "puzzles" | "cards" | "decks" | "building";
@@ -157,6 +158,7 @@ function Match({ focus, setFocus }: { focus: CardDef | null; setFocus: (d: CardD
         </details>
         <RulesPanel />
       </aside>
+      <DuelToast S={S} me={m.me} last={m.last} show={(S.phase === "combat" || !!m.pause) && !(m.over && showResult)} />
       {m.over && showResult && S.result ? <ResultDialog r={S.result} me={m.me} onAgain={() => m.start()} onClose={() => setShowResult(false)} /> : null}
     </div>
   );

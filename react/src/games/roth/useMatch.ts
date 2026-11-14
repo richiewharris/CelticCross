@@ -170,7 +170,7 @@ export function useMatch() {
       recordGameEnd("roth", { mode: "computer", level: lv, result: outcome === "won" ? "win" : outcome === "lost" ? "loss" : "draw" });
       sendRecord({ ...saved, S, moves }, outcome);
     }
-    const last = T.phase === "combat" || S.phase === "combat" ? [...(saved.last ?? []), ev].slice(-4) : [];
+    const last = T.phase === "combat" || S.phase === "combat" ? [...(saved.last ?? []), ev].slice(-8) : [];
     setSaved({ ...saved, S, log, back, recorded, last, moves, pause });
   }, [saved, d, setSaved, record, setRecord]);
 
