@@ -1488,11 +1488,11 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   // the Hound's cry: an Ulster blow that ignores Shield, given with the cry, goes through the giant's hide
   if (halved && CRY.on && pierce && h.alignment === "Ulaid") {
     halved = false;
-    const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2);
+    const h2 = HALF.up && !param(S.rules, "people.fomoire.roundDown") ? Math.ceil(dmg / 2) : Math.floor(dmg / 2);
     led(S, C, a, "deal:people:cry", dmg - h2); led(S, C, a, "deal:" + SRC.id, -(dmg - h2));
     if (N) N.push(`through the giant's hide (the Hound's cry)`);
   }
-  if (halved) { const h2 = HALF.up ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); if (T) T.halved = dmg - h2; dmg = h2; }
+  if (halved) { const h2 = HALF.up && !param(S.rules, "people.fomoire.roundDown") ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); if (T) T.halved = dmg - h2; dmg = h2; }
   // the dead-flesh aura: no blow wounds the Slúagh for more than half their full Valour
   const ac = auraCap(S, C, b);
   if (dmg > ac) { if (T) T.aura = dmg - ac; led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }

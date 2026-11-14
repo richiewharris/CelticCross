@@ -88,6 +88,8 @@ export const PARAMS = {
   "people.connacht.swiftUnhalved": 0,
   /** Fomóire: giant-kin, half the wounds of any blow but their weakness (1 = on). */
   "people.fomoire.giantKin": 1,
+  /** Fomóire: giant-kin rounds the halved wounds down (1) instead of up (0). */
+  "people.fomoire.roundDown": 0,
 
   // ---- measurement (sims only; off in play)
   /** Every fighter, not just a target dummy, rises again when felled, so every duel runs its full turn limit. */
