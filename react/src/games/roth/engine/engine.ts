@@ -1007,6 +1007,8 @@ export function breakCost(S: State, m: number, al?: string): number {
   return g * (bitCount(m) - oaths) + S.rules.oathBreakCost * oaths;
 }
 export const SIDHE_GEIS_COST = 1;
+/** Narration: the aura's hold on the blow being struck, said after the Strike's sum (it limits wounds, not the Strike). */
+const AURA_NOTE = { text: "" };
 /** The dead-flesh aura never holds a blow below this. */
 export const AURA_MIN = 5;
 const bitCount = (m: number) => { let n = 0; while (m) { n += m & 1; m >>>= 1; } return n; };
@@ -1548,7 +1550,8 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
   if (halved) { const h2 = HALF.up && !param(S.rules, "people.fomoire.roundDown") ? Math.ceil(dmg / 2) : Math.floor(dmg / 2); led(S, C, b, "save:people:giant-kin", dmg - h2); if (T) T.halved = dmg - h2; dmg = h2; }
   // the dead-flesh aura: no blow wounds the Slúagh for more than half their full Valour
   const ac = auraCap(S, C, b);
-  if (dmg > ac) { if (T) T.aura = dmg - ac; led(S, C, b, "save:people:aura", dmg - ac); if (N) N.push(`held to ${ac} by the dead-flesh aura`); dmg = ac; }
+  AURA_NOTE.text = "";
+  if (dmg > ac) { if (T) T.aura = dmg - ac; led(S, C, b, "save:people:aura", dmg - ac); AURA_NOTE.text = ` The dead-flesh aura holds it to ${ac}.`; dmg = ac; }
   // staggered: every blow that wounds it lands 1 more
   if (dmg > 0 && C.stagger?.[b]) { const k = param(S.rules, "people.ulster.stagger") || 1; dmg += k; if (T) T.stagger = k; led(S, C, a, "deal:people:stagger", k); }
   if (T) {
@@ -1589,7 +1592,7 @@ export function strike(S: State, C: CombatState, a: Side, n: number, pierce = fa
     const shown = N.length ? `${n1} ${N.join(" ")} = ${n}` : `${n1}`;
     const sh = pierce ? " It ignores Shield." : spirit && C.shield[b] ? " Spirit passes Shield." : soak ? ` ${e.name}'s Shield soaks ${soak}.` : "";
     if (newly) N.push(`(${e.name} is staggered: each blow that wounds +1 until it rests)`);
-    say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
+    say(`${h.name} strikes: ${shown}.${sh}${halved ? ` ${e.name} is giant-kin: half the wounds.` : ""}${AURA_NOTE.text} ${dmg} wound${dmg === 1 ? "" : "s"}: ${e.name} ${C.valour[b] + dmg} → ${C.valour[b]}.${dr > 0 && dmg > 0 ? ` (It steals back ${dr}.)` : ""}${dmg > 0 && e.ab.reflect ? ` ${e.name}'s quality makes ${h.name} pay ${e.ab.reflect}.` : ""}${dmg > 0 && bleeds(S, h) ? ` ${e.name} bleeds: Heals −${C.bleed![b]} until the end of its next turn.` : ""}`);
   }
   // an Ulster hero's last stand: felled, it strikes once more
   if (wasUp && C.valour[b] <= 0 && toDeath(S) && e.alignment === "Ulaid" && param(S.rules, "people.ulster.stand") > 0 && !RIPOSTE.on && C.valour[a] > 0) {
