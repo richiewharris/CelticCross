@@ -11,7 +11,7 @@ import { FACTION_TITLE } from "./text";
 import { applyDecision, cloneState, fighter, newMatch, nextDecision, upgradeState, NARRATE, type Decision, type Side, type State } from "./engine/engine";
 import { summarize } from "./components/Choices";
 import { cancelComputer, computerChoice } from "./aiClient";
-import { logLine } from "./text";
+import { logLine, reckonedLine } from "./text";
 import { recordGameEnd, recordGameStart } from "../../online/analytics";
 import { recordMatch } from "../../online/telemetry";
 
@@ -55,6 +55,7 @@ const BACK_MAX = 10;
 function sectionOf(S: State): string {
   if (S.phase === "muster") return "The Muster";
   if (S.phase === "draft") return "Marshalling";
+  if (S.phase === "reckon") return "The Reckoning";
   if (S.phase === "play" || S.phase === "late") return S.reversed ? "The round run backwards" : "The Winnow";
   if (S.phase === "combat" && S.combat) return S.combat.duel === 2 ? "The final duel" : `Duel ${S.combat.duel + 1}`;
   return "The result";
@@ -139,7 +140,10 @@ export function useMatch() {
     // the result, in words, when the match ends
     const res = !next && S.result ? S.result : null;
     const resultLine = res ? `${res.winner === -1 ? "A draw" : res.winner === saved.me ? "You win" : "The computer wins"}: heroes felled, you ${res.felled[1 - saved.me]}, the computer ${res.felled[saved.me]}.` : null;
-    const end = duelEnd(saved.S, S, saved.me);
+    // the Reckoning's two secret changes, shown together once both are made
+    const reck: DuelEnd | null = saved.S.phase === "reckon" && S.phase !== "reckon" && S.reckoned
+      ? { title: "The Reckoning", lines: [reckonedLine(S, saved.me, saved.me), reckonedLine(S, (1 - saved.me) as Side, saved.me)], next: "The Winnow begins." } : null;
+    const end = duelEnd(saved.S, S, saved.me) ?? reck;
     const endLines = end ? [`${end.title}. ${end.lines.join(" ")}`, ...(end.next ? [end.next] : [])] : [];
     const log = [...saved.log, line, ...endLines, ...(after !== before ? [`§ ${after}`] : []), ...(resultLine ? [resultLine] : [])].slice(-240);
     // stop between duels (not after the last: the result says it), so the player sees how the duel ended

@@ -13,6 +13,7 @@ export function prompt(S: State, d: Decision): string {
     case "musterOmen": return "Your Omen spots are full. Choose one omen to send to the Reserve.";
     case "musterReturn": return "Muster check: you took cards to make up 2 heroes and 4 supports. Return a card to the Reserve.";
     case "place": return `Marshalling, step ${S.step}: place a ${d.spot! % 3 === 0 ? (d.options.some((o) => o.t === "place" && o.join) ? "host with its monsters" : "hero") : "support"} as ${seatName(S, d.spot!, d.player)}.`;
+    case "reckon": return "The Reckoning: both wheels are whole. You may swap two of your own cards of a kind (your two heroes, or any two of your supports), or keep your wheel. The computer chooses at the same time, in secret; both changes are shown together.";
     case "action": return `${S.reversed ? "The round run backwards" : "The Winnow"}, step ${S.step}: before you, ${S.board[d.spot!]?.def.name ?? seatName(S, d.spot!, d.player)}. Choose one action.`;
     case "late": return "Turn any omens before combat.";
     case "focus": return "The Morrígan may change her Focus once.";

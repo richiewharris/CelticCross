@@ -14,7 +14,7 @@ interface Variant { i: number; target?: number; guest: number }
 export interface Act { key: string; group: string; label: string; variants: Variant[]; uid?: number; spot?: number }
 
 const END = "_end";
-const ORDER = ["Block", "Fight", "Drawn card", "Omens", "Geis & oath", "Supplant", "Champions", "Attendants", "Focus"];
+const ORDER = ["Swap", "Block", "Fight", "Drawn card", "Omens", "Geis & oath", "Supplant", "Champions", "Attendants", "Focus"];
 
 function keyOf(o: Option): string {
   switch (o.t) {
@@ -25,6 +25,7 @@ function keyOf(o: Option): string {
     case "draw": case "hold": case "lateDone": return o.t;
     case "block": return `block:${o.spot}`;
     case "setting": return `setting:${o.id}`;
+    case "swap": return `swap:${o.a}:${o.b}`;
     default: return `${o.t}:${(o as { uid: number }).uid}`;
   }
 }
@@ -40,6 +41,7 @@ function groupOf(S: State, d: Decision, o: Option): string {
     case "supplant": return "Supplant";
     case "attend": return "Attendants";
     case "focus": return "Focus";
+    case "swap": return o.a < 0 ? END : "Swap";
     default: return END;
   }
 }

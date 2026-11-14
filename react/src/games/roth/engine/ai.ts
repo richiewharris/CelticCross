@@ -5,7 +5,7 @@ import { composeHost, reuseOf, unwillingPair, type MonsterDef, type CardDef, typ
 import { blockValue,
   applyDecision, cloneCombat, cloneState, debilitated, supportReady, toDeath, draftSpot, fighter, forbidsSupport, isHeroSpot, kin, nextDecision, playOut, quadOf, sameOption,
   type Card, type Decision, type Option, type Policy, type Side, type State,
-  summonCosts, actorOf,
+  summonCosts, actorOf, reckonSwap,
 } from "./engine";
 import { chooseSetting, SETTINGS } from "./settings";
 import INSIGHTS from "./insights.json";
@@ -120,6 +120,8 @@ export class CasualPolicy implements Policy {
     const o = d.options;
     switch (d.kind) {
       case "setting": return pickSetting(V, d);
+      // the Reckoning: a swap only when it plainly helps (its board judgement, with a margin for the doubt)
+      case "reckon": { const sc = new SkilledPolicy().scoreOptions(V, d); const i = argmax(sc); return sc[i] > sc[0] + 0.05 ? i : 0; }
       case "muster": return musterPick(V, d, (c) => (c.def.type === "omen" ? casualOmen(c.def.fx) : 0));
       case "musterOmen": {
         const rank = (uid: number) => {
@@ -425,6 +427,7 @@ export class SkilledPolicy implements Policy {
         return argmax(d.options.map((x) => -val(cardOf(V, me, (x as { uid: number }).uid)!)));
       }
       case "place":
+      case "reckon":
       case "action":
       case "late": {
         const sc = this.scoreOptions(V, d), i = argmax(sc);
@@ -496,6 +499,14 @@ export class SkilledPolicy implements Policy {
         } else v = evalBoardCombat(completeBoard(W, me), me);
         cache.set(k, v);
         return v;
+      });
+    }
+    // the Reckoning: make the swap on a copy (the other side's secret choice unknown: as it stands) and judge the board
+    if (d.kind === "reckon") {
+      return d.options.map((x) => {
+        const W = cloneState(V);
+        reckonSwap(W, x as Extract<Option, { t: "swap" }>);
+        return evalBoardCombat(completeBoard(W, me), me) - ((x as { a: number }).a >= 0 ? 0.01 : 0);
       });
     }
     // action / late: apply on a copy of the view and evaluate the resulting board

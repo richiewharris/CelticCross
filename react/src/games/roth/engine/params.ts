@@ -19,6 +19,10 @@ export const PARAMS = {
   /** A geis costs its break every time it is broken, instead of breaking once (1 = on in duels to the death). */
   "geis.eachTime": 1,
 
+  // ---- the Reckoning
+  /** After the Marshalling each side may swap two of its own cards of a kind, chosen in secret (1 = on). */
+  "rule.reckoning": 1,
+
   // ---- the setting
   /** The second player chooses the setting (0 = everyone fights at the ford). */
   "setting.choose": 1,

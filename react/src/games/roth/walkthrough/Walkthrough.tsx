@@ -17,8 +17,9 @@ import { CHAPTERS, COACH, ENDING } from "./notes";
 interface Step { line: string; mine: boolean; maths: string[]; others: string[]; S: State; next: Decision | null }
 
 
-/** The guided game was recorded at the ford, with geasa that break once; it keeps those rules so the notes still fit. */
-export const GUIDED_RULES = { setting: "ford", geisEachTime: false };
+/** The guided game was recorded at the ford, with geasa that break once and before the Reckoning; it keeps those rules
+ *  so the notes still fit. */
+export const GUIDED_RULES = { setting: "ford", geisEachTime: false, params: { "rule.reckoning": 0 } };
 
 /** Play the scripted match once, keeping a copy of the board after every move. */
 export function replayScript(): { start: State; first: Decision | null; steps: Step[]; end: State } {

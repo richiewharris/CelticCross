@@ -122,7 +122,7 @@ export interface PlayerState {
   musterQ: Card[];
 }
 
-export type Phase = "muster" | "draft" | "play" | "late" | "combat" | "end";
+export type Phase = "muster" | "draft" | "reckon" | "play" | "late" | "combat" | "end";
 
 export interface CombatState {
   duel: number;
@@ -291,6 +291,10 @@ export interface State {
   step: number;
   sub: Side;
   hiddenSpots: number[];
+  /** The Reckoning (after the Marshalling): each side's secret change, chosen but not yet shown (undefined: not yet
+   *  chosen); once both have chosen, both are made at once and kept in reckoned for all to see. */
+  reckon?: (Extract<Option, { t: "swap" }> | undefined)[];
+  reckoned?: Extract<Option, { t: "swap" }>[];
   tieCoin: [Side, Side];
   combat: CombatState | null;
   result: Result | null;
@@ -311,6 +315,8 @@ export type Option =
   | { t: "musterOmen"; uid: number }
   | { t: "musterReturn"; uid: number }
   | { t: "place"; uid: number; join?: number[] }
+  /** The Reckoning: swap your own cards on spots a and b (two heroes, or two supports); a = b = -1 keeps the wheel. */
+  | { t: "swap"; a: number; b: number }
   | { t: "omen"; uid: number; target?: number }
   | { t: "bind"; uid: number }
   | { t: "supplant"; uid: number }
@@ -334,7 +340,7 @@ export type Option =
   | { t: "block"; spot: number }
   /** Duels to the death: the second player chooses where the duels are fought, before the Muster. */
   | { t: "setting"; id: string };
-export type DecisionKind = "setting" | "muster" | "musterOmen" | "musterReturn" | "place" | "action" | "late" | "focus" | "duel" | "drawn" | "block";
+export type DecisionKind = "setting" | "muster" | "musterOmen" | "musterReturn" | "place" | "reckon" | "action" | "late" | "focus" | "duel" | "drawn" | "block";
 export interface Decision { kind: DecisionKind; player: Side; options: Option[]; spot?: number }
 
 // ---------------------------------------------------------------- helpers
@@ -531,7 +537,7 @@ export function upgradeState(S: State): State {
 export function cloneState(S: State): State {
   return {
     ...S, players: [clonePlayer(S.players[0]), clonePlayer(S.players[1])], board: S.board.slice(), quadGeis: S.quadGeis.slice(), quadOath: S.quadOath.slice(), globalGeis: S.globalGeis.slice(), attendants: (S.attendants ?? []).slice(),
-    hiddenSpots: S.hiddenSpots.slice(), tieCoin: [S.tieCoin[0], S.tieCoin[1]], combat: S.combat ? cloneCombat(S.combat) : null,
+    hiddenSpots: S.hiddenSpots.slice(), reckon: S.reckon?.slice(), reckoned: S.reckoned?.slice(), tieCoin: [S.tieCoin[0], S.tieCoin[1]], combat: S.combat ? cloneCombat(S.combat) : null,
     result: S.result ? { ...S.result } : null, stats: null,
   };
 }
@@ -552,6 +558,8 @@ export function observe(S: State, p: Side): State {
   O.omens = O.omens.map((s) => (s.faceUp ? s : { card: unk(s.card), faceUp: false }));
   if (V.pendingOmen && V.pendingOmen.owner === o) V.pendingOmen = unk(V.pendingOmen);
   for (const s of V.hiddenSpots) { const c = V.board[s]; if (c && c.owner === o) V.board[s] = unk(c); }
+  // the Reckoning is chosen in secret: the other side's choice reads as "keep"
+  if (V.reckon?.[o]) V.reckon[o] = { t: "swap", a: -1, b: -1 };
   if (V.combat) {
     V.combat.guests = V.combat.guests.map((g, q) => (q === o ? g.map(unk) : g));
     V.combat.champs = V.combat.champs.map((g, q) => (q === o ? g.map(unk) : g));
@@ -707,13 +715,50 @@ export function joinSets(mons: Card[]): Card[][] {
   }
   return out;
 }
+/** The Reckoning: with both wheels whole and in the open, each side may swap two of its own cards of a kind (its two
+ *  heroes, a host with its monsters, or any two of its supports), or keep the wheel; both choose in secret. */
+export const OWN_SUPPORT_SPOTS = (p: Side) => (p === 0 ? [1, 2, 4, 5] : [7, 8, 10, 11]);
+function reckonDecision(S: State): Decision {
+  const p = S.sub;
+  const options: Option[] = [{ t: "swap", a: -1, b: -1 }];
+  const [h1, h2] = heroSpotsOf(p);
+  if (S.board[h1] && S.board[h2]) options.push({ t: "swap", a: h1, b: h2 });
+  const sp = OWN_SUPPORT_SPOTS(p);
+  for (let i = 0; i < sp.length; i++) for (let j = i + 1; j < sp.length; j++) {
+    const x = S.board[sp[i]], y = S.board[sp[j]];
+    if (x && y && x.def.id !== y.def.id) options.push({ t: "swap", a: sp[i], b: sp[j] });
+  }
+  return { kind: "reckon", player: p, options };
+}
+/** Make a Reckoning swap on the board. */
+export function reckonSwap(S: State, o: Extract<Option, { t: "swap" }>) {
+  if (o.a < 0) return;
+  const x = S.board[o.a]; S.board[o.a] = S.board[o.b]; S.board[o.b] = x;
+}
+function applyReckon(S: State, p: Side, o: Extract<Option, { t: "swap" }>) {
+  const R = S.reckon ?? [undefined, undefined];
+  R[p] = o; S.reckon = R;
+  if (p === 0) { S.sub = 1; return; }
+  // both have chosen: shown and made at once
+  const both = [R[0] ?? { t: "swap" as const, a: -1, b: -1 }, R[1] ?? { t: "swap" as const, a: -1, b: -1 }];
+  for (const q of [0, 1] as Side[]) {
+    reckonSwap(S, both[q]);
+  }
+  S.reckoned = both; S.reckon = undefined;
+  S.phase = "play"; S.step = 1; S.sub = 0;
+}
+
 function advanceDraft(S: State) {
   if (S.sub === 0) S.sub = 1;
   else {
     S.hiddenSpots = [];
     S.sub = 0;
     S.step++;
-    if (S.step > 6) { S.phase = "play"; S.step = 1; }
+    if (S.step > 6) {
+      S.step = 1;
+      if (param(S.rules, "rule.reckoning") > 0) { S.phase = "reckon"; S.reckon = [undefined, undefined]; }
+      else S.phase = "play";
+    }
   }
 }
 function playDecision(S: State): Decision {
@@ -2098,6 +2143,7 @@ export function nextDecision(S: State): Decision | null {
     switch (S.phase) {
       case "muster": { const d = musterStep(S); if (d) return d; break; }
       case "draft": { const d = draftDecision(S); if (d) return d; break; }
+      case "reckon": return reckonDecision(S);
       case "play": return playDecision(S);
       case "late": { const d = lateDecision(S); if (d) return d; break; }
       case "combat": {
@@ -2128,6 +2174,9 @@ export function legalityError(S: State, p: Side, o: Option): string | null {
   const P = S.players[p];
   const inHand = (uid: number) => P.hand.find((c) => c.uid === uid);
   switch (o.t) {
+    case "swap":
+      if (S.phase !== "reckon" || S.sub !== p) return "not your Reckoning";
+      return reckonDecision(S).options.some((x) => sameOption(x, o)) ? null : "swap two of your own cards of a kind";
     case "setting":
       if (!needsSetting(S) || p !== 1) return "no setting to choose";
       return settingDef(o.id) ? null : "no such setting";
@@ -2304,6 +2353,7 @@ export function applyDecision(S: State, d: Decision, idx: number, check = true):
   switch (o.t) {
     case "setting": S.rules = withSetting(S.rules, o.id); return;
     case "muster": applyMuster(S, p, o); return;
+    case "swap": applyReckon(S, p, o); return;
     case "musterOmen": {
       const pend = S.pendingOmen!;
       S.pendingOmen = null;

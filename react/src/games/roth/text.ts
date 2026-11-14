@@ -1,6 +1,6 @@
 // Words for cards, choices and the move log, from one seat's point of view.
 import { ALL_DEFS, type CardDef, type Faction, type FighterDef } from "./engine/cards";
-import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, ownerOfSpot, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
+import { CROW_BIT, OATH_BIT, fighter, forbidMask, globalBit, isHeroSpot, ownerOfSpot, quadOf, restForbidMask, toDeath, unwilling, type Decision, type Option, type Side, type State } from "./engine/engine";
 import type { Element, SupportDef } from "./engine/cards";
 import { settingDef } from "./engine/settings";
 
@@ -115,6 +115,9 @@ export function optionLabel(S: State, d: Decision, o: Option, me: Side = d.playe
     case "musterOmen": return `Send ${cardName(S, o.uid)} to the Reserve`;
     case "musterReturn": return `Return ${cardName(S, o.uid)} to the Reserve`;
     case "setting": { const x = settingDef(o.id); return `Fight at ${x?.name ?? o.id}: ${x?.text ?? ""}`; }
+    case "swap": return o.a < 0 ? "Keep your wheel as it is"
+      : isHeroSpot(o.a) ? `Swap your heroes: ${S.board[o.a]?.def.name} leads your ${quadOf(o.b) % 2 === 0 ? "first" : "second"} band, ${S.board[o.b]?.def.name} your ${quadOf(o.a) % 2 === 0 ? "first" : "second"}`
+      : `Swap ${S.board[o.a]?.def.name} (${seatName(S, o.a, me)}) and ${S.board[o.b]?.def.name} (${seatName(S, o.b, me)})`;
     case "place": return o.join ? `Place ${cardName(S, o.uid)} with ${o.join.length ? o.join.map((u) => cardName(S, u).replace(/^The /, "")).join(", ") : "no monsters"}` : `Place ${cardName(S, o.uid)}`;
     case "omen": case "late": return o.target !== undefined ? `Turn ${cardName(S, o.uid)} on ${AT_SPOT(S, o.target, me)}` : `Turn ${cardName(S, o.uid)}`;
     case "lateDone": return "Done turning omens";
@@ -174,6 +177,7 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
     case "musterOmen": return `${who} sent ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "musterReturn": return `${who} returned ${hidden(cardName(S, o.uid))} to the Reserve.`;
     case "setting": return `${who} chose to fight at ${settingDef(o.id)?.name ?? o.id}.`;
+    case "swap": return mine ? (o.a < 0 ? "You chose to keep your wheel." : `You chose: ${optionLabel(S, d, o, me).replace(/^Swap/, "swap")}.`) : "The computer chose its change, in secret.";
     case "place": return `${who} placed ${o.join ? optionLabel(S, d, o, me).replace(/^Place /, "") : cardName(S, o.uid)} as ${seatName(S, d.spot!, me)}.`;
     case "omen": case "late": return `${who} turned ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${AT(S, o.target, me)}` : ""}.`;
     case "lateDone": return `${who} turned no more omens.`;
@@ -201,3 +205,14 @@ export function logLine(S: State, d: Decision, o: Option, me: Side): string {
 export const DECIDED: Record<string, string> = {
   felled: "more heroes felled", valour: "more wounds dealt", firstDuel: "the only hero standing from the first duel", draw: "a draw",
 };
+
+/** After the Reckoning: what side p changed, in words (the board already shows it). */
+export function reckonedLine(S: State, p: Side, me: Side): string {
+  const o = S.reckoned?.[p];
+  const who = p === me ? "You" : "The computer";
+  if (!o || o.a < 0) return `${who} kept ${p === me ? "your" : "its"} wheel as it was.`;
+  const x = S.board[o.a]?.def.name, y = S.board[o.b]?.def.name;
+  return isHeroSpot(o.a)
+    ? `${who} swapped ${p === me ? "your" : "its"} heroes: ${x} now leads ${p === me ? "your" : "its"} ${quadOf(o.a) % 2 === 0 ? "first" : "second"} band, ${y} the ${quadOf(o.b) % 2 === 0 ? "first" : "second"}.`
+    : `${who} swapped ${y} and ${x}: ${x} is now ${seatName(S, o.a, me)}, ${y} ${seatName(S, o.b, me)}.`;
+}

@@ -26,6 +26,7 @@ export function describe(S: State, d: Decision, o: Option): string {
     case "setting": return `${who} chooses the setting: ${o.id}`;
     case "musterReturn": return `${who} muster check: ${cardName(S, o.uid)} to Reserve`;
     case "place": return `${who} places ${cardName(S, o.uid)} at spot ${d.spot! + 1}`;
+    case "swap": return o.a < 0 ? `${who} keeps the wheel` : `${who} swaps spots ${o.a + 1} and ${o.b + 1} (${S.board[o.a]?.def.name ?? "?"}, ${S.board[o.b]?.def.name ?? "?"})`;
     case "omen": return `${who} (facing ${d.spot! + 1}) turns omen ${cardName(S, o.uid)}${o.target !== undefined ? ` on ${S.board[o.target]?.def.name ?? "?"}` : ""}`;
     case "champion": return `${who} calls champion ${cardName(S, o.uid)} to stand in for ${S.board[S.combat!.hs[d.player]]!.def.name}`;
     case "bind": return `${who} binds hero at ${d.spot! + 1} with ${cardName(S, o.uid)}`;
